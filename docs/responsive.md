@@ -159,10 +159,22 @@ and the one place the reference was corrected was its muted greys.
 
 ## Still to come
 
-| Sprint | Work |
-| --- | --- |
-| 10 | Dark theme, theme switching, persistence |
+Phase 2 is complete.
 
-When the real screens arrive, two things here deserve another look: the 1.6 text
+Two things here deserve another look when the real screens arrive: the 1.6 text
 scale ceiling, and whether dense rows should reflow into a column at large scales
 rather than relying on the clamp.
+
+### A caution learned the hard way
+
+`AppContentWidth` shipped in this sprint with a bug that its own tests missed. It
+was wrapped around `Scaffold.bottomNavigationBar`, and because that slot is
+measured with **loose** constraints, the height-filling `Align` inside expanded to
+the whole screen and pinned the bar to the top of it. The navigation rendered at
+the top of the display, and an invisible full-screen box swallowed every tap.
+
+The width assertions passed the entire time, because the width was never wrong.
+Sprint 10 found it, `AppContentWidth.hugHeight` fixes it, and there is now a test
+asserting the bar sits at the bottom and is under 120dp tall.
+
+The lesson: a layout test that checks size but never position is half a test.

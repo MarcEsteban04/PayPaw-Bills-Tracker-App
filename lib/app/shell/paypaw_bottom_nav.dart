@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../core/presentation/layout/app_breakpoints.dart';
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_radii.dart';
-import '../../core/theme/app_shadows.dart';
 import '../../core/theme/app_spacing.dart';
 import 'app_destination.dart';
 
@@ -60,10 +59,10 @@ class PayPawBottomNav extends StatelessWidget {
         child: Container(
           height: _barHeight,
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-          decoration: const BoxDecoration(
-            color: AppColors.navSurface,
+          decoration: BoxDecoration(
+            color: context.colors.navSurface,
             borderRadius: AppRadii.round,
-            boxShadow: AppShadows.floating,
+            boxShadow: context.colors.floatingShadow,
           ),
           child: LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
@@ -152,8 +151,8 @@ class _NavItem extends StatelessWidget {
         onTap: onTap,
         borderRadius: AppRadii.round,
         // A dark surface needs a light ripple; the default dark one is invisible.
-        splashColor: AppColors.textOnDark.withValues(alpha: 0.12),
-        highlightColor: AppColors.textOnDark.withValues(alpha: 0.06),
+        splashColor: context.colors.textOnDark.withValues(alpha: 0.12),
+        highlightColor: context.colors.textOnDark.withValues(alpha: 0.06),
         child: AnimatedContainer(
           duration: duration,
           curve: _curve,
@@ -164,8 +163,8 @@ class _NavItem extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             color: isSelected
-                ? AppColors.navActivePill
-                : AppColors.navItemSunken,
+                ? context.colors.navActivePill
+                : context.colors.navItemSunken,
             borderRadius: AppRadii.round,
           ),
           child: Row(
@@ -175,8 +174,8 @@ class _NavItem extends StatelessWidget {
                 isSelected ? destination.selectedIcon : destination.icon,
                 size: 22,
                 color: isSelected
-                    ? AppColors.navOnActivePill
-                    : AppColors.navInactiveIcon,
+                    ? context.colors.navOnActivePill
+                    : context.colors.navInactiveIcon,
               ),
               // The label only exists on the selected destination, and only when
               // it fits. AnimatedSize widens the pill rather than snapping it,
@@ -221,7 +220,7 @@ class _NavItemLabel extends StatelessWidget {
         // width and font size degrades quietly instead of throwing an overflow.
         overflow: TextOverflow.clip,
         style: Theme.of(context).textTheme.labelSmall
-            ?.copyWith(color: AppColors.navOnActivePill, fontSize: 13),
+            ?.copyWith(color: context.colors.navOnActivePill, fontSize: 13),
       ),
     );
   }

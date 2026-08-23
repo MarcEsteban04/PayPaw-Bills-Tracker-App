@@ -15,13 +15,29 @@ softness on a real device.
 
 | Token group | File |
 | --- | --- |
-| Colour | [`lib/core/theme/app_colors.dart`](../lib/core/theme/app_colors.dart) |
+| Colour, gradients, shadows | [`lib/core/theme/app_palette.dart`](../lib/core/theme/app_palette.dart) |
 | Typography | [`lib/core/theme/app_typography.dart`](../lib/core/theme/app_typography.dart) |
 | Spacing | [`lib/core/theme/app_spacing.dart`](../lib/core/theme/app_spacing.dart) |
 | Radius | [`lib/core/theme/app_radii.dart`](../lib/core/theme/app_radii.dart) |
-| Shadows | [`lib/core/theme/app_shadows.dart`](../lib/core/theme/app_shadows.dart) |
-| Gradients | [`lib/core/theme/app_gradients.dart`](../lib/core/theme/app_gradients.dart) |
-| Assembled theme | [`lib/core/theme/app_theme.dart`](../lib/core/theme/app_theme.dart) |
+| Assembled themes | [`lib/core/theme/app_theme.dart`](../lib/core/theme/app_theme.dart) |
+| Theme preference | [`lib/core/theme/theme_mode_controller.dart`](../lib/core/theme/theme_mode_controller.dart) |
+
+## How a widget reads a colour
+
+```dart
+context.colors.surface      // not AppColors.surface
+context.colors.cardShadow
+context.colors.canvas       // the background gradient
+```
+
+Colours, gradients and shadows are a **`ThemeExtension`** — `AppPalette` — with
+one instance per theme. They used to be `static const` values, which is exactly
+what made dark mode impossible: a constant cannot know which theme is showing.
+
+Material's `ColorScheme` has no slot for a peach canvas gradient, a lime
+navigation pill, a third text grey, or eight status tints. Rather than split
+colours across two lookups, everything lives in the palette and `AppTheme` builds
+the `ColorScheme` *from* it. One rule: use `context.colors`.
 
 ---
 
@@ -29,7 +45,7 @@ softness on a real device.
 
 Every hex value was sampled by eye from a lossy `.webp` and a small `.png`. They
 capture the design's *intent*, not its exact pixels. If you have the original
-design file, correct `app_colors.dart` and the whole app follows — that is the
+design file, correct `AppPalette.light` and the whole app follows — that is the
 point of having one file.
 
 ---
@@ -188,6 +204,51 @@ looking pasted onto the page.
 
 ---
 
+## Dark mode
+
+The reference design is light-only, so the dark palette is derived from it.
+Three decisions shape it:
+
+* **The canvas is a warm charcoal, not neutral black**, so the peach character of
+  the design survives the inversion.
+* **The navigation bar inverts.** In light mode a dark bar floats above a light
+  page; in dark mode a darker bar would sink into it, so the bar becomes *lighter*
+  than the canvas. There is a test asserting exactly this relationship in both
+  themes.
+* **Shadows get much stronger.** A 5%-black shadow is invisible on charcoal, so
+  the alpha rises to keep cards reading as lifted.
+
+The brand orange is the **same in both themes**. A brighter dark-mode orange was
+tried and rejected: it pushed white-on-orange to 2.6:1, below even the large-text
+threshold. `primaryText` — orange as small text — is the token that lightens for
+dark mode, since it sits on a dark surface rather than carrying white text.
+
+Lime stays identical in both. It is the navigation accent and it works on either
+background.
+
+### Theme preference
+
+`ThemeMode.system` by default: following the device is the least surprising
+behaviour, and a user who has set their phone to dark at sunset should not have to
+set PayPaw separately. The choice persists in `SharedPreferences`, and anything
+unrecognised in storage falls back to following the device rather than throwing on
+launch.
+
+Switch it under **Profile > Appearance**.
+
+### Contrast is tested, not asserted
+
+[`test/core/theme/app_palette_test.dart`](../test/core/theme/app_palette_test.dart)
+computes the real WCAG ratio for every text-on-background pair in **both**
+palettes and fails below 4.5:1 — 3:1 for icons and for the documented
+white-on-orange exception.
+
+It earned its place immediately: it caught three failures on its first run that
+hand-checking had missed, including `onDisabled` in the *light* palette, which had
+been shipping at 4.06:1 since Sprint 8.
+
+---
+
 ## Component styles
 
 Themed centrally in `app_theme.dart`, so a plain widget already looks right and
@@ -221,10 +282,6 @@ hit.
 
 ## Still to come
 
-| Sprint | Work |
-| --- | --- |
-| 10 | Dark theme, theme switching, persistence |
-
-Dark mode is Sprint 10, so there is one theme today and it is light — matching
-the reference, which is light-only. The gallery screen exists partly so that
-Sprint 10 can check both themes against each other quickly.
+Phase 2 is complete. The next design-facing work is the real dashboard, in
+Sprints 34-38, which is where these tokens stop being a gallery and start being
+an app.

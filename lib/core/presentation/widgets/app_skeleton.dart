@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_colors.dart';
+import '../../theme/app_palette.dart';
+
 import '../../theme/app_radii.dart';
 
 /// A placeholder block that pulses while real content loads.
@@ -72,7 +73,7 @@ class _AppSkeletonState extends State<AppSkeleton>
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            color: AppColors.surfaceMuted,
+            color: context.colors.surfaceMuted,
             borderRadius: widget.borderRadius,
           ),
         ),

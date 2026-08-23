@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_colors.dart';
+import '../../theme/app_palette.dart';
+
 import '../../theme/app_radii.dart';
-import '../../theme/app_shadows.dart';
 import '../../theme/app_spacing.dart';
 
 /// PayPaw's primary action.
@@ -53,14 +53,14 @@ class AppPrimaryButton extends StatelessWidget {
         label: label,
         icon: icon,
         isBusy: isBusy,
-        spinnerColor: AppColors.textOnPrimary,
+        spinnerColor: context.colors.textOnPrimary,
       ),
     );
 
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: AppRadii.round,
-        boxShadow: _isEnabled ? AppShadows.primaryGlow : null,
+        boxShadow: _isEnabled ? context.colors.primaryGlow : null,
       ),
       child: expand ? SizedBox(width: double.infinity, child: button) : button,
     );
@@ -93,7 +93,7 @@ class AppSecondaryButton extends StatelessWidget {
         label: label,
         icon: icon,
         isBusy: isBusy,
-        spinnerColor: AppColors.textPrimary,
+        spinnerColor: context.colors.textPrimary,
       ),
     );
 
@@ -130,14 +130,14 @@ class AppDangerButton extends StatelessWidget {
       // destructive action is rare enough that a whole theme entry for it would
       // be more indirection than it saves.
       style: FilledButton.styleFrom(
-        backgroundColor: AppColors.overdue,
-        foregroundColor: AppColors.textOnPrimary,
+        backgroundColor: context.colors.overdue,
+        foregroundColor: context.colors.textOnPrimary,
       ),
       child: _AppButtonContent(
         label: label,
         icon: icon,
         isBusy: isBusy,
-        spinnerColor: AppColors.textOnPrimary,
+        spinnerColor: context.colors.textOnPrimary,
       ),
     );
 

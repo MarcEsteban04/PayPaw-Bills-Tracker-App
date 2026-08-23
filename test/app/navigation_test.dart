@@ -99,7 +99,12 @@ void main() {
     await tester.tap(find.bySemanticsLabel(AppDestination.profile.label));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Design system'));
+    // Scroll to the end of Profile first: the developer rows sit low enough to
+    // be under the floating navigation bar until the list is scrolled.
+    await tester.drag(find.byType(ListView), const Offset(0, -2000));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(ListTile, 'Design system'));
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(AppBar, 'Design System'), findsOneWidget);

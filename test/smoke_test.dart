@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:paypaw/app/paypaw_app.dart';
 import 'package:paypaw/core/providers/storage_providers.dart';
-import 'package:paypaw/core/theme/app_colors.dart';
+import 'package:paypaw/core/theme/app_palette.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Boot test for the architecture and theme wiring.
@@ -46,7 +46,8 @@ void main() {
       tester.element(find.byType(Scaffold).first),
     );
 
-    expect(theme.colorScheme.primary, AppColors.primary);
+    expect(theme.colorScheme.primary, AppPalette.light.primary);
+    expect(theme.extension<AppPalette>(), AppPalette.light);
     // Transparent, so the canvas gradient painted in PayPawApp shows through.
     expect(theme.scaffoldBackgroundColor, Colors.transparent);
     // Cards and buttons are flat because PayPaw paints its own soft shadows.

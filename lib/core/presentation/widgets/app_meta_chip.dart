@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_colors.dart';
+import '../../theme/app_palette.dart';
+
 import '../../theme/app_radii.dart';
 import '../../theme/app_spacing.dart';
 
@@ -26,8 +27,8 @@ class AppMetaChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceMuted,
+      decoration: BoxDecoration(
+        color: context.colors.surfaceMuted,
         borderRadius: AppRadii.chip,
       ),
       child: Padding(
@@ -39,7 +40,7 @@ class AppMetaChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             if (icon case final IconData iconData) ...<Widget>[
-              Icon(iconData, size: 12, color: AppColors.textTertiary),
+              Icon(iconData, size: 12, color: context.colors.textTertiary),
               const SizedBox(width: AppSpacing.xs),
             ],
             Text(label, style: Theme.of(context).textTheme.labelMedium),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_colors.dart';
+import '../../theme/app_palette.dart';
+
 import 'app_text_field.dart';
 
 /// The search field from the reference design's search screen: a filled field
@@ -48,7 +49,7 @@ class AppSearchField extends StatelessWidget {
           : IconButton(
               onPressed: onFilterPressed,
               icon: const Icon(Icons.tune_rounded),
-              color: AppColors.textSecondary,
+              color: context.colors.textSecondary,
               tooltip: 'Filters',
             ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_colors.dart';
+import '../../theme/app_palette.dart';
+
 import '../../theme/app_radii.dart';
 import '../../theme/app_spacing.dart';
 
@@ -54,9 +55,9 @@ class ScreenPlaceholder extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(AppSpacing.xxl),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: context.colors.surface,
               borderRadius: AppRadii.panel,
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: context.colors.border),
             ),
             child: Column(
               children: <Widget>[
@@ -65,11 +66,15 @@ class ScreenPlaceholder extends StatelessWidget {
                 ExcludeSemantics(
                   child: Container(
                     padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: const BoxDecoration(
-                      color: AppColors.primarySoft,
+                    decoration: BoxDecoration(
+                      color: context.colors.primarySoft,
                       borderRadius: AppRadii.card,
                     ),
-                    child: Icon(icon, color: AppColors.primaryText, size: 28),
+                    child: Icon(
+                      icon,
+                      color: context.colors.primaryText,
+                      size: 28,
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),

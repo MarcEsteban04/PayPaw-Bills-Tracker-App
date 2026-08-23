@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_colors.dart';
+import '../../theme/app_palette.dart';
+
 import '../../theme/app_radii.dart';
 import '../../theme/app_spacing.dart';
 
@@ -45,8 +46,8 @@ class AppFilterPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color foreground = isApplied
-        ? AppColors.primaryText
-        : AppColors.textSecondary;
+        ? context.colors.primaryText
+        : context.colors.textSecondary;
 
     return SizedBox(
       height: _tapHeight,
@@ -58,7 +59,9 @@ class AppFilterPill extends StatelessWidget {
             height: _pillHeight,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             decoration: BoxDecoration(
-              color: isApplied ? AppColors.primarySoft : AppColors.surfaceMuted,
+              color: isApplied
+                  ? context.colors.primarySoft
+                  : context.colors.surfaceMuted,
               borderRadius: AppRadii.chip,
             ),
             child: Row(

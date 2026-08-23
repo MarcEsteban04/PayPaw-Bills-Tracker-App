@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../error/app_exception.dart';
-import '../../theme/app_colors.dart';
+import '../../theme/app_palette.dart';
 import 'app_state_message.dart';
 
 /// Shown when something failed to load.
@@ -51,8 +51,8 @@ class AppErrorState extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppStateMessage(
       icon: _icon,
-      iconColor: AppColors.overdueText,
-      iconBackground: AppColors.overdueTint,
+      iconColor: context.colors.overdueText,
+      iconBackground: context.colors.overdueTint,
       title: 'That did not work',
       message: _message,
       actionLabel: 'Try again',

@@ -32,7 +32,7 @@ one of the two will eventually drift.
 | `AppAmountField` | Currency keyboard, input filter, peso prefix, tabular figures |
 | `AppDropdownField<T>` | Generic over the value, styled to match the text field |
 | `AppMetaChip` | The reference's grey fact pill, without Material `Chip`'s baggage |
-| `AppStatusChip` | Accessible tint-and-text colour pairs per status |
+| `AppStatusChip` | Accessible tint-and-text colour pairs per status, per theme |
 | `AppFilterPill` | 36dp visual pill inside a 48dp tap target, with applied state |
 | `showAppDialog` / `showAppConfirmDialog` | Consistent actions, and a safe return value |
 | `showAppBottomSheet` | Keyboard inset, safe area, and scroll-controlled sizing |
@@ -54,8 +54,10 @@ one of the two will eventually drift.
 Keep them separate. If everything on a card is a coloured chip, nothing stands
 out, and the one chip that actually matters gets lost.
 
-Each `AppStatusTone` carries a **matched pair**: a pale background and a darkened
-text colour that clears 4.5:1 on it. Never mix one tone's background with
+The active palette resolves each `AppStatusTone` to a **matched pair**: a pale
+background and a text colour that clears 4.5:1 on it, in whichever theme is
+showing. The pair used to live on the enum as constants, which is what made dark
+mode impossible. Never mix one tone's background with
 another's foreground — the status colours are tuned to be legible as fills, and
 as small text on a pale tint they land near 2:1.
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_colors.dart';
+import '../../theme/app_palette.dart';
+
 import '../../theme/app_radii.dart';
 import '../../theme/app_spacing.dart';
 
@@ -55,11 +56,11 @@ class AppDropdownField<T> extends StatelessWidget {
       isExpanded: true,
       hint: hint == null ? null : Text(hint!, style: textTheme.bodyMedium),
       icon: const Icon(Icons.keyboard_arrow_down_rounded),
-      iconEnabledColor: AppColors.textSecondary,
+      iconEnabledColor: context.colors.textSecondary,
       // The menu is a surface of its own, so it gets the card radius rather
       // than the field's.
       borderRadius: AppRadii.card,
-      dropdownColor: AppColors.surface,
+      dropdownColor: context.colors.surface,
       style: textTheme.bodyLarge,
       items: <DropdownMenuItem<T>>[
         for (final T item in items)

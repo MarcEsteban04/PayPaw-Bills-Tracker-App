@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_colors.dart';
+import '../../theme/app_palette.dart';
+
 import '../../theme/app_radii.dart';
 import '../../theme/app_spacing.dart';
 import 'app_button.dart';
@@ -20,8 +21,8 @@ class AppStateMessage extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.message,
-    this.iconColor = AppColors.primaryText,
-    this.iconBackground = AppColors.primarySoft,
+    this.iconColor,
+    this.iconBackground,
     this.actionLabel,
     this.onAction,
     super.key,
@@ -36,8 +37,11 @@ class AppStateMessage extends StatelessWidget {
   /// What it means, and what to do next.
   final String message;
 
-  final Color iconColor;
-  final Color iconBackground;
+  /// Icon tint. Null uses the theme accent.
+  final Color? iconColor;
+
+  /// Wash behind the icon. Null uses the theme accent wash.
+  final Color? iconBackground;
 
   /// Action label. Ignored unless [onAction] is also given.
   final String? actionLabel;
@@ -81,6 +85,7 @@ class _Body extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final TextTheme textTheme = Theme.of(context).textTheme;
+    final AppPalette palette = context.colors;
 
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.xxl),
@@ -92,7 +97,7 @@ class _Body extends StatelessWidget {
           ExcludeSemantics(
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: message.iconBackground,
+                color: message.iconBackground ?? palette.primarySoft,
                 borderRadius: AppRadii.panel,
               ),
               child: Padding(

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'app_colors.dart';
+import 'app_palette.dart';
 import 'app_radii.dart';
 import 'app_spacing.dart';
 import 'app_typography.dart';
 
-/// Assembles PayPaw's tokens into a Material [ThemeData].
+/// Assembles an [AppPalette] into a Material [ThemeData].
 ///
 /// The goal is that a plain `ElevatedButton`, `TextField`, or `Card` already
 /// looks like the reference design without a single style argument at the call
@@ -13,11 +13,13 @@ import 'app_typography.dart';
 /// than in a widget.
 ///
 /// Component elevation is kept at zero throughout: PayPaw paints its own soft
-/// shadows from `AppShadows`, because Material's default elevation shadows are
+/// shadows from the palette, because Material's default elevation shadows are
 /// tighter and darker than the reference's.
 ///
-/// Dark mode arrives in Sprint 10. Until then there is one theme and it is
-/// light, matching the reference, which is light-only.
+/// Both themes are built by the same [of] function from different palettes, so a
+/// component styled once is styled for both. That is the whole point of the
+/// palette being a theme extension: there is no second copy of this file for
+/// dark mode to fall out of step with.
 abstract final class AppTheme {
   /// Minimum tappable size. Below 48dp a target fails Material's accessibility
   /// guidance regardless of how small the icon looks in the design.
@@ -27,67 +29,81 @@ abstract final class AppTheme {
   /// 48dp default.
   static const double buttonHeight = 52;
 
-  /// The light theme.
-  static ThemeData get light {
-    final TextTheme textTheme = AppTypography.textTheme;
+  /// The light theme, sampled from the reference design.
+  static ThemeData get light => of(AppPalette.light);
+
+  /// The dark theme.
+  static ThemeData get dark => of(AppPalette.dark);
+
+  /// Builds a theme from [palette].
+  static ThemeData of(AppPalette palette) {
+    final TextTheme textTheme = AppTypography.textTheme(palette);
 
     return ThemeData(
-      colorScheme: _colorScheme,
+      brightness: palette.brightness,
+      colorScheme: _colorScheme(palette),
       textTheme: textTheme,
+
+      // The palette travels with the theme, which is how `context.colors` works.
+      extensions: <ThemeExtension<dynamic>>[palette],
 
       // Transparent so the canvas gradient painted once in PayPawApp shows
       // through every route. A screen that needs an opaque background must set
       // it explicitly, which is the rarer case in this design.
       scaffoldBackgroundColor: Colors.transparent,
 
-      appBarTheme: _appBarTheme(textTheme),
-      cardTheme: _cardTheme,
+      appBarTheme: _appBarTheme(palette, textTheme),
+      cardTheme: _cardTheme(palette),
       elevatedButtonTheme: ElevatedButtonThemeData(
-        style: _primaryButtonStyle(textTheme),
+        style: _primaryButtonStyle(palette, textTheme),
       ),
       filledButtonTheme: FilledButtonThemeData(
-        style: _primaryButtonStyle(textTheme),
+        style: _primaryButtonStyle(palette, textTheme),
       ),
-      outlinedButtonTheme: _outlinedButtonTheme(textTheme),
-      textButtonTheme: _textButtonTheme(textTheme),
-      iconButtonTheme: _iconButtonTheme,
-      inputDecorationTheme: _inputDecorationTheme(textTheme),
-      chipTheme: _chipTheme(textTheme),
-      tabBarTheme: _tabBarTheme(textTheme),
-      dividerTheme: const DividerThemeData(
-        color: AppColors.border,
+      outlinedButtonTheme: _outlinedButtonTheme(palette, textTheme),
+      textButtonTheme: _textButtonTheme(palette, textTheme),
+      iconButtonTheme: _iconButtonTheme(palette),
+      inputDecorationTheme: _inputDecorationTheme(palette, textTheme),
+      chipTheme: _chipTheme(palette, textTheme),
+      tabBarTheme: _tabBarTheme(palette, textTheme),
+      dividerTheme: DividerThemeData(
+        color: palette.border,
         thickness: 1,
         space: 1,
       ),
-      bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: AppColors.surface,
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: palette.surface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: AppRadii.sheet),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadii.sheet),
         showDragHandle: true,
-        dragHandleColor: AppColors.border,
+        dragHandleColor: palette.border,
       ),
-      dialogTheme: const DialogThemeData(
-        backgroundColor: AppColors.surface,
+      dialogTheme: DialogThemeData(
+        backgroundColor: palette.surface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: AppRadii.panel),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadii.panel),
       ),
-      // Not in Sprint 8's component list, but a confirmation dialog needs
+      // Not on Sprint 8's component list, but a confirmation dialog needs
       // somewhere to report what it did, and an unthemed snack bar is the one
       // Material default that would look pasted in from another app.
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: AppColors.navSurface,
+        backgroundColor: palette.brightness == Brightness.light
+            ? palette.navSurface
+            : palette.surfaceMuted,
         contentTextStyle: textTheme.bodyMedium?.copyWith(
-          color: AppColors.textOnDark,
+          color: palette.brightness == Brightness.light
+              ? palette.textOnDark
+              : palette.textPrimary,
         ),
-        actionTextColor: AppColors.navActivePill,
+        actionTextColor: palette.navActivePill,
         behavior: SnackBarBehavior.floating,
         shape: const RoundedRectangleBorder(borderRadius: AppRadii.input),
         elevation: 0,
       ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: AppColors.primary,
-        linearTrackColor: AppColors.surfaceMuted,
-        circularTrackColor: AppColors.surfaceMuted,
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: palette.primary,
+        linearTrackColor: palette.surfaceMuted,
+        circularTrackColor: palette.surfaceMuted,
       ),
     );
   }
@@ -97,36 +113,36 @@ abstract final class AppTheme {
   // ---------------------------------------------------------------------------
 
   /// Built member by member rather than with `ColorScheme.fromSeed`, because a
-  /// seed generates its own tonal palette and would quietly override the
-  /// colours sampled from the reference.
-  static const ColorScheme _colorScheme = ColorScheme(
-    brightness: Brightness.light,
-    primary: AppColors.primary,
-    onPrimary: AppColors.textOnPrimary,
-    primaryContainer: AppColors.primarySoft,
-    onPrimaryContainer: AppColors.primaryText,
-    secondary: AppColors.navSurface,
-    onSecondary: AppColors.textOnDark,
-    secondaryContainer: AppColors.surfaceMuted,
-    onSecondaryContainer: AppColors.textPrimary,
-    tertiary: AppColors.paid,
-    onTertiary: AppColors.textOnPrimary,
-    error: AppColors.overdue,
-    onError: AppColors.textOnPrimary,
-    surface: AppColors.surface,
-    onSurface: AppColors.textPrimary,
-    onSurfaceVariant: AppColors.textSecondary,
-    surfaceContainerLowest: AppColors.surface,
-    surfaceContainerLow: AppColors.canvasWhite,
-    surfaceContainer: AppColors.canvasCream,
-    surfaceContainerHigh: AppColors.surfaceMuted,
-    surfaceContainerHighest: AppColors.surfaceInput,
-    outline: AppColors.border,
-    outlineVariant: AppColors.border,
-    shadow: Color(0x1A000000),
-    scrim: Color(0x66000000),
-    inverseSurface: AppColors.navSurface,
-    onInverseSurface: AppColors.textOnDark,
+  /// seed generates its own tonal palette and would quietly override the colours
+  /// sampled from the reference.
+  static ColorScheme _colorScheme(AppPalette palette) => ColorScheme(
+    brightness: palette.brightness,
+    primary: palette.primary,
+    onPrimary: palette.textOnPrimary,
+    primaryContainer: palette.primarySoft,
+    onPrimaryContainer: palette.primaryText,
+    secondary: palette.navSurface,
+    onSecondary: palette.textOnDark,
+    secondaryContainer: palette.surfaceMuted,
+    onSecondaryContainer: palette.textPrimary,
+    tertiary: palette.paid,
+    onTertiary: palette.textOnPrimary,
+    error: palette.overdue,
+    onError: palette.textOnPrimary,
+    surface: palette.surface,
+    onSurface: palette.textPrimary,
+    onSurfaceVariant: palette.textSecondary,
+    surfaceContainerLowest: palette.surface,
+    surfaceContainerLow: palette.canvasWhite,
+    surfaceContainer: palette.canvasCream,
+    surfaceContainerHigh: palette.surfaceMuted,
+    surfaceContainerHighest: palette.surfaceInput,
+    outline: palette.border,
+    outlineVariant: palette.border,
+    shadow: palette.shadowFloating,
+    scrim: const Color(0x66000000),
+    inverseSurface: palette.textPrimary,
+    onInverseSurface: palette.surface,
   );
 
   // ---------------------------------------------------------------------------
@@ -134,24 +150,25 @@ abstract final class AppTheme {
   // ---------------------------------------------------------------------------
 
   /// Flat and transparent, because the reference has no app bar surface: the
-  /// title sits directly on the peach canvas.
-  static AppBarTheme _appBarTheme(TextTheme textTheme) => AppBarTheme(
-    backgroundColor: Colors.transparent,
-    surfaceTintColor: Colors.transparent,
-    elevation: 0,
-    scrolledUnderElevation: 0,
-    titleTextStyle: textTheme.headlineMedium,
-    iconTheme: const IconThemeData(color: AppColors.textPrimary),
-  );
+  /// title sits directly on the canvas.
+  static AppBarTheme _appBarTheme(AppPalette palette, TextTheme textTheme) =>
+      AppBarTheme(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleTextStyle: textTheme.headlineMedium,
+        iconTheme: IconThemeData(color: palette.textPrimary),
+      );
 
-  /// White, softly rounded and flat. Shadows are painted by the widget using
-  /// `AppShadows`, so cards share one shadow language with non-card surfaces.
-  static const CardThemeData _cardTheme = CardThemeData(
-    color: AppColors.surface,
+  /// Softly rounded and flat. Shadows are painted by the widget from the
+  /// palette, so cards share one shadow language with non-card surfaces.
+  static CardThemeData _cardTheme(AppPalette palette) => CardThemeData(
+    color: palette.surface,
     surfaceTintColor: Colors.transparent,
     elevation: 0,
     margin: EdgeInsets.zero,
-    shape: RoundedRectangleBorder(borderRadius: AppRadii.card),
+    shape: const RoundedRectangleBorder(borderRadius: AppRadii.card),
     clipBehavior: Clip.antiAlias,
   );
 
@@ -159,12 +176,23 @@ abstract final class AppTheme {
   ///
   /// Shared by `ElevatedButton` and `FilledButton` so the two are
   /// indistinguishable — there is only one primary button in this design.
-  static ButtonStyle _primaryButtonStyle(TextTheme textTheme) => ButtonStyle(
-    backgroundColor: const WidgetStatePropertyAll<Color>(AppColors.primary),
-    foregroundColor: const WidgetStatePropertyAll<Color>(
-      AppColors.textOnPrimary,
+  static ButtonStyle _primaryButtonStyle(
+    AppPalette palette,
+    TextTheme textTheme,
+  ) => ButtonStyle(
+    // Resolvers rather than flat values, so a disabled button reads as disabled
+    // instead of as a primary action that ignores taps.
+    backgroundColor: WidgetStateProperty.resolveWith<Color>(
+      (Set<WidgetState> states) => states.contains(WidgetState.disabled)
+          ? palette.disabled
+          : palette.primary,
     ),
-    overlayColor: const WidgetStatePropertyAll<Color>(AppColors.primaryPressed),
+    foregroundColor: WidgetStateProperty.resolveWith<Color>(
+      (Set<WidgetState> states) => states.contains(WidgetState.disabled)
+          ? palette.onDisabled
+          : palette.textOnPrimary,
+    ),
+    overlayColor: WidgetStatePropertyAll<Color>(palette.primaryPressed),
     elevation: const WidgetStatePropertyAll<double>(0),
     minimumSize: const WidgetStatePropertyAll<Size>(
       Size.fromHeight(buttonHeight),
@@ -176,91 +204,92 @@ abstract final class AppTheme {
       RoundedRectangleBorder(borderRadius: AppRadii.round),
     ),
     textStyle: WidgetStatePropertyAll<TextStyle?>(
-      textTheme.labelLarge?.copyWith(color: AppColors.textOnPrimary),
+      textTheme.labelLarge?.copyWith(color: palette.textOnPrimary),
     ),
   );
 
   /// Secondary action: the primary button's geometry with a hairline outline
   /// instead of a fill, so the two sit side by side without jumping.
-  static OutlinedButtonThemeData _outlinedButtonTheme(TextTheme textTheme) =>
-      OutlinedButtonThemeData(
-        style: ButtonStyle(
-          foregroundColor: const WidgetStatePropertyAll<Color>(
-            AppColors.textPrimary,
-          ),
-          side: const WidgetStatePropertyAll<BorderSide>(
-            BorderSide(color: AppColors.border),
-          ),
-          minimumSize: const WidgetStatePropertyAll<Size>(
-            Size.fromHeight(buttonHeight),
-          ),
-          padding: const WidgetStatePropertyAll<EdgeInsetsGeometry>(
-            EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
-          ),
-          shape: const WidgetStatePropertyAll<OutlinedBorder>(
-            RoundedRectangleBorder(borderRadius: AppRadii.round),
-          ),
-          textStyle: WidgetStatePropertyAll<TextStyle?>(textTheme.labelLarge),
-        ),
-      );
-
-  /// Inline action. Uses the darkened orange, because this is orange as text on
-  /// a light surface.
-  static TextButtonThemeData _textButtonTheme(TextTheme textTheme) =>
-      TextButtonThemeData(
-        style: ButtonStyle(
-          foregroundColor: const WidgetStatePropertyAll<Color>(
-            AppColors.primaryText,
-          ),
-          minimumSize: const WidgetStatePropertyAll<Size>(
-            Size(minTapTarget, minTapTarget),
-          ),
-          textStyle: WidgetStatePropertyAll<TextStyle?>(
-            textTheme.labelLarge?.copyWith(color: AppColors.primaryText),
-          ),
-          shape: const WidgetStatePropertyAll<OutlinedBorder>(
-            RoundedRectangleBorder(borderRadius: AppRadii.input),
-          ),
-        ),
-      );
-
-  static const IconButtonThemeData _iconButtonTheme = IconButtonThemeData(
+  static OutlinedButtonThemeData _outlinedButtonTheme(
+    AppPalette palette,
+    TextTheme textTheme,
+  ) => OutlinedButtonThemeData(
     style: ButtonStyle(
-      foregroundColor: WidgetStatePropertyAll<Color>(AppColors.textPrimary),
-      minimumSize: WidgetStatePropertyAll<Size>(
-        Size(minTapTarget, minTapTarget),
+      foregroundColor: WidgetStatePropertyAll<Color>(palette.textPrimary),
+      side: WidgetStatePropertyAll<BorderSide>(
+        BorderSide(color: palette.border),
       ),
-      shape: WidgetStatePropertyAll<OutlinedBorder>(CircleBorder()),
+      minimumSize: const WidgetStatePropertyAll<Size>(
+        Size.fromHeight(buttonHeight),
+      ),
+      padding: const WidgetStatePropertyAll<EdgeInsetsGeometry>(
+        EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+      ),
+      shape: const WidgetStatePropertyAll<OutlinedBorder>(
+        RoundedRectangleBorder(borderRadius: AppRadii.round),
+      ),
+      textStyle: WidgetStatePropertyAll<TextStyle?>(textTheme.labelLarge),
     ),
   );
 
-  /// Filled, borderless fields: the reference's search field and form inputs are
-  /// a soft grey fill with no visible outline until focus.
-  static InputDecorationTheme _inputDecorationTheme(TextTheme textTheme) =>
-      InputDecorationTheme(
-        filled: true,
-        fillColor: AppColors.surfaceInput,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
-          vertical: AppSpacing.md,
+  /// Inline action. Uses the text-safe orange, because this is orange as text on
+  /// a light surface.
+  static TextButtonThemeData _textButtonTheme(
+    AppPalette palette,
+    TextTheme textTheme,
+  ) => TextButtonThemeData(
+    style: ButtonStyle(
+      foregroundColor: WidgetStatePropertyAll<Color>(palette.primaryText),
+      minimumSize: const WidgetStatePropertyAll<Size>(
+        Size(minTapTarget, minTapTarget),
+      ),
+      textStyle: WidgetStatePropertyAll<TextStyle?>(
+        textTheme.labelLarge?.copyWith(color: palette.primaryText),
+      ),
+      shape: const WidgetStatePropertyAll<OutlinedBorder>(
+        RoundedRectangleBorder(borderRadius: AppRadii.input),
+      ),
+    ),
+  );
+
+  static IconButtonThemeData _iconButtonTheme(AppPalette palette) =>
+      IconButtonThemeData(
+        style: ButtonStyle(
+          foregroundColor: WidgetStatePropertyAll<Color>(palette.textPrimary),
+          minimumSize: const WidgetStatePropertyAll<Size>(
+            Size(minTapTarget, minTapTarget),
+          ),
+          shape: const WidgetStatePropertyAll<OutlinedBorder>(CircleBorder()),
         ),
-        hintStyle: textTheme.bodyMedium?.copyWith(
-          color: AppColors.textTertiary,
-        ),
-        labelStyle: textTheme.bodyMedium,
-        floatingLabelStyle: textTheme.labelMedium?.copyWith(
-          color: AppColors.primaryText,
-        ),
-        errorStyle: textTheme.bodySmall?.copyWith(color: AppColors.overdue),
-        prefixIconColor: AppColors.textTertiary,
-        suffixIconColor: AppColors.textTertiary,
-        border: _inputBorder(),
-        enabledBorder: _inputBorder(),
-        disabledBorder: _inputBorder(),
-        focusedBorder: _inputBorder(color: AppColors.primary, width: 1.5),
-        errorBorder: _inputBorder(color: AppColors.overdue),
-        focusedErrorBorder: _inputBorder(color: AppColors.overdue, width: 1.5),
       );
+
+  /// Filled, borderless fields: the reference's search field and form inputs are
+  /// a soft fill with no visible outline until focus.
+  static InputDecorationTheme _inputDecorationTheme(
+    AppPalette palette,
+    TextTheme textTheme,
+  ) => InputDecorationTheme(
+    filled: true,
+    fillColor: palette.surfaceInput,
+    contentPadding: const EdgeInsets.symmetric(
+      horizontal: AppSpacing.lg,
+      vertical: AppSpacing.md,
+    ),
+    hintStyle: textTheme.bodyMedium?.copyWith(color: palette.textTertiary),
+    labelStyle: textTheme.bodyMedium,
+    floatingLabelStyle: textTheme.labelMedium?.copyWith(
+      color: palette.primaryText,
+    ),
+    errorStyle: textTheme.bodySmall?.copyWith(color: palette.overdueText),
+    prefixIconColor: palette.textTertiary,
+    suffixIconColor: palette.textTertiary,
+    border: _inputBorder(),
+    enabledBorder: _inputBorder(),
+    disabledBorder: _inputBorder(),
+    focusedBorder: _inputBorder(color: palette.primary, width: 1.5),
+    errorBorder: _inputBorder(color: palette.overdue),
+    focusedErrorBorder: _inputBorder(color: palette.overdue, width: 1.5),
+  );
 
   /// One border builder for all input states, so only the parts that actually
   /// differ between states are written out above.
@@ -274,38 +303,42 @@ abstract final class AppTheme {
 
   /// The reference's meta pills: light fill, tight radius, small muted label,
   /// no border.
-  static ChipThemeData _chipTheme(TextTheme textTheme) => ChipThemeData(
-    backgroundColor: AppColors.surfaceMuted,
-    selectedColor: AppColors.primarySoft,
-    disabledColor: AppColors.disabled,
-    labelStyle: textTheme.labelMedium,
-    secondaryLabelStyle: textTheme.labelMedium?.copyWith(
-      color: AppColors.primaryText,
-    ),
-    labelPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-    padding: const EdgeInsets.symmetric(
-      horizontal: AppSpacing.sm,
-      vertical: AppSpacing.xs,
-    ),
-    side: BorderSide.none,
-    shape: const RoundedRectangleBorder(borderRadius: AppRadii.chip),
-    showCheckmark: false,
-  );
+  static ChipThemeData _chipTheme(AppPalette palette, TextTheme textTheme) =>
+      ChipThemeData(
+        backgroundColor: palette.surfaceMuted,
+        selectedColor: palette.primarySoft,
+        disabledColor: palette.disabled,
+        labelStyle: textTheme.labelMedium,
+        secondaryLabelStyle: textTheme.labelMedium?.copyWith(
+          color: palette.primaryText,
+        ),
+        labelPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        side: BorderSide.none,
+        shape: const RoundedRectangleBorder(borderRadius: AppRadii.chip),
+        showCheckmark: false,
+      );
 
   /// The underline tab row from the reference: an orange bar under the active
   /// label, no pill, no background, no divider.
-  static TabBarThemeData _tabBarTheme(TextTheme textTheme) => TabBarThemeData(
-    labelColor: AppColors.primaryText,
-    unselectedLabelColor: AppColors.textTertiary,
-    labelStyle: textTheme.titleSmall?.copyWith(color: AppColors.primaryText),
+  static TabBarThemeData _tabBarTheme(
+    AppPalette palette,
+    TextTheme textTheme,
+  ) => TabBarThemeData(
+    labelColor: palette.primaryText,
+    unselectedLabelColor: palette.textTertiary,
+    labelStyle: textTheme.titleSmall?.copyWith(color: palette.primaryText),
     unselectedLabelStyle: textTheme.titleSmall?.copyWith(
-      color: AppColors.textTertiary,
+      color: palette.textTertiary,
       fontWeight: FontWeight.w500,
     ),
     indicatorSize: TabBarIndicatorSize.label,
-    indicator: const UnderlineTabIndicator(
-      borderSide: BorderSide(color: AppColors.primary, width: 2.5),
-      insets: EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+    indicator: UnderlineTabIndicator(
+      borderSide: BorderSide(color: palette.primary, width: 2.5),
+      insets: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
     ),
     dividerColor: Colors.transparent,
     overlayColor: const WidgetStatePropertyAll<Color>(Colors.transparent),

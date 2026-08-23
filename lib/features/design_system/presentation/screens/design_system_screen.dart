@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_palette.dart';
+
 import '../../../../core/theme/app_radii.dart';
-import '../../../../core/theme/app_shadows.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 
@@ -73,69 +73,69 @@ class _ColourGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Wrap(
+    return Wrap(
       spacing: AppSpacing.sm,
       runSpacing: AppSpacing.sm,
       children: <Widget>[
         _Swatch(
           label: 'primary',
-          color: AppColors.primary,
-          onColor: AppColors.textOnPrimary,
+          color: context.colors.primary,
+          onColor: context.colors.textOnPrimary,
         ),
         _Swatch(
           label: 'pressed',
-          color: AppColors.primaryPressed,
-          onColor: AppColors.textOnPrimary,
+          color: context.colors.primaryPressed,
+          onColor: context.colors.textOnPrimary,
         ),
         _Swatch(
           label: 'primaryText',
-          color: AppColors.primaryText,
-          onColor: AppColors.textOnPrimary,
+          color: context.colors.primaryText,
+          onColor: context.colors.textOnPrimary,
         ),
         _Swatch(
           label: 'primarySoft',
-          color: AppColors.primarySoft,
-          onColor: AppColors.primaryText,
+          color: context.colors.primarySoft,
+          onColor: context.colors.primaryText,
         ),
         _Swatch(
           label: 'navSurface',
-          color: AppColors.navSurface,
-          onColor: AppColors.textOnDark,
+          color: context.colors.navSurface,
+          onColor: context.colors.textOnDark,
         ),
         _Swatch(
           label: 'navPill',
-          color: AppColors.navActivePill,
-          onColor: AppColors.navOnActivePill,
+          color: context.colors.navActivePill,
+          onColor: context.colors.navOnActivePill,
         ),
         _Swatch(
           label: 'paid',
-          color: AppColors.paid,
-          onColor: AppColors.textOnPrimary,
+          color: context.colors.paid,
+          onColor: context.colors.textOnPrimary,
         ),
         _Swatch(
           label: 'dueSoon',
-          color: AppColors.dueSoon,
-          onColor: AppColors.textOnPrimary,
+          color: context.colors.dueSoon,
+          onColor: context.colors.textOnPrimary,
         ),
         _Swatch(
           label: 'overdue',
-          color: AppColors.overdue,
-          onColor: AppColors.textOnPrimary,
+          color: context.colors.overdue,
+          onColor: context.colors.textOnPrimary,
         ),
         _Swatch(
           label: 'canvasPeach',
-          color: AppColors.canvasPeach,
-          onColor: AppColors.textPrimary,
+          color: context.colors.canvasPeach,
+          onColor: context.colors.textPrimary,
         ),
         _Swatch(
           label: 'surfaceMuted',
-          color: AppColors.surfaceMuted,
-          onColor: AppColors.textPrimary,
+          color: context.colors.surfaceMuted,
+          onColor: context.colors.textPrimary,
         ),
         _Swatch(
           label: 'border',
-          color: AppColors.border,
-          onColor: AppColors.textPrimary,
+          color: context.colors.border,
+          onColor: context.colors.textPrimary,
         ),
       ],
     );
@@ -163,7 +163,7 @@ class _Swatch extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         borderRadius: AppRadii.chip,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colors.border),
       ),
       child: Text(
         label,
@@ -198,8 +198,8 @@ class _TypeScale extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         // Tabular figures matter here: these two rows must align digit for
         // digit. If they do not, the amount style has lost its font feature.
-        Text('₱ 12,480.00', style: AppTypography.amount),
-        Text('₱ 98,111.75', style: AppTypography.amount),
+        Text('₱ 12,480.00', style: AppTypography.amount(context.colors)),
+        Text('₱ 98,111.75', style: AppTypography.amount(context.colors)),
       ],
     );
   }
@@ -215,21 +215,21 @@ class _CardSamples extends StatelessWidget {
     return Column(
       children: <Widget>[
         _ShadowCard(
-          shadow: AppShadows.subtle,
+          shadow: context.colors.subtleShadow,
           radius: AppRadii.chip,
           label: 'subtle · chips and inline controls',
           textStyle: textTheme.bodyMedium,
         ),
         const SizedBox(height: AppSpacing.cardGap),
         _ShadowCard(
-          shadow: AppShadows.card,
+          shadow: context.colors.cardShadow,
           radius: AppRadii.card,
           label: 'card · the default list card',
           textStyle: textTheme.bodyMedium,
         ),
         const SizedBox(height: AppSpacing.cardGap),
         _ShadowCard(
-          shadow: AppShadows.floating,
+          shadow: context.colors.floatingShadow,
           radius: AppRadii.panel,
           label: 'floating · nav, sheets, menus',
           textStyle: textTheme.bodyMedium,
@@ -258,7 +258,7 @@ class _ShadowCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.cardInset),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.colors.surface,
         borderRadius: radius,
         boxShadow: shadow,
       ),
@@ -384,9 +384,9 @@ class _RadiusBox extends StatelessWidget {
       height: 64,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: AppColors.primarySoft,
+        color: context.colors.primarySoft,
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: AppColors.primary),
+        border: Border.all(color: context.colors.primary),
       ),
       child: Text(label, style: AppTypography.labelSmall),
     );
@@ -409,7 +409,7 @@ class _SpacingBar extends StatelessWidget {
             width: 72,
             child: Text(label, style: AppTypography.labelMedium),
           ),
-          Container(width: width, height: 16, color: AppColors.primary),
+          Container(width: width, height: 16, color: context.colors.primary),
         ],
       ),
     );

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_colors.dart';
+import '../../theme/app_palette.dart';
 import '../../theme/app_radii.dart';
-import '../../theme/app_shadows.dart';
 import '../../theme/app_spacing.dart';
 
-/// A white surface lifted off the canvas — the reference design's card.
+/// A surface lifted off the canvas — the reference design's card.
 ///
 /// The theme keeps `Card` flat with no shadow, because PayPaw paints its own
 /// soft shadows rather than using Material elevation. This widget is where that
@@ -14,14 +13,19 @@ import '../../theme/app_spacing.dart';
 ///
 /// Pass [onTap] to make the whole card tappable; the ripple is clipped to the
 /// card's corners.
+///
+/// [shadow] and [color] default to null rather than to a value, because their
+/// defaults come from the theme and a default argument cannot read one. Null
+/// means "whatever this theme says a card looks like", which is what almost
+/// every caller wants.
 class AppCard extends StatelessWidget {
   const AppCard({
     required this.child,
     this.onTap,
     this.padding = const EdgeInsets.all(AppSpacing.cardInset),
     this.borderRadius = AppRadii.card,
-    this.shadow = AppShadows.card,
-    this.color = AppColors.surface,
+    this.shadow,
+    this.color,
     super.key,
   });
 
@@ -38,22 +42,27 @@ class AppCard extends StatelessWidget {
   /// Corner radius. [AppRadii.panel] for a larger summary panel.
   final BorderRadius borderRadius;
 
-  /// Shadow. [AppShadows.floating] for something that sits above other cards.
-  final List<BoxShadow> shadow;
+  /// Shadow. Null uses the theme's card shadow; pass
+  /// `context.colors.floatingShadow` for something sitting above other cards.
+  final List<BoxShadow>? shadow;
 
-  /// Surface colour. Rarely changed.
-  final Color color;
+  /// Surface colour. Null uses the theme's card surface.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final AppPalette palette = context.colors;
     final Widget content = Padding(padding: padding, child: child);
 
     return DecoratedBox(
       // Shadow only, no colour: the Material below paints the surface, and a
       // coloured ancestor here would swallow the ink splash.
-      decoration: BoxDecoration(borderRadius: borderRadius, boxShadow: shadow),
+      decoration: BoxDecoration(
+        borderRadius: borderRadius,
+        boxShadow: shadow ?? palette.cardShadow,
+      ),
       child: Material(
-        color: color,
+        color: color ?? palette.surface,
         borderRadius: borderRadius,
         clipBehavior: Clip.antiAlias,
         child: onTap == null ? content : InkWell(onTap: onTap, child: content),

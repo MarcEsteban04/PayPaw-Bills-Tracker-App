@@ -262,6 +262,23 @@ void main() {
       expect(navSize.width, lessThanOrEqualTo(AppBreakpoints.maxNavWidth));
     });
 
+    testWidgets('do not turn the navigation bar into a full-screen box', (
+      WidgetTester tester,
+    ) async {
+      useWindow(tester, const Size(412, 915), 1);
+      await pumpApp(tester);
+
+      final Rect nav = tester.getRect(find.byType(PayPawBottomNav));
+
+      // Regression test. Wrapping the bottom slot in a height-filling Align
+      // expanded it to the whole screen and pinned the bar to the top of that
+      // box, so the bar rendered at the top of the display and an invisible
+      // full-screen box ate every tap. The width assertions below did not catch
+      // it, because the width was correct the whole time.
+      expect(nav.bottom, closeTo(915, 1));
+      expect(nav.height, lessThan(120));
+    });
+
     testWidgets('leave a phone-width window alone', (
       WidgetTester tester,
     ) async {

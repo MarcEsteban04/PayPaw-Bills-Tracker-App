@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../theme/app_colors.dart';
+import '../../theme/app_palette.dart';
+
 import '../../theme/app_typography.dart';
 import 'app_text_field.dart';
 
@@ -79,10 +80,8 @@ class _PesoPrefix extends StatelessWidget {
         padding: const EdgeInsets.only(left: 16, right: 8),
         child: Text(
           '₱',
-          style: AppTypography.amount.copyWith(
-            fontSize: 16,
-            color: AppColors.textSecondary,
-          ),
+          style: AppTypography.amount(context.colors)
+              .copyWith(fontSize: 16, color: context.colors.textSecondary),
         ),
       ),
     );

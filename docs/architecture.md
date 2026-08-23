@@ -31,7 +31,8 @@ lib/
     data/      supabase_error_mapper.dart   Supabase errors -> AppException
     providers/                  shared providers (Supabase client, storage)
     presentation/widgets/       widgets more than one feature uses
-    theme/                      design tokens — see docs/design_system.md
+    theme/                      design tokens and both themes
+                                see docs/design_system.md
   features/
     <feature>/
       data/

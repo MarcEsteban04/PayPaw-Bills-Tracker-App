@@ -31,7 +31,9 @@ class AppShell extends StatelessWidget {
     return Scaffold(
       extendBody: true,
       body: AppContentWidth(child: navigationShell),
-      bottomNavigationBar: AppContentWidth(
+      // hugHeight: the bottom slot is measured with loose constraints, so a
+      // height-filling wrapper here would put the bar at the top of the screen.
+      bottomNavigationBar: AppContentWidth.hugHeight(
         maxWidth: AppBreakpoints.maxNavWidth,
         child: PayPawBottomNav(
           currentIndex: navigationShell.currentIndex,
