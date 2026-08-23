@@ -17,21 +17,45 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final SharedPreferences preferences = await SharedPreferences.getInstance();
-
-  // Supabase is skipped until the project exists and its credentials are passed
-  // with --dart-define. The app still runs; anything that reads the client
-  // throws a clear error rather than failing silently.
-  if (AppConfig.hasSupabaseCredentials) {
-    await Supabase.initialize(
-      url: AppConfig.supabaseUrl,
-      publishableKey: AppConfig.supabasePublishableKey,
-    );
-  }
+  await _initialiseSupabase();
 
   runApp(
     ProviderScope(
       overrides: [sharedPreferencesProvider.overrideWithValue(preferences)],
       child: const PayPawApp(),
     ),
+  );
+}
+
+/// Brings up the Supabase client, if it has been configured.
+///
+/// Skipped entirely when credentials are absent, so the app still runs against
+/// no backend — which is how every sprint before authentication was developed.
+/// Reading the client in that state throws with a message that says what to do.
+Future<void> _initialiseSupabase() async {
+  if (!AppConfig.hasSupabaseCredentials) {
+    // debugPrint rather than print: it is rate-limited and stripped from
+    // release builds, and this is a developer-facing message.
+    debugPrint(AppConfig.missingConfigMessage);
+    return;
+  }
+
+  // Two Supabase defaults matter enough to name, even though neither is passed
+  // explicitly here (they are the defaults, and stating them would only be
+  // redundant argument noise):
+  //
+  // * `authFlowType` is PKCE. The implicit flow would return tokens in the
+  //   redirect fragment, where any app able to intercept the link can read
+  //   them; PKCE returns a single-use code that is worthless without the
+  //   verifier held by this app. It is also what makes password recovery work
+  //   properly on mobile.
+  // * `detectSessionInUri` is true, so an incoming deep link is exchanged for a
+  //   session. Without it, tapping a confirmation or reset link opens the app
+  //   and nothing happens.
+  //
+  // If a future SDK version changes either default, this is the place to pin it.
+  await Supabase.initialize(
+    url: AppConfig.supabaseUrl,
+    publishableKey: AppConfig.supabasePublishableKey,
   );
 }

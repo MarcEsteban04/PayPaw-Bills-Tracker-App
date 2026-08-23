@@ -46,3 +46,8 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Environment configuration. The example file is committed; real ones are not:
+# they carry the project URL and key for an actual Supabase project.
+/config/*.json
+!/config/*.example.json

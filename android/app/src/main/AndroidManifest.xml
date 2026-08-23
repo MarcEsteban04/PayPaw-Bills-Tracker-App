@@ -29,6 +29,21 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!-- Auth deep links. Supabase sends the user back here after an
+                 email confirmation, a password reset, or an OAuth sign-in.
+                 The scheme matches the application ID so it cannot collide with
+                 another app on the device, and the same URL must be listed under
+                 Authentication > URL Configuration > Redirect URLs in the
+                 Supabase dashboard - see AppConfig.authRedirectUrl. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="com.paypaw.app"
+                    android:host="login-callback"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

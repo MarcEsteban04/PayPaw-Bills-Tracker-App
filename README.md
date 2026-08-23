@@ -17,7 +17,9 @@ covered by 75 tests. The app opens on the dashboard; switch themes under
 Profile > Appearance, and browse the token and component galleries under
 Profile > Developer.
 
-Phase 3 (Authentication) is next, starting with the Supabase project.
+Phase 3 (Authentication) is under way. The app-side Supabase wiring is in place;
+the dashboard steps need doing by hand — see
+[`docs/supabase_setup.md`](docs/supabase_setup.md).
 
 Progress is tracked sprint-by-sprint in [`docs/project_dev_roadmap.md`](docs/project_dev_roadmap.md)
 (85 sprints, ending at a production APK).
@@ -34,6 +36,7 @@ Progress is tracked sprint-by-sprint in [`docs/project_dev_roadmap.md`](docs/pro
 | 8 | Reusable components | ✅ Complete |
 | 9 | Responsive layout & accessibility | ✅ Complete |
 | 10 | Dark mode | ✅ Complete |
+| 11 | Supabase project | ⚙️ App side done — dashboard steps are yours |
 
 ---
 
@@ -52,6 +55,8 @@ Colour, type, spacing, radius and shadow tokens: [`docs/design_system.md`](docs/
 The shared widget kit, and when to use each part: [`docs/components.md`](docs/components.md).
 
 Screen sizes, font scaling and accessibility: [`docs/responsive.md`](docs/responsive.md).
+
+Connecting the backend, and what to configure by hand: [`docs/supabase_setup.md`](docs/supabase_setup.md).
 
 ---
 
@@ -89,10 +94,13 @@ cannot silently move the supported-device floor.
 device with USB debugging enabled.
 
 ```bash
-flutter pub get      # install dependencies
-flutter devices      # confirm a target is attached
-flutter run          # launch in debug mode
+flutter pub get                                     # install dependencies
+cp config/dev.example.json config/dev.json          # then fill in your Supabase values
+flutter run --dart-define-from-file=config/dev.json # launch in debug mode
 ```
+
+Plain `flutter run` also works — the app starts without a backend and prints what
+is missing. In VS Code, use the **PayPaw (dev)** launch configuration.
 
 Useful during development:
 
