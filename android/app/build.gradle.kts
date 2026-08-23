@@ -6,10 +6,17 @@ plugins {
 
 android {
     namespace = "com.paypaw.app"
-    compileSdk = flutter.compileSdkVersion
+    // Pinned to 37 because flutter_secure_storage compiles against SDK 37, which is
+    // ahead of Flutter's default of 36. compileSdk only controls which APIs are
+    // available at compile time; targetSdk below stays at Flutter's default so the
+    // app does not silently opt in to new runtime behaviour.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // Required by flutter_local_notifications, which uses java.time APIs
+        // that are not available on all API 24+ devices without desugaring.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -46,4 +53,10 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Backports java.time and other newer JDK APIs to API 24. Version is the one
+    // required by flutter_local_notifications 22.x.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
