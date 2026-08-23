@@ -10,8 +10,9 @@ and what have I already paid?*
 
 ## Status
 
-🚧 **Early development — Phase 1 (Project Foundation).**
-The app currently runs the default Flutter scaffold; feature work begins in Phase 2.
+🚧 **Early development — Phase 1 (Project Foundation) complete.**
+The architecture, dependencies and app identity are in place. The app builds and
+runs, showing a placeholder screen; real feature work begins in Phase 2.
 
 Progress is tracked sprint-by-sprint in [`docs/project_dev_roadmap.md`](docs/project_dev_roadmap.md)
 (85 sprints, ending at a production APK).
@@ -20,9 +21,9 @@ Progress is tracked sprint-by-sprint in [`docs/project_dev_roadmap.md`](docs/pro
 | -----: | ----- | ----- |
 | 1 | Project planning | ✅ Complete |
 | 2 | Flutter initialization & app identity | ✅ Complete |
-| 3 | Project architecture | ⏳ Next |
+| 3 | Project architecture | ✅ Complete |
 | 4 | Development environment | ✅ Complete |
-| 5 | Dependencies & infrastructure | ⏳ Planned |
+| 5 | Dependencies & infrastructure | ✅ Complete |
 
 ---
 
@@ -33,6 +34,8 @@ a payment calendar · reminders and notifications · receipt attachments · spen
 an AI assistant · AI bill scanning (OCR) · shared bills.
 
 Full feature specification: [`docs/app_full_description.md`](docs/app_full_description.md).
+
+How the code is organised, and why: [`docs/architecture.md`](docs/architecture.md).
 
 ---
 
@@ -88,8 +91,12 @@ flutter build apk --release       # release build
 ## Repository layout
 
 ```
-lib/                 application source (structure lands in Sprint 3)
-docs/                feature specification and development roadmap
+lib/
+  app/              root widget and navigation graph
+  core/             config, errors, shared providers, theme
+  features/         one folder per feature, each with data/domain/presentation
+test/                tests, mirroring lib/
+docs/                feature spec, development roadmap, architecture contract
 design/              UI design references — the visual spec for all screens
 android/ ios/ web/   platform projects
 linux/ macos/ windows/

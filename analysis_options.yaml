@@ -1,11 +1,46 @@
+# Static analysis configuration for PayPaw.
+#
+# `flutter analyze` must report zero issues before a sprint is considered done,
+# so every rule enabled here is one worth stopping the line for.
 include: package:flutter_lints/flutter.yaml
 
 analyzer:
   exclude:
     - build/**
+    # Generated code is committed so a fresh clone builds without running
+    # build_runner first, but it is not ours to lint.
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
     - android/**
     - ios/**
     - web/**
     - windows/**
     - macos/**
     - linux/**
+
+  errors:
+    # freezed and json_serializable put annotations on generated members, which
+    # the analyzer flags on the hand-written declaration.
+    invalid_annotation_target: ignore
+
+linter:
+  rules:
+    # Readability.
+    - always_declare_return_types
+    - prefer_single_quotes
+    - prefer_final_locals
+    - require_trailing_commas
+    - directives_ordering
+    - avoid_redundant_argument_values
+    - use_super_parameters
+
+    # Import style: relative inside lib/, package: for dependencies. Picking one
+    # keeps a file's imports from being half one style and half the other.
+    - prefer_relative_imports
+
+    # Correctness.
+    - unawaited_futures
+
+    # Logging: print() has no level and cannot be filtered out of a release
+    # build. Use debugPrint, or a logger once one is added.
+    - avoid_print
