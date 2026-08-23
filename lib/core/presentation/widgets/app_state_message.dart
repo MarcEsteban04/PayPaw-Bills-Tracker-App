@@ -46,50 +46,85 @@ class AppStateMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Centred when there is room, scrollable when there is not.
+    //
+    // An icon, two blocks of text and a button stop fitting a short container
+    // once the system font is turned up — a phone in landscape, a split-screen
+    // pane, a card with a fixed height. Scrolling is the honest answer:
+    // shrinking the text would undo the setting the user chose.
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              // Zero when the height is unbounded — inside a ListView there is
+              // nothing to centre against, and asking for infinity would throw.
+              minHeight: constraints.hasBoundedHeight
+                  ? constraints.maxHeight
+                  : 0,
+            ),
+            child: Center(child: _Body(message: this)),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// The message itself. Split out so the scroll-and-centre wrapper above stays
+/// readable.
+class _Body extends StatelessWidget {
+  const _Body({required this.message});
+
+  final AppStateMessage message;
+
+  @override
+  Widget build(BuildContext context) {
     final TextTheme textTheme = Theme.of(context).textTheme;
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xxl),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            DecoratedBox(
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.xxl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          // Decorative: the title and message carry the meaning, so a screen
+          // reader announcing the icon as well would only add noise.
+          ExcludeSemantics(
+            child: DecoratedBox(
               decoration: BoxDecoration(
-                color: iconBackground,
+                color: message.iconBackground,
                 borderRadius: AppRadii.panel,
               ),
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Icon(icon, size: 32, color: iconColor),
+                child: Icon(message.icon, size: 32, color: message.iconColor),
               ),
             ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Text(
+            message.title,
+            textAlign: TextAlign.center,
+            style: textTheme.titleMedium,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            message.message,
+            textAlign: TextAlign.center,
+            style: textTheme.bodyMedium,
+          ),
+          if (message.actionLabel case final String label
+              when message.onAction != null) ...<Widget>[
             const SizedBox(height: AppSpacing.xl),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: textTheme.titleMedium,
+            // Not full width: a message centred in empty space with a
+            // full-width button under it reads as a form, not a suggestion.
+            AppPrimaryButton(
+              label: label,
+              onPressed: message.onAction,
+              expand: false,
             ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: textTheme.bodyMedium,
-            ),
-            if (actionLabel case final String label
-                when onAction != null) ...<Widget>[
-              const SizedBox(height: AppSpacing.xl),
-              // Not full width: a message centred in empty space with a
-              // full-width button under it reads as a form, not a suggestion.
-              AppPrimaryButton(
-                label: label,
-                onPressed: onAction,
-                expand: false,
-              ),
-            ],
           ],
-        ),
+        ],
       ),
     );
   }

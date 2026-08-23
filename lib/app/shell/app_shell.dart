@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/presentation/layout/app_breakpoints.dart';
+import '../../core/presentation/layout/app_content_width.dart';
 import 'paypaw_bottom_nav.dart';
 
 /// The frame around PayPaw's four primary destinations.
@@ -14,6 +16,10 @@ import 'paypaw_bottom_nav.dart';
 /// `extendBody` is on because the navigation bar floats over the content, as it
 /// does in the reference design. Scrollable screens must pad their bottom by
 /// `AppSpacing.bottomNavClearance` so their last item is not left underneath it.
+///
+/// Both the content and the navigation are width-capped here, so a screen
+/// written for a phone behaves on a tablet or a foldable without knowing it is
+/// on one.
 class AppShell extends StatelessWidget {
   const AppShell({required this.navigationShell, super.key});
 
@@ -24,10 +30,13 @@ class AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
-      body: navigationShell,
-      bottomNavigationBar: PayPawBottomNav(
-        currentIndex: navigationShell.currentIndex,
-        onDestinationSelected: _onDestinationSelected,
+      body: AppContentWidth(child: navigationShell),
+      bottomNavigationBar: AppContentWidth(
+        maxWidth: AppBreakpoints.maxNavWidth,
+        child: PayPawBottomNav(
+          currentIndex: navigationShell.currentIndex,
+          onDestinationSelected: _onDestinationSelected,
+        ),
       ),
     );
   }

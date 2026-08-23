@@ -62,14 +62,19 @@ class _AppSkeletonState extends State<AppSkeleton>
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _opacity,
-      child: Container(
-        width: widget.width,
-        height: widget.height,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceMuted,
-          borderRadius: widget.borderRadius,
+    // Excluded from semantics: a screen reader announcing a row of empty
+    // placeholder boxes is worse than silence. The screen it sits on should
+    // announce that it is loading instead.
+    return ExcludeSemantics(
+      child: FadeTransition(
+        opacity: _opacity,
+        child: Container(
+          width: widget.width,
+          height: widget.height,
+          decoration: BoxDecoration(
+            color: AppColors.surfaceMuted,
+            borderRadius: widget.borderRadius,
+          ),
         ),
       ),
     );

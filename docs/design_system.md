@@ -223,7 +223,6 @@ hit.
 
 | Sprint | Work |
 | --- | --- |
-| 9 | Responsive layout, font scaling, overflow |
 | 10 | Dark theme, theme switching, persistence |
 
 Dark mode is Sprint 10, so there is one theme today and it is light — matching

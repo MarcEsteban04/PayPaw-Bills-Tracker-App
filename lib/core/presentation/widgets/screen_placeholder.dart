@@ -60,13 +60,17 @@ class ScreenPlaceholder extends StatelessWidget {
             ),
             child: Column(
               children: <Widget>[
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: const BoxDecoration(
-                    color: AppColors.primarySoft,
-                    borderRadius: AppRadii.card,
+                // Decorative: the description below says what this screen is
+                // for, so announcing the icon too would only add noise.
+                ExcludeSemantics(
+                  child: Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: const BoxDecoration(
+                      color: AppColors.primarySoft,
+                      borderRadius: AppRadii.card,
+                    ),
+                    child: Icon(icon, color: AppColors.primaryText, size: 28),
                   ),
-                  child: Icon(icon, color: AppColors.primaryText, size: 28),
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 Text(

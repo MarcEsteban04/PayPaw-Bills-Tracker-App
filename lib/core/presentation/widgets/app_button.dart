@@ -184,11 +184,15 @@ class _AppButtonContent extends StatelessWidget {
         children: <Widget>[
           Icon(iconData, size: 18),
           const SizedBox(width: AppSpacing.sm),
-          Text(label),
+          // Flexible so a long label at a large system font size wraps onto a
+          // second line and grows the button, instead of overflowing the row.
+          // Wrapping rather than ellipsis on purpose: a user who has turned the
+          // font up needs the whole label, not the first two thirds of it.
+          Flexible(child: Text(label, textAlign: TextAlign.center)),
         ],
       );
     }
 
-    return Text(label);
+    return Text(label, textAlign: TextAlign.center);
   }
 }

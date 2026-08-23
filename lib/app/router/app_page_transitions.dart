@@ -13,6 +13,11 @@ import 'package:go_router/go_router.dart';
 ///
 /// Durations are short on purpose. Navigation animation is feedback, not
 /// decoration; past roughly 300ms it starts to feel like waiting.
+///
+/// All of it is skipped when the platform reports that animations are disabled —
+/// Android's "Remove animations" accessibility setting. Motion sensitivity is a
+/// real condition, and an app that animates anyway is one the setting does not
+/// work on.
 abstract final class AppPageTransitions {
   static const Duration _duration = Duration(milliseconds: 240);
   static const Duration _reverseDuration = Duration(milliseconds: 200);
@@ -43,9 +48,21 @@ abstract final class AppPageTransitions {
       transitionDuration: _duration,
       reverseTransitionDuration: _reverseDuration,
       child: child,
-      transitionsBuilder: (_, Animation<double> animation, _, Widget child) =>
-          FadeTransition(opacity: animation, child: child),
+      transitionsBuilder: _fadeOnly,
     );
+  }
+
+  static Widget _fadeOnly(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    if (MediaQuery.disableAnimationsOf(context)) {
+      return child;
+    }
+
+    return FadeTransition(opacity: animation, child: child);
   }
 
   static Widget _slideAndFade(
@@ -54,6 +71,10 @@ abstract final class AppPageTransitions {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
+    if (MediaQuery.disableAnimationsOf(context)) {
+      return child;
+    }
+
     final Animation<double> eased = CurvedAnimation(
       parent: animation,
       curve: Curves.easeOutCubic,
