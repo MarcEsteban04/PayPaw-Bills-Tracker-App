@@ -10,8 +10,7 @@ import '../../../../core/theme/app_spacing.dart';
 /// Account, settings, and the feature areas used occasionally rather than daily.
 ///
 /// Placeholder, apart from the developer tools below — which are real, and are
-/// how the design system gallery is reached now that the dashboard owns the
-/// initial route.
+/// how the token and component galleries are reached.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -37,41 +36,66 @@ class _DeveloperTools extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final TextTheme textTheme = Theme.of(context).textTheme;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text('Developer', style: textTheme.titleMedium),
+        Text('Developer', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: AppSpacing.md),
-        // A Material, not a DecoratedBox: ListTile paints its ink splash on the
-        // nearest Material ancestor, so a decorated box in between would hide
-        // the tap feedback entirely.
-        Material(
-          color: AppColors.surface,
-          clipBehavior: Clip.antiAlias,
-          shape: const RoundedRectangleBorder(
-            borderRadius: AppRadii.card,
-            side: BorderSide(color: AppColors.border),
-          ),
-          child: ListTile(
-            leading: const Icon(
-              Icons.palette_outlined,
-              color: AppColors.primaryText,
-            ),
-            title: Text('Design system', style: textTheme.titleSmall),
-            subtitle: Text(
-              'Every colour, type size, radius and shadow',
-              style: textTheme.bodySmall,
-            ),
-            trailing: const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.textTertiary,
-            ),
-            onTap: () => context.pushNamed(AppRoutes.designSystem.routeName),
-          ),
+        const _DeveloperTile(
+          icon: Icons.palette_outlined,
+          title: 'Design system',
+          subtitle: 'Every colour, type size, radius and shadow',
+          route: AppRoutes.designSystem,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        const _DeveloperTile(
+          icon: Icons.widgets_outlined,
+          title: 'Components',
+          subtitle: 'Buttons, cards, inputs, chips, sheets and states',
+          route: AppRoutes.components,
         ),
       ],
+    );
+  }
+}
+
+class _DeveloperTile extends StatelessWidget {
+  const _DeveloperTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.route,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final AppRoutes route;
+
+  @override
+  Widget build(BuildContext context) {
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
+    // A Material, not a DecoratedBox: ListTile paints its ink splash on the
+    // nearest Material ancestor, so a decorated box in between would hide the
+    // tap feedback entirely.
+    return Material(
+      color: AppColors.surface,
+      clipBehavior: Clip.antiAlias,
+      shape: const RoundedRectangleBorder(
+        borderRadius: AppRadii.card,
+        side: BorderSide(color: AppColors.border),
+      ),
+      child: ListTile(
+        leading: Icon(icon, color: AppColors.primaryText),
+        title: Text(title, style: textTheme.titleSmall),
+        subtitle: Text(subtitle, style: textTheme.bodySmall),
+        trailing: const Icon(
+          Icons.chevron_right_rounded,
+          color: AppColors.textTertiary,
+        ),
+        onTap: () => context.pushNamed(route.routeName),
+      ),
     );
   }
 }

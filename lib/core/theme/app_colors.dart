@@ -103,6 +103,39 @@ abstract final class AppColors {
   static const Color info = Color(0xFF3B82F6);
 
   // ---------------------------------------------------------------------------
+  // Status tints
+  //
+  // A status chip is a pale wash carrying dark text of the same hue. The status
+  // colours above are tuned to be legible as *fills* — as small text on a pale
+  // tint they land near 2:1, so each gets a darkened text partner that clears
+  // 4.5:1. Always use a tint and its matching text together.
+  // ---------------------------------------------------------------------------
+
+  /// Background for a "paid" chip.
+  static const Color paidTint = Color(0xFFE7F8EC);
+
+  /// Text on [paidTint]. ~5.3:1.
+  static const Color paidText = Color(0xFF1B7A32);
+
+  /// Background for a "due soon" chip.
+  static const Color dueSoonTint = Color(0xFFFFF4E0);
+
+  /// Text on [dueSoonTint]. ~5.5:1.
+  static const Color dueSoonText = Color(0xFF8A5200);
+
+  /// Background for an "overdue" chip.
+  static const Color overdueTint = Color(0xFFFDECEC);
+
+  /// Text on [overdueTint]. ~5.3:1.
+  static const Color overdueText = Color(0xFFB3262A);
+
+  /// Background for an informational chip.
+  static const Color infoTint = Color(0xFFE8F0FE);
+
+  /// Text on [infoTint]. ~5.6:1.
+  static const Color infoText = Color(0xFF1A4FA0);
+
+  // ---------------------------------------------------------------------------
   // Text
   // ---------------------------------------------------------------------------
 

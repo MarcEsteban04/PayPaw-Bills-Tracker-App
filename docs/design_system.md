@@ -223,7 +223,6 @@ hit.
 
 | Sprint | Work |
 | --- | --- |
-| 8 | Reusable components — buttons, cards, chips, sheets, empty/loading/error states |
 | 9 | Responsive layout, font scaling, overflow |
 | 10 | Dark theme, theme switching, persistence |
 

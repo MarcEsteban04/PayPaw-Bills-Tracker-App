@@ -71,6 +71,19 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: AppRadii.panel),
       ),
+      // Not in Sprint 8's component list, but a confirmation dialog needs
+      // somewhere to report what it did, and an unthemed snack bar is the one
+      // Material default that would look pasted in from another app.
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: AppColors.navSurface,
+        contentTextStyle: textTheme.bodyMedium?.copyWith(
+          color: AppColors.textOnDark,
+        ),
+        actionTextColor: AppColors.navActivePill,
+        behavior: SnackBarBehavior.floating,
+        shape: const RoundedRectangleBorder(borderRadius: AppRadii.input),
+        elevation: 0,
+      ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: AppColors.primary,
         linearTrackColor: AppColors.surfaceMuted,

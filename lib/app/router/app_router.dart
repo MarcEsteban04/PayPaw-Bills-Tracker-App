@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/bills/presentation/screens/bills_screen.dart';
 import '../../features/calendar/presentation/screens/calendar_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
+import '../../features/design_system/presentation/screens/components_screen.dart';
 import '../../features/design_system/presentation/screens/design_system_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../shell/app_destination.dart';
@@ -56,6 +57,14 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>(
         pageBuilder: (_, GoRouterState state) => AppPageTransitions.forward(
           state: state,
           child: const DesignSystemScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.components.path,
+        name: AppRoutes.components.routeName,
+        pageBuilder: (_, GoRouterState state) => AppPageTransitions.forward(
+          state: state,
+          child: const ComponentsScreen(),
         ),
       ),
     ],

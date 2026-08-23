@@ -12,8 +12,9 @@ and what have I already paid?*
 
 🚧 **Early development — Phase 2 (UI/UX Foundation) in progress.**
 Phase 1 is complete: architecture, dependencies and app identity are in place.
-The design system and the four-tab navigation now exist. The app opens on the
-dashboard; the design token gallery is under Profile > Developer.
+The design system, the four-tab navigation and the shared component kit now
+exist. The app opens on the dashboard; the token and component galleries are
+under Profile > Developer.
 
 Progress is tracked sprint-by-sprint in [`docs/project_dev_roadmap.md`](docs/project_dev_roadmap.md)
 (85 sprints, ending at a production APK).
@@ -27,7 +28,8 @@ Progress is tracked sprint-by-sprint in [`docs/project_dev_roadmap.md`](docs/pro
 | 5 | Dependencies & infrastructure | ✅ Complete |
 | 6 | Design system | ✅ Complete |
 | 7 | App navigation | ✅ Complete |
-| 8 | Reusable components | ⏳ Next |
+| 8 | Reusable components | ✅ Complete |
+| 9 | Responsive layout | ⏳ Next |
 
 ---
 
@@ -42,6 +44,8 @@ Full feature specification: [`docs/app_full_description.md`](docs/app_full_descr
 How the code is organised, and why: [`docs/architecture.md`](docs/architecture.md).
 
 Colour, type, spacing, radius and shadow tokens: [`docs/design_system.md`](docs/design_system.md).
+
+The shared widget kit, and when to use each part: [`docs/components.md`](docs/components.md).
 
 ---
 

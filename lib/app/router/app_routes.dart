@@ -25,7 +25,10 @@ enum AppRoutes {
 
   /// Gallery of every design token. Reached from Profile; not a user
   /// destination.
-  designSystem(path: '/design-system', routeName: 'design-system');
+  designSystem(path: '/design-system', routeName: 'design-system'),
+
+  /// Gallery of every reusable component, live. Also reached from Profile.
+  components(path: '/components', routeName: 'components');
 
   const AppRoutes({required this.path, required this.routeName});
 
