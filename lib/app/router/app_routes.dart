@@ -8,7 +8,11 @@
 /// taken by Dart's implicit enum getter.
 enum AppRoutes {
   /// Dashboard — the app's landing screen.
-  home(path: '/', routeName: 'home');
+  home(path: '/', routeName: 'home'),
+
+  /// Internal gallery of every design token. Developer tool, not a user
+  /// destination — see DesignSystemScreen.
+  designSystem(path: '/design-system', routeName: 'design-system');
 
   const AppRoutes({required this.path, required this.routeName});
 
