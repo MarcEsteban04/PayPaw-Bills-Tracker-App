@@ -51,3 +51,9 @@ app.*.map.json
 # they carry the project URL and key for an actual Supabase project.
 /config/*.json
 !/config/*.example.json
+
+# Local secrets. Never commit these - third-party API keys live here during
+# development. GitHub push protection caught this file once already.
+.env
+.env.*
+!.env.example

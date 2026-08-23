@@ -106,7 +106,9 @@ StatefulShellRoute.indexedStack     each branch keeps its own stack
   /bills       bills
   /calendar    calendar
   /profile     profile
-/design-system                      above the shell, covers the nav bar
+/sign-up                            above the shell, covers the nav bar
+/design-system                      developer gallery
+/components                         developer gallery
 ```
 
 Four because the reference navigation has four. PayPaw has more feature areas
@@ -181,6 +183,8 @@ and no parallel `Failure` hierarchy: a second error channel alongside
 | Relative imports inside `lib/` | Enforced by `prefer_relative_imports`. Mixing `package:paypaw/...` and relative paths for the same file makes imports unreadable. |
 | Config via `--dart-define` | Keeps credentials out of the repository with no extra dependency and no `.env` file to leak. |
 | `flutter analyze` must be clean | An objective gate. "Readable" is a judgement call; zero warnings is not. |
+| A data source class only when it earns its place | The layers above are a default, not a ritual. `SupabaseAuthRepository` wraps one typed SDK call, so a data source would be a pass-through whose only job is to be a layer. Add one when there is JSON to map or more than one source to coordinate — the repository is still the only place importing `supabase_flutter`. |
+| Domain entities avoid SDK names | The first auth entity was called `AuthUser`, which Supabase also exports, so every data-layer file would have had to hide one or prefix the other. It is `AuthenticatedUser`. |
 
 ---
 

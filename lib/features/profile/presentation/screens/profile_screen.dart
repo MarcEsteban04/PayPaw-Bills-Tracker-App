@@ -93,6 +93,13 @@ class _DeveloperTools extends StatelessWidget {
         Text('Developer', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: AppSpacing.md),
         const _DeveloperTile(
+          icon: Icons.person_add_alt_1_outlined,
+          title: 'Create account',
+          subtitle: 'Registration screen — no auth gate until Sprint 15',
+          route: AppRoutes.signUp,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        const _DeveloperTile(
           icon: Icons.palette_outlined,
           title: 'Design system',
           subtitle: 'Every colour, type size, radius and shadow',

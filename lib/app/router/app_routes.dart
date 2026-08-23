@@ -21,6 +21,12 @@ enum AppRoutes {
   /// Account, settings, and the occasionally-used feature areas.
   profile(path: '/profile', routeName: 'profile'),
 
+  // --- Authentication -------------------------------------------------------
+
+  /// Registration. Above the shell, because an auth screen should not show the
+  /// app's navigation behind it.
+  signUp(path: '/sign-up', routeName: 'sign-up'),
+
   // --- Developer tools ------------------------------------------------------
 
   /// Gallery of every design token. Reached from Profile; not a user

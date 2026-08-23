@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/auth/presentation/screens/sign_up_screen.dart';
 import '../../features/bills/presentation/screens/bills_screen.dart';
 import '../../features/calendar/presentation/screens/calendar_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
@@ -50,6 +51,14 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>(
           _branch(AppDestination.calendar, const CalendarScreen()),
           _branch(AppDestination.profile, const ProfileScreen()),
         ],
+      ),
+      GoRoute(
+        path: AppRoutes.signUp.path,
+        name: AppRoutes.signUp.routeName,
+        pageBuilder: (_, GoRouterState state) => AppPageTransitions.forward(
+          state: state,
+          child: const SignUpScreen(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.designSystem.path,
