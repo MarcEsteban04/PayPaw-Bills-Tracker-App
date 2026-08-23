@@ -1,0 +1,21 @@
+# Line endings are normalized to LF in the repository and checked out native,
+# so a Windows working tree can't introduce CRLF noise into commits.
+* text=auto
+
+# Binary assets: never diff, never convert line endings.
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.webp   binary
+*.gif    binary
+*.ico    binary
+*.ttf    binary
+*.otf    binary
+*.woff   binary
+*.woff2  binary
+*.jar    binary
+*.jks    binary
+*.keystore binary
+
+# Xcode project files: LF only, and treat conflicts as line-wise additions.
+*.pbxproj text eol=lf merge=union

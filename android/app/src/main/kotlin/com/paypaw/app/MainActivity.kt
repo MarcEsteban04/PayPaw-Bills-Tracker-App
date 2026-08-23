@@ -1,4 +1,4 @@
-package com.example.paypaw_bills_tracker_app
+package com.paypaw.app
 
 import io.flutter.embedding.android.FlutterActivity
 

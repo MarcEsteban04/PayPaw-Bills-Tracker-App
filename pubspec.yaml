@@ -1,5 +1,5 @@
-name: paypaw_bills_tracker_app
-description: "A new Flutter project."
+name: paypaw
+description: "PayPaw - track bills, subscriptions, debts, and recurring payments in one place."
 publish_to: 'none'
 version: 0.1.0+1
 
