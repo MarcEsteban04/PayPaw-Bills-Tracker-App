@@ -9,9 +9,9 @@ The source of truth is the reference design in
 that design, translated into Dart. **Screens must not hard-code a colour, size,
 radius or shadow.** If a value is missing, name it here first.
 
-Run the app to see all of it rendered — the design system gallery is the initial
-route, and it is the fastest way to judge contrast, weight and shadow softness on
-a real device.
+Run the app and open **Profile > Developer > Design system** to see all of it
+rendered. That gallery is the fastest way to judge contrast, weight and shadow
+softness on a real device.
 
 | Token group | File |
 | --- | --- |
@@ -72,6 +72,8 @@ are kept, with defined jobs:
 
 - `primary` — CTAs and content accents
 - `navActivePill` `#D9F94A` — the bottom navigation's active state only
+- `navSurface` `#17181A` — the floating bar, with `navItemSunken` `#0E0F10` for
+  the recessed inactive icon buttons
 
 Lime is legible here specifically because it is a **background** carrying
 near-black content (about 15:1). It must never be used as a foreground colour on
@@ -221,7 +223,6 @@ hit.
 
 | Sprint | Work |
 | --- | --- |
-| 7 | Bottom navigation, built from the nav tokens above |
 | 8 | Reusable components — buttons, cards, chips, sheets, empty/loading/error states |
 | 9 | Responsive layout, font scaling, overflow |
 | 10 | Dark theme, theme switching, persistence |

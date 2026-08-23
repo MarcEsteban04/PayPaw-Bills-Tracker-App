@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_gradients.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_shadows.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -14,38 +13,33 @@ import '../../../../core/theme/app_typography.dart';
 /// only become judgeable once they are on a real device. Sprint 10 will use this
 /// same screen to check the dark theme against the light one.
 ///
-/// It is currently wired to the app's initial route so the design system can be
-/// checked immediately; it moves to its own route once the real dashboard
-/// exists.
+/// Reached from Profile > Developer > Design system.
 class DesignSystemScreen extends StatelessWidget {
   const DesignSystemScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      // The canvas gradient is what makes a screen look like the reference.
-      // Sprint 8 wraps this in a reusable widget; until then it is applied here.
-      decoration: const BoxDecoration(gradient: AppGradients.canvas),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(title: const Text('Design System')),
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screenInset,
-            0,
-            AppSpacing.screenInset,
-            AppSpacing.bottomNavClearance,
-          ),
-          children: const <Widget>[
-            _Section(title: 'Colour', child: _ColourGrid()),
-            _Section(title: 'Typography', child: _TypeScale()),
-            _Section(title: 'Cards & shadows', child: _CardSamples()),
-            _Section(title: 'Buttons', child: _ButtonSamples()),
-            _Section(title: 'Inputs', child: _InputSamples()),
-            _Section(title: 'Chips', child: _ChipSamples()),
-            _Section(title: 'Radius & spacing', child: _RadiusAndSpacing()),
-          ],
+    // The canvas gradient is painted once in PayPawApp, so this screen needs
+    // only a transparent scaffold on top of it. Nothing pads for the bottom
+    // navigation here: this route sits above the shell, so there is none.
+    return Scaffold(
+      appBar: AppBar(title: const Text('Design System')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.screenInset,
+          0,
+          AppSpacing.screenInset,
+          AppSpacing.xxl,
         ),
+        children: const <Widget>[
+          _Section(title: 'Colour', child: _ColourGrid()),
+          _Section(title: 'Typography', child: _TypeScale()),
+          _Section(title: 'Cards & shadows', child: _CardSamples()),
+          _Section(title: 'Buttons', child: _ButtonSamples()),
+          _Section(title: 'Inputs', child: _InputSamples()),
+          _Section(title: 'Chips', child: _ChipSamples()),
+          _Section(title: 'Radius & spacing', child: _RadiusAndSpacing()),
+        ],
       ),
     );
   }

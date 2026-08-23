@@ -74,7 +74,12 @@ abstract final class AppColors {
   /// Icon and label sitting on [navActivePill].
   static const Color navOnActivePill = Color(0xFF0F1011);
 
-  /// Inactive icons on [navSurface].
+  /// The recessed circle behind an inactive navigation icon. Slightly darker
+  /// than [navSurface], which is what gives the inactive items the distinct
+  /// button shape they have in the reference.
+  static const Color navItemSunken = Color(0xFF0E0F10);
+
+  /// Inactive icons on [navItemSunken].
   static const Color navInactiveIcon = Color(0xFFB6BBC1);
 
   // ---------------------------------------------------------------------------

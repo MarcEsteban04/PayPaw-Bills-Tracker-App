@@ -1,17 +1,30 @@
 /// Every route in PayPaw, in one place.
 ///
 /// Paths and names live together so a screen is never navigated to with a
-/// hand-written string. Use `context.goNamed(AppRoutes.home.routeName)` rather
-/// than `context.go('/')`, so renaming a path cannot break a call site.
+/// hand-written string. Use `context.goNamed(AppRoutes.bills.routeName)` rather
+/// than `context.go('/bills')`, so renaming a path cannot break a call site.
 ///
 /// The member is called `routeName` rather than `name` because `name` is already
 /// taken by Dart's implicit enum getter.
 enum AppRoutes {
-  /// Dashboard — the app's landing screen.
-  home(path: '/', routeName: 'home'),
+  // --- Primary destinations, one per bottom-navigation tab -------------------
 
-  /// Internal gallery of every design token. Developer tool, not a user
-  /// destination — see DesignSystemScreen.
+  /// Overview: what is owed, and what falls due next.
+  dashboard(path: '/', routeName: 'dashboard'),
+
+  /// The full list of obligations, searchable and filterable.
+  bills(path: '/bills', routeName: 'bills'),
+
+  /// The same obligations laid out by date.
+  calendar(path: '/calendar', routeName: 'calendar'),
+
+  /// Account, settings, and the occasionally-used feature areas.
+  profile(path: '/profile', routeName: 'profile'),
+
+  // --- Developer tools ------------------------------------------------------
+
+  /// Gallery of every design token. Reached from Profile; not a user
+  /// destination.
   designSystem(path: '/design-system', routeName: 'design-system');
 
   const AppRoutes({required this.path, required this.routeName});

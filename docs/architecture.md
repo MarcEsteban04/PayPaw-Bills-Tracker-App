@@ -15,17 +15,23 @@ across the tree.
 ```
 lib/
   main.dart                     startup: async init, then runApp
-  app/
-    paypaw_app.dart             root widget — router + theme, nothing else
+  app/                          the frame every feature renders inside
+    paypaw_app.dart             root widget — router, theme, canvas gradient
     router/
       app_routes.dart           every path and route name, in one enum
       app_router.dart           the go_router graph, as a provider
+      app_page_transitions.dart the two route transitions, and when to use each
+    shell/
+      app_destination.dart      the four primary destinations
+      app_shell.dart            scaffold hosting the tabs and the nav bar
+      paypaw_bottom_nav.dart    the floating pill navigation
   core/                         cross-feature code only
     config/    app_config.dart  compile-time config from --dart-define
     error/     app_exception.dart   the one error hierarchy
     data/      supabase_error_mapper.dart   Supabase errors -> AppException
     providers/                  shared providers (Supabase client, storage)
-    theme/     app_theme.dart   design tokens (placeholder until Sprint 6)
+    presentation/widgets/       widgets more than one feature uses
+    theme/                      design tokens — see docs/design_system.md
   features/
     <feature>/
       data/
@@ -85,6 +91,47 @@ Wrappers around a platform or plugin API that is not a data source —
 notification scheduling, biometric prompts, file pickers. They live in
 `core/services/` when shared, or in the owning feature otherwise, and are exposed
 as providers so tests can replace them.
+
+---
+
+## Navigation
+
+Four primary destinations — Dashboard, Bills, Calendar, Profile — as branches of
+one `StatefulShellRoute.indexedStack`.
+
+```
+StatefulShellRoute.indexedStack     each branch keeps its own stack
+  /            dashboard
+  /bills       bills
+  /calendar    calendar
+  /profile     profile
+/design-system                      above the shell, covers the nav bar
+```
+
+Four because the reference navigation has four. PayPaw has more feature areas
+than that, so the rule is: **a tab is for something opened daily.** Subscriptions
+and debts live under Bills; analytics and streaks under Dashboard; settings under
+Profile.
+
+Where a route goes:
+
+- **Inside a branch** — anything that should keep the bottom navigation visible.
+  A bill detail belongs in the Bills branch, below its root.
+- **Above the shell** — anything that should cover the navigation entirely: a
+  full-screen form, the auth flow, the design system gallery.
+
+Branches, not four top-level routes, because each branch keeps its own
+navigation stack. Open a bill detail in Bills, switch to Calendar and back, and
+the detail is still there.
+
+Two transition rules, in `app_page_transitions.dart`: switching tabs does not
+animate, because the destinations are siblings and sliding between peers implies
+a direction that does not exist; pushing a detail slides in from the right,
+because that is a move deeper and the motion is what says a back gesture undoes
+it.
+
+The navigation bar **floats over** content, so every scrollable screen inside the
+shell must pad its bottom by `AppSpacing.bottomNavClearance`.
 
 ---
 

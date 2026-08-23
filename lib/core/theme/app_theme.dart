@@ -35,10 +35,10 @@ abstract final class AppTheme {
       colorScheme: _colorScheme,
       textTheme: textTheme,
 
-      // Screens paint AppGradients.canvas themselves. This flat colour is what
-      // shows behind route transitions and overscroll, so it matches the
-      // gradient's midpoint rather than plain white.
-      scaffoldBackgroundColor: AppColors.canvasCream,
+      // Transparent so the canvas gradient painted once in PayPawApp shows
+      // through every route. A screen that needs an opaque background must set
+      // it explicitly, which is the rarer case in this design.
+      scaffoldBackgroundColor: Colors.transparent,
 
       appBarTheme: _appBarTheme(textTheme),
       cardTheme: _cardTheme,

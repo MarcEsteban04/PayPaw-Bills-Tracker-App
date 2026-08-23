@@ -47,7 +47,8 @@ void main() {
     );
 
     expect(theme.colorScheme.primary, AppColors.primary);
-    expect(theme.scaffoldBackgroundColor, AppColors.canvasCream);
+    // Transparent, so the canvas gradient painted in PayPawApp shows through.
+    expect(theme.scaffoldBackgroundColor, Colors.transparent);
     // Cards and buttons are flat because PayPaw paints its own soft shadows.
     expect(theme.cardTheme.elevation, 0);
   });
