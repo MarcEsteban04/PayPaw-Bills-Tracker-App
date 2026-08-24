@@ -15,6 +15,7 @@ This roadmap covers the development process from **Sprint 1 through Sprint 85**,
 | Project Foundation     |     1–5 | Setup & architecture  |
 | UI/UX Foundation       |    6–10 | Design system         |
 | Authentication         |   11–15 | Accounts & security   |
+| First-Run Experience   | 11A–11B | Welcome & onboarding  |
 | Database               |   16–20 | Supabase backend      |
 | Bill Management        |   21–28 | Core bill features    |
 | Recurring Bills        |   29–33 | Automation            |
@@ -154,6 +155,41 @@ Create reusable components for:
 * Configure authentication
 * Configure storage
 * Configure environment variables
+
+## Sprint 11A — Welcome Screen
+
+Added after Sprint 21, once the app was run for the first time and dropped
+straight onto the dashboard. Numbered 11A rather than inserted as a new Sprint 12
+so the remaining seventy-odd sprint numbers keep meaning what they meant when
+this roadmap was written and when the commits referencing them were made.
+
+* Register image assets
+* Create welcome screen with illustration background
+* Value proposition and tagline
+* Primary action to sign up
+* Secondary action for returning users
+* Show once, on first launch only
+* Route above the shell, ahead of authentication
+
+## Sprint 11B — Account Onboarding
+
+Deliberately **not** a feature carousel. A three-slide tour of a bills app is the
+most-skipped screen in mobile software, and it delays the user without leaving
+anything behind. This onboarding does setup work instead, writing to the columns
+the schema already has: `profiles.currency`, `profiles.time_zone` and
+`reminder_preferences`.
+
+It runs **after** sign-up rather than before, because every one of those writes
+needs a session.
+
+* Detect currency and time zone from the device, and confirm rather than assume
+* Choose when reminders arrive
+* Persist to `profiles` and `reminder_preferences`
+* Skippable, with working defaults if skipped
+* Run once per account, not once per install
+* Progress indication and back navigation
+
+---
 
 ## Sprint 12 — Registration
 

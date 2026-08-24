@@ -7,8 +7,10 @@ import 'package:paypaw/core/providers/storage_providers.dart';
 import 'package:paypaw/core/providers/supabase_providers.dart';
 import 'package:paypaw/features/auth/data/repositories/supabase_auth_repository.dart';
 import 'package:paypaw/features/auth/domain/entities/authenticated_user.dart';
+import 'package:paypaw/features/onboarding/presentation/controllers/onboarding_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../helpers/fake_onboarding_progress.dart';
 import '../../helpers/fake_auth_repository.dart';
 
 /// Authentication state, driven through the whole app.
@@ -23,10 +25,15 @@ void main() {
     hasConfirmedEmail: true,
   );
 
+  /// First-run state defaults to a returning, set-up user, so these tests keep
+  /// describing authentication rather than onboarding. The two first-run cases
+  /// say otherwise explicitly, at the bottom of this file.
   Future<void> pumpApp(
     WidgetTester tester,
-    FakeAuthRepository repository,
-  ) async {
+    FakeAuthRepository repository, {
+    bool hasSeenWelcome = true,
+    bool onboarded = true,
+  }) async {
     addTearDown(repository.dispose);
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final SharedPreferences preferences = await SharedPreferences.getInstance();
@@ -37,6 +44,12 @@ void main() {
           sharedPreferencesProvider.overrideWithValue(preferences),
           isBackendConfiguredProvider.overrideWithValue(true),
           authRepositoryProvider.overrideWithValue(repository),
+          onboardingProgressStoreProvider.overrideWithValue(
+            FakeOnboardingProgress(
+              hasSeenWelcome: hasSeenWelcome,
+              onboarded: onboarded ? <String>{marc.id} : <String>{},
+            ),
+          ),
         ],
         child: const PayPawApp(),
       ),
@@ -157,6 +170,46 @@ void main() {
         find.text('Your session expired. Please sign in again.'),
         findsOneWidget,
       );
+    });
+  });
+
+  group('first run, through the whole app', () {
+    testWidgets('a fresh install opens on the welcome screen', (
+      WidgetTester tester,
+    ) async {
+      // Not the dashboard, and not sign-in either: someone who has never seen
+      // the app is told what it is before being asked to make an account.
+      await pumpApp(tester, FakeAuthRepository(), hasSeenWelcome: false);
+
+      expect(find.text('Get started'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, 'Sign in'), findsNothing);
+      expect(find.widgetWithText(AppBar, 'Dashboard'), findsNothing);
+    });
+
+    testWidgets('an account that has not been set up opens on onboarding', (
+      WidgetTester tester,
+    ) async {
+      // Signing in is not the end of the flow. The account still has no
+      // confirmed currency or time zone, and a bill saved before those are set
+      // is a bill shown in the wrong money on the wrong day.
+      await pumpApp(
+        tester,
+        FakeAuthRepository(initialUser: marc),
+        onboarded: false,
+      );
+
+      expect(find.text('Money and time'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, 'Dashboard'), findsNothing);
+    });
+
+    testWidgets('and a set-up account never sees either', (
+      WidgetTester tester,
+    ) async {
+      await pumpApp(tester, FakeAuthRepository(initialUser: marc));
+
+      expect(find.text('Get started'), findsNothing);
+      expect(find.text('Money and time'), findsNothing);
+      expect(find.widgetWithText(AppBar, 'Dashboard'), findsOneWidget);
     });
   });
 }

@@ -70,3 +70,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Declared as individual files rather than the whole `assets/images/` directory,
+  # so a file that is added but never referenced cannot silently grow the APK.
+  assets:
+    - assets/images/paypaw_logo.png
+    - assets/images/welcome_illustration.png

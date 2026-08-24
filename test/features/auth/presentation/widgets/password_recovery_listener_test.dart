@@ -6,8 +6,10 @@ import 'package:paypaw/core/providers/storage_providers.dart';
 import 'package:paypaw/core/providers/supabase_providers.dart';
 import 'package:paypaw/features/auth/data/repositories/supabase_auth_repository.dart';
 import 'package:paypaw/features/auth/domain/entities/authenticated_user.dart';
+import 'package:paypaw/features/onboarding/presentation/controllers/onboarding_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../helpers/fake_onboarding_progress.dart';
 import '../../helpers/fake_auth_repository.dart';
 
 /// A reset link that opens the app and then does nothing is the classic failure
@@ -29,6 +31,12 @@ void main() {
           sharedPreferencesProvider.overrideWithValue(preferences),
           isBackendConfiguredProvider.overrideWithValue(true),
           authRepositoryProvider.overrideWithValue(repository),
+          // A returning, set-up account. Otherwise the first-run gates take
+          // priority over the dashboard these cases start from, and the test
+          // would be describing onboarding rather than password recovery.
+          onboardingProgressStoreProvider.overrideWithValue(
+            FakeOnboardingProgress(onboarded: <String>{'user-1'}),
+          ),
         ],
         child: const PayPawApp(),
       ),

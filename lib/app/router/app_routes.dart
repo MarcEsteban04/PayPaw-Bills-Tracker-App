@@ -21,6 +21,14 @@ enum AppRoutes {
   /// Account, settings, and the occasionally-used feature areas.
   profile(path: '/profile', routeName: 'profile'),
 
+  // --- First run ------------------------------------------------------------
+
+  /// The pitch, shown once per install before the user has an account.
+  welcome(path: '/welcome', routeName: 'welcome'),
+
+  /// Two steps of account setup, run once per account after sign-up.
+  onboarding(path: '/onboarding', routeName: 'onboarding'),
+
   // --- Authentication -------------------------------------------------------
 
   /// Sign in. Above the shell, because an auth screen should not show the app's

@@ -14,6 +14,9 @@ import '../../features/calendar/presentation/screens/calendar_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/design_system/presentation/screens/components_screen.dart';
 import '../../features/design_system/presentation/screens/design_system_screen.dart';
+import '../../features/onboarding/presentation/controllers/onboarding_providers.dart';
+import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
+import '../../features/onboarding/presentation/screens/welcome_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../shell/app_destination.dart';
 import '../shell/app_shell.dart';
@@ -70,6 +73,7 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>(
       isBackendConfigured: ref.read(isBackendConfiguredProvider),
       session: ref.read(currentUserProvider),
       location: state.matchedLocation,
+      progress: ref.read(onboardingProgressStoreProvider),
     ),
     routes: <RouteBase>[
       StatefulShellRoute.indexedStack(
@@ -81,6 +85,22 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>(
           _branch(AppDestination.calendar, const CalendarScreen()),
           _branch(AppDestination.profile, const ProfileScreen()),
         ],
+      ),
+      GoRoute(
+        path: AppRoutes.welcome.path,
+        name: AppRoutes.welcome.routeName,
+        // Fades rather than sliding: nothing preceded it, so there is no
+        // direction for it to have come from.
+        pageBuilder: (_, GoRouterState state) =>
+            AppPageTransitions.fade(state: state, child: const WelcomeScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.onboarding.path,
+        name: AppRoutes.onboarding.routeName,
+        pageBuilder: (_, GoRouterState state) => AppPageTransitions.forward(
+          state: state,
+          child: const OnboardingScreen(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.signIn.path,

@@ -46,12 +46,18 @@ Progress is tracked sprint-by-sprint in [`docs/project_dev_roadmap.md`](docs/pro
 | 13 | Login | ✅ Complete — needs your project to run end to end |
 | 14 | Password recovery | ✅ Complete — needs your project to run end to end |
 | 15 | Authentication state | ✅ Complete — Phase 3 done |
-| 16 | Database planning | ✅ Complete — design only, nothing applied yet |
-| 17 | User tables | ✅ Migrations written — you apply them |
-| 18 | Bill tables | ✅ Migrations written — you apply them |
-| 19 | Payment tables | ✅ Migrations written — you apply them |
-| 20 | Supabase security | ✅ Phase 4 done — checks written, run them after applying |
+| 16 | Database planning | ✅ Complete |
+| 17 | User tables | ✅ Complete — migrations applied |
+| 18 | Bill tables | ✅ Complete — migrations applied |
+| 19 | Payment tables | ✅ Complete — migrations applied |
+| 20 | Supabase security | ✅ Phase 4 done — run the checks in supabase/checks/ |
 | 21 | Bill model | ✅ Complete |
+| 11A | Welcome screen | ✅ Complete |
+| 11B | Account onboarding | ✅ Complete |
+
+11A and 11B are listed last because that is when they were built — inserting them
+as new numbers would renumber seventy sprints and break every commit that
+references one.
 
 ---
 

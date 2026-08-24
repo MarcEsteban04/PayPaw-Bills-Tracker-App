@@ -31,6 +31,7 @@ lib/
     data/      supabase_error_mapper.dart   Supabase errors -> AppException
     providers/                  shared providers (Supabase client, storage)
     domain/    money.dart       value objects more than one feature needs
+    presentation/app_assets.dart   every bundled asset path, in one place
     presentation/widgets/       widgets more than one feature uses
     theme/                      design tokens and both themes
                                 see docs/design_system.md
@@ -111,6 +112,8 @@ StatefulShellRoute.indexedStack     each branch keeps its own stack
 /sign-up                            above the shell, covers the nav bar
 /forgot-password                    above the shell
 /reset-password                     above the shell, reached by the deep link
+/welcome                            first install only, ahead of auth
+/onboarding                         after sign-up, once per account
 /design-system                      developer gallery
 /components                         developer gallery
 ```
@@ -154,22 +157,62 @@ Sessions persist on the device because `supabase_flutter` stores them, so
 the first frame, which is also what lets the guard decide immediately instead of
 flashing a sign-in screen at someone already signed in.
 
+### First run
+
+Two gates sit in front of the app, answering different questions.
+
+**Welcome** is per *install*. It runs before there is an account to attach it to,
+and someone who signs out should not be pitched the app a second time.
+
+**Onboarding** is per *account*, keyed by user id. Two accounts on one phone are
+asked separately, so the second does not silently inherit the first one's
+currency and time zone.
+
+Both flags live in `SharedPreferences` rather than a column, because this is
+navigation state, and a screen that waits on the network to decide whether to
+show itself is a screen that flickers. The preferences onboarding *collects* are
+stored server-side; only "have we asked yet" is local.
+
+Onboarding is deliberately not a feature tour. A three-slide carousel explaining
+that a bills app tracks bills is the most-skipped screen in mobile software, and
+skipping it is the correct response — it costs the user time and leaves nothing
+behind. These two steps write `profiles.currency`, `profiles.time_zone` and
+`reminder_preferences`, so the user finishes with a configured account instead of
+a vague sense of what the app does. That is also why it runs *after* sign-up:
+every one of those writes is checked against `auth.uid()`.
+
+Skipping still writes the defaults, which are the column defaults. A skipped
+account and a completed one that changed nothing end up identical, so no later
+feature has to handle a third kind of account.
+
 ### The guard
 
 `authRedirect` in [`lib/app/router/auth_guard.dart`](../lib/app/router/auth_guard.dart)
 is a pure function, deliberately — a route guard is painful to test through a
-widget tree and trivial to test directly. Four rules:
+widget tree and trivial to test directly. Five rules, and the **order of the last
+three is load-bearing**:
 
 1. **No backend, no guarding.** Without Supabase configuration there is no
    session and never will be, so guarding would trap the user on a sign-in screen
-   that cannot work.
+   that cannot work. The first-run gates are off in this mode too: the welcome
+   screen's only two actions both lead to auth.
 2. **Never decide before the answer is known.** While the session is loading it
    returns null.
-3. **An error counts as signed out.** A guard that fails open is not a guard.
-4. **Signed-in users are bounced off the auth screens — except
-   `/reset-password`.** Opening a reset link *creates* a session, so by the time
-   that screen appears the user is signed in. Without the exemption the guard
-   would break the recovery flow it exists to protect.
+3. **An error counts as signed out.** A guard that fails open is not a guard. A
+   first install still gets its welcome screen.
+4. **`/reset-password` beats everything below.** Opening a reset link *creates* a
+   session, so by the time that screen appears the user is signed in. Checked
+   before the onboarding rule, not after: someone resetting their password on a
+   new device arrives signed in with onboarding unfinished, and sending them to a
+   setup form instead of the field they came to fill in would strand them — the
+   recovery session is the only thing that lets the password be changed.
+   Recovery outranks setup.
+5. **Then onboarding, then the auth-screen bounce.** An account that has not been
+   set up goes to `/onboarding` from wherever it landed; otherwise a signed-in
+   user is bounced off the public routes to the dashboard.
+
+Signed out, the order is: welcome if it has never been shown, then public routes
+are left alone and everything else goes to `/sign-in`.
 
 The router gets a `refreshListenable` rather than watching the session directly.
 Watching it inside the router provider would rebuild the whole `GoRouter` on every
