@@ -46,6 +46,7 @@ Progress is tracked sprint-by-sprint in [`docs/project_dev_roadmap.md`](docs/pro
 | 13 | Login | ✅ Complete — needs your project to run end to end |
 | 14 | Password recovery | ✅ Complete — needs your project to run end to end |
 | 15 | Authentication state | ✅ Complete — Phase 3 done |
+| 16 | Database planning | ✅ Complete — design only, nothing applied yet |
 
 ---
 
@@ -66,6 +67,8 @@ The shared widget kit, and when to use each part: [`docs/components.md`](docs/co
 Screen sizes, font scaling and accessibility: [`docs/responsive.md`](docs/responsive.md).
 
 Connecting the backend, and what to configure by hand: [`docs/supabase_setup.md`](docs/supabase_setup.md).
+
+The database schema, and why it is shaped that way: [`docs/database_schema.md`](docs/database_schema.md).
 
 ---
 
