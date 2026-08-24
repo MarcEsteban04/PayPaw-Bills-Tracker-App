@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../../domain/entities/bill_reminder.dart';
 import '../../domain/entities/notification_channel.dart';
 import '../../domain/entities/notification_permission.dart';
 import '../../domain/services/notification_service.dart';
@@ -41,7 +42,7 @@ class LocalNotificationService implements NotificationService {
   bool _initialised = false;
 
   @override
-  Future<void> initialize() async {
+  Future<void> initialize({void Function(String billId)? onBillTapped}) async {
     if (_initialised) {
       return;
     }
@@ -60,9 +61,11 @@ class LocalNotificationService implements NotificationService {
       // a dedicated monochrome drawable is the eventual right answer and is
       // worth doing when there is a designed one to use.
       settings: const AndroidInitializationSettings('@mipmap/ic_launcher'),
-      // No `onDidReceiveNotificationResponse`. Nothing posts a notification yet,
-      // so nothing can be tapped; the handler arrives in Sprint 40 alongside the
-      // first reminder and the payload it carries.
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        if (response.payload case final String billId when billId.isNotEmpty) {
+          onBillTapped?.call(billId);
+        }
+      },
     );
 
     for (final NotificationChannel channel in NotificationChannel.values) {
@@ -78,6 +81,67 @@ class LocalNotificationService implements NotificationService {
         ),
       );
     }
+  }
+
+  @override
+  Future<String?> billThatLaunchedTheApp() async {
+    final NotificationAppLaunchDetails? details = await _android
+        ?.getNotificationAppLaunchDetails();
+
+    if (details?.didNotificationLaunchApp ?? false) {
+      final String? payload = details?.notificationResponse?.payload;
+
+      return (payload?.isEmpty ?? true) ? null : payload;
+    }
+
+    return null;
+  }
+
+  @override
+  Future<void> replaceScheduledReminders(List<BillReminder> reminders) async {
+    final AndroidFlutterLocalNotificationsPlugin? android = _android;
+    if (android == null) {
+      return;
+    }
+
+    // Pending only. `cancelAll` would also clear reminders already showing in
+    // the shade, and a user who has not yet dealt with "your rent is due
+    // tomorrow" should not have it swept away because they opened the app.
+    await android.cancelAllPendingNotifications();
+
+    for (final BillReminder reminder in reminders) {
+      await android.zonedSchedule(
+        id: reminder.notificationId,
+        title: reminder.title,
+        body: reminder.body,
+        scheduledDate: tz.TZDateTime.from(reminder.firesAt, tz.local),
+        // The channel's own id and copy, not a second spelling of them. A
+        // details block naming a channel that does not exist posts nothing on
+        // Android 8 and up, silently.
+        notificationDetails: AndroidNotificationDetails(
+          NotificationChannel.billReminders.id,
+          NotificationChannel.billReminders.name,
+          channelDescription: NotificationChannel.billReminders.description,
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        // Inexact, deliberately. Exact alarms need SCHEDULE_EXACT_ALARM, which
+        // Google Play restricts to apps whose core function is alarms or
+        // calendars — see the manifest. `allowWhileIdle` is what keeps Doze from
+        // holding a reminder until the phone is next picked up.
+        scheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        payload: reminder.billId,
+      );
+    }
+  }
+
+  @override
+  Future<Set<int>> scheduledReminderIds() async {
+    final List<PendingNotificationRequest> pending =
+        await _android?.pendingNotificationRequests() ??
+        const <PendingNotificationRequest>[];
+
+    return pending.map((PendingNotificationRequest r) => r.id).toSet();
   }
 
   @override

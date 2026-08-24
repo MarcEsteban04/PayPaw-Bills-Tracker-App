@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:paypaw/features/notifications/domain/entities/reminder_time.dart';
 import 'package:paypaw/features/onboarding/domain/entities/account_setup.dart';
-import 'package:paypaw/features/onboarding/domain/entities/reminder_time.dart';
 import 'package:paypaw/features/onboarding/domain/entities/setup_options.dart';
 
 void main() {

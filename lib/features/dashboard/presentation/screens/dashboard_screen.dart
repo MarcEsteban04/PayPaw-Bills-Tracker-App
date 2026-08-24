@@ -26,6 +26,9 @@ import '../../../bills/presentation/widgets/bill_list_tile.dart';
 import '../../../categories/domain/entities/category.dart';
 import '../../../categories/presentation/controllers/category_providers.dart';
 import '../../../categories/presentation/widgets/category_icon.dart';
+import '../../../notifications/domain/entities/notification_permission.dart';
+import '../../../notifications/presentation/controllers/notification_providers.dart';
+import '../../../notifications/presentation/widgets/reminder_permission_card.dart';
 import '../../../payments/presentation/widgets/pay_bill_picker_sheet.dart';
 import '../../../payments/presentation/widgets/record_payment_sheet.dart';
 import '../../../recurring/domain/entities/recurring_bill.dart';
@@ -148,6 +151,18 @@ class DashboardScreen extends ConsumerWidget {
       if (outlook.hasAnything) ...<Widget>[
         const SizedBox(height: AppSpacing.sectionGap),
         _StatRow(totals: totals, outlook: outlook, today: today),
+      ],
+
+      // Only for someone who has bills to be reminded about, and only while
+      // there is something the tap could change.
+      //
+      // The condition is read here rather than left to the card, because the
+      // *gap* has to go with it: a card that shrinks to nothing still leaves the
+      // spacing before it, and a dashboard with a stray section gap in it looks
+      // like something failed to load.
+      if (bills.isNotEmpty && _needsPermission(ref)) ...<Widget>[
+        const SizedBox(height: AppSpacing.sectionGap),
+        const ReminderPermissionCard(),
       ],
 
       if (overdue.isNotEmpty) ...<Widget>[
@@ -275,6 +290,19 @@ class DashboardScreen extends ConsumerWidget {
     }
 
     await recordPaymentFor(context: context, ref: ref, item: chosen);
+  }
+
+  /// Whether reminders are blocked and something can still be done about it.
+  ///
+  /// False while the platform is being asked, which is a moment: a card that
+  /// appears a beat after the screen settles, offering something the user did
+  /// not ask for, reads as an advert rather than as part of the screen.
+  static bool _needsPermission(WidgetRef ref) {
+    final NotificationPermission? permission = ref
+        .watch(notificationPermissionProvider)
+        .value;
+
+    return permission != null && !permission.allowsPosting;
   }
 
   /// Everything late, soonest first — which for overdue means longest overdue.

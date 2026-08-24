@@ -968,14 +968,98 @@ names and descriptions, and the app itself at `importance=NONE userSet=false` �
 which is precisely the designed state: the channels exist, nothing has been
 asked, and no dialog appeared on launch.
 
-## Sprint 40 — Bill Reminders
+## Sprint 40 — Bill Reminders — done
 
-Implement:
+Reminders are scheduled on the device at every offset the user chose, at the time
+of day they chose, in their own timezone. The four the roadmap names — 7 days, 3
+days, 1 day, the due date — are values in `reminder_preferences.days_before`, not
+four code paths: the column already stores a set, onboarding already collects it,
+and hard-coding the same four numbers in Dart would be a second definition that
+Sprint 42's settings screen would immediately have to fight.
 
-* 7-day reminder
-* 3-day reminder
-* 1-day reminder
-* Due-date reminder
+**What was missing was the reading.** The preferences have been collected since
+Sprint 11B and stored since Sprint 3, and nothing had ever read them back.
+
+### The schedule is a pure function, not a set of event handlers
+
+`BillReminderSchedule.of(bills, preferences, now)` takes the bills as they are
+and says what should currently be scheduled. The caller cancels everything and
+lays down the answer.
+
+The alternative — schedule on create, cancel on delete, adjust on edit, and
+again on pay, archive, restore and recurring generation — is seven places that
+each have to remember the rules, and the one that forgets leaves a reminder
+scheduled for a bill that was paid last week. **That failure is invisible until
+the morning it fires**, which is exactly why it is not worth being clever about.
+
+So the rebuild hangs off `billsProvider` instead. Every write already invalidates
+it; all seven paths are covered without any of them knowing reminders exist.
+
+Replace-don't-merge for the same reason. Reconciling would need an accurate
+record of what is scheduled, and the only such record lives in the platform and
+is rebuilt from scratch after a reboot.
+
+### What never gets a reminder
+
+Settled bills, above all: paying a bill and then being told about it twice more
+is the single most annoying thing a reminder can do. Archived bills. Anything
+already in the past — a warning that a bill is due in three days, arriving the
+day after it was due, is worse than none. And overdue bills, whose reminders are
+all in the past by definition; "this is late" is a different message on a
+different channel, and Sprint 41's job.
+
+### Notification ids are FNV-1a, not `String.hashCode`
+
+Ids are 32-bit ints and a bill id is a UUID, so it has to be hashed. Dart makes
+no promise that `String.hashCode` is stable across releases — and an id that
+changes between app versions is a scheduled reminder that **can never be
+cancelled**. It fires anyway, beside its own replacement. FNV-1a is a few lines,
+specified, and identical everywhere.
+
+### Tapping one opens the bill
+
+A bill's detail is a sheet over the Bills screen, not a route, so there is
+nothing to navigate to. The tap leaves the id behind and a listener above the
+router picks it up — a sibling of the session and password-recovery listeners,
+for the same reason they are there.
+
+Two states arrive differently and both had to work: a tap with the app running
+reaches a callback, and a tap that *starts* the process is only recoverable from
+the plugin's launch details, read once in `main()`.
+
+### The permission ask, at the point it means something
+
+Sprint 39 deliberately did not ask on launch — the dialog most reliably refused,
+and on Android 13 a refusal is final. Nothing else asked either, so reminders
+would have been scheduled and silently blocked.
+
+A card on the dashboard asks instead: only for a user who has bills, only while
+permission is missing, and phrased as what they get rather than what the app
+needs. After a refusal it does not keep offering — it changes to a route into
+system settings, because a button still wired to `requestPermission` is one the
+user taps and taps while Android ignores it.
+
+### Signing out clears the schedule
+
+The reminders name the previous account's bills and amounts. The next person to
+pick up the phone should not be told about them.
+
+### Two things moved
+
+`ReminderTime` was in the onboarding feature, where it had landed because
+onboarding collected it first. It is a reminders concept; it lives with them now.
+
+The notification's title and body moved out of the Android wrapper onto
+`BillReminder`. They are properties of the reminder rather than of the platform,
+and a private method inside a method-channel wrapper is a string nobody can test.
+
+### Verified on the device
+
+`dumpsys alarm` shows eight alarms against
+`ScheduledNotificationReceiver` — two bills at four offsets each, all at 09:00,
+each with `window=+1h`, which is the inexact scheduling from Sprint 39 behaving
+as designed. Revoking the permission brings the card back; tapping it produces
+the system dialog; allowing it makes the card disappear.
 
 ## Sprint 41 — Overdue Notifications
 

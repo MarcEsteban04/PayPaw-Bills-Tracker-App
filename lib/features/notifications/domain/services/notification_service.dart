@@ -1,3 +1,4 @@
+import '../entities/bill_reminder.dart';
 import '../entities/notification_permission.dart';
 
 /// The device's notification machinery, as PayPaw needs it.
@@ -7,14 +8,6 @@ import '../entities/notification_permission.dart';
 /// `flutter_local_notifications` exists, and a test needs something it can
 /// substitute. The plugin is a method channel — unusable in a widget test
 /// without a mock handler, and unpleasant with one.
-///
-/// ## Scheduling is not here yet
-///
-/// Sprint 39 is the infrastructure: the plugin is initialised, the timezone
-/// database is loaded and pointed at the device's own zone, the channels exist,
-/// and the app can find out whether it is allowed to post. **Nothing posts or
-/// schedules anything** — those methods arrive in Sprint 40 with the reminders
-/// that need them, rather than sitting here untested and unexercised.
 ///
 /// Every method is safe to call more than once.
 abstract interface class NotificationService {
@@ -30,7 +23,42 @@ abstract interface class NotificationService {
   /// Called from `main()` before the first frame. It does **not** ask for
   /// permission: a permission dialog on first launch, before the user has seen
   /// what the app is for, is the one most reliably refused.
-  Future<void> initialize();
+  ///
+  /// [onBillTapped] receives the id of the bill whose reminder was tapped. It is
+  /// wired here rather than exposed as a stream because a notification can
+  /// launch the app from cold, and the handler has to be in place before the
+  /// plugin reports that.
+  Future<void> initialize({void Function(String billId)? onBillTapped});
+
+  /// The bill whose reminder started the app, if one did.
+  ///
+  /// A tap on a notification while the app is dead does not reach
+  /// `onBillTapped` — the process did not exist to receive it. The plugin holds
+  /// the launch details instead, and this is the only way to find out. Returns
+  /// null on a normal launch, and answers once: it reflects how the process
+  /// started, not what has been tapped since.
+  Future<String?> billThatLaunchedTheApp();
+
+  /// Replaces every scheduled reminder with [reminders].
+  ///
+  /// ## Replace, never merge
+  ///
+  /// The caller hands over the complete set that should exist, and this cancels
+  /// everything first. Reconciling instead — work out which are new, which
+  /// changed, which should go — needs an accurate record of what was scheduled,
+  /// and the only such record lives in the platform, survives reinstalls
+  /// unevenly and is rebuilt from scratch after a reboot.
+  ///
+  /// The failure that avoids is the one that matters: a reminder left scheduled
+  /// for a bill that was paid, deleted, or moved. It fires anyway, it is right
+  /// about nothing, and the user cannot make it stop.
+  Future<void> replaceScheduledReminders(List<BillReminder> reminders);
+
+  /// Everything currently scheduled, by notification id.
+  ///
+  /// For verifying on a device what the app believes it has arranged — there is
+  /// otherwise no way to see a schedule that will not fire for days.
+  Future<Set<int>> scheduledReminderIds();
 
   /// Whether PayPaw may post notifications, and whether asking is worth doing.
   Future<NotificationPermission> permission();

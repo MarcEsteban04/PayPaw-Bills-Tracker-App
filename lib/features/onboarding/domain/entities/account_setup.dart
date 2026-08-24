@@ -1,6 +1,6 @@
 import 'package:meta/meta.dart';
 
-import 'reminder_time.dart';
+import '../../../notifications/domain/entities/reminder_time.dart';
 
 /// The answers onboarding collects, as one value.
 ///

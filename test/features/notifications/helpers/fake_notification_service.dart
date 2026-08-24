@@ -1,3 +1,4 @@
+import 'package:paypaw/features/notifications/domain/entities/bill_reminder.dart';
 import 'package:paypaw/features/notifications/domain/entities/notification_permission.dart';
 import 'package:paypaw/features/notifications/domain/services/notification_service.dart';
 
@@ -22,12 +23,42 @@ class FakeNotificationService implements NotificationService {
   /// which is a different question from the permission.
   bool enabled;
 
+  /// The bill a notification launched the app with, if any.
+  String? launchedWithBillId;
+
+  /// The most recent set handed to [replaceScheduledReminders].
+  List<BillReminder> scheduled = const <BillReminder>[];
+
+  /// Every set it has been given, in order. Lets a test assert that a write
+  /// rebuilt the schedule *once*, rather than three times on the way.
+  final List<List<BillReminder>> rebuilds = <List<BillReminder>>[];
+
   int initialiseCalls = 0;
   int requestCalls = 0;
   int settingsCalls = 0;
 
   @override
-  Future<void> initialize() async => initialiseCalls++;
+  Future<void> initialize({void Function(String billId)? onBillTapped}) async {
+    initialiseCalls++;
+    tapHandler = onBillTapped;
+  }
+
+  /// The handler the app registered. Calling it is how a test taps a
+  /// notification.
+  void Function(String billId)? tapHandler;
+
+  @override
+  Future<String?> billThatLaunchedTheApp() async => launchedWithBillId;
+
+  @override
+  Future<void> replaceScheduledReminders(List<BillReminder> reminders) async {
+    scheduled = reminders;
+    rebuilds.add(reminders);
+  }
+
+  @override
+  Future<Set<int>> scheduledReminderIds() async =>
+      scheduled.map((BillReminder r) => r.notificationId).toSet();
 
   @override
   Future<NotificationPermission> permission() async => permissionState;

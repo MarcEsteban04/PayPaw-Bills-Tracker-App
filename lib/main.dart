@@ -6,7 +6,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app/paypaw_app.dart';
 import 'core/config/app_config.dart';
 import 'core/providers/storage_providers.dart';
+import 'features/notifications/domain/services/notification_service.dart';
 import 'features/notifications/presentation/controllers/notification_providers.dart';
+import 'features/notifications/presentation/controllers/pending_bill_notification.dart';
 
 /// Application entry point.
 ///
@@ -44,8 +46,23 @@ Future<void> main() async {
 
 /// Brings up the notification machinery: timezones, the plugin, the channels.
 Future<void> _initialiseNotifications(ProviderContainer container) async {
+  final NotificationService service = container.read(
+    notificationServiceProvider,
+  );
+
   try {
-    await container.read(notificationServiceProvider).initialize();
+    await service.initialize(
+      onBillTapped: (String billId) =>
+          container.read(pendingBillNotificationProvider.notifier).open(billId),
+    );
+
+    // A tap that started the app from cold never reaches the callback above —
+    // there was no process to receive it. The plugin holds it as launch details
+    // instead, and this is the only way to find out. Read after `initialize`,
+    // because before it there is nothing to ask.
+    if (await service.billThatLaunchedTheApp() case final String billId) {
+      container.read(pendingBillNotificationProvider.notifier).open(billId);
+    }
   } on Object catch (error, stackTrace) {
     debugPrint('PayPaw: notifications unavailable ($error)\n$stackTrace');
   }

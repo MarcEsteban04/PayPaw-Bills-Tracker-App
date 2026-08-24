@@ -2,8 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/app_exception.dart';
 import '../../../auth/presentation/controllers/current_user_provider.dart';
+import '../../../notifications/domain/entities/reminder_time.dart';
 import '../../domain/entities/account_setup.dart';
-import '../../domain/entities/reminder_time.dart';
 import '../../domain/repositories/account_setup_repository.dart';
 import '../../domain/repositories/onboarding_progress_store.dart';
 import 'onboarding_providers.dart';

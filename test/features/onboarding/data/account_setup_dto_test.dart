@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:paypaw/features/notifications/domain/entities/reminder_time.dart';
 import 'package:paypaw/features/onboarding/data/dtos/account_setup_dto.dart';
 import 'package:paypaw/features/onboarding/domain/entities/account_setup.dart';
-import 'package:paypaw/features/onboarding/domain/entities/reminder_time.dart';
 
 void main() {
   const AccountSetup setup = AccountSetup(
