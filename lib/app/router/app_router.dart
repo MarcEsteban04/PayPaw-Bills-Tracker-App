@@ -2,6 +2,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/auth/presentation/screens/forgot_password_screen.dart';
+import '../../features/auth/presentation/screens/reset_password_screen.dart';
 import '../../features/auth/presentation/screens/sign_in_screen.dart';
 import '../../features/auth/presentation/screens/sign_up_screen.dart';
 import '../../features/bills/presentation/screens/bills_screen.dart';
@@ -67,6 +69,22 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>(
         pageBuilder: (_, GoRouterState state) => AppPageTransitions.forward(
           state: state,
           child: const SignUpScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.forgotPassword.path,
+        name: AppRoutes.forgotPassword.routeName,
+        pageBuilder: (_, GoRouterState state) => AppPageTransitions.forward(
+          state: state,
+          child: const ForgotPasswordScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.resetPassword.path,
+        name: AppRoutes.resetPassword.routeName,
+        pageBuilder: (_, GoRouterState state) => AppPageTransitions.fade(
+          state: state,
+          child: const ResetPasswordScreen(),
         ),
       ),
       GoRoute(

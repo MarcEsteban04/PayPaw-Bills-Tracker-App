@@ -1,0 +1,61 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:paypaw/app/paypaw_app.dart';
+import 'package:paypaw/core/providers/storage_providers.dart';
+import 'package:paypaw/core/providers/supabase_providers.dart';
+import 'package:paypaw/features/auth/data/repositories/supabase_auth_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../helpers/fake_auth_repository.dart';
+
+/// A reset link that opens the app and then does nothing is the classic failure
+/// of this flow, and it fails *silently* — no error, no crash, just a user
+/// staring at the dashboard wondering what happened. So the navigation is tested
+/// rather than assumed.
+void main() {
+  Future<void> pumpApp(
+    WidgetTester tester,
+    FakeAuthRepository repository,
+  ) async {
+    addTearDown(repository.dispose);
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(preferences),
+          isBackendConfiguredProvider.overrideWithValue(true),
+          authRepositoryProvider.overrideWithValue(repository),
+        ],
+        child: const PayPawApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('a reset link arriving on any screen is followed', (
+    WidgetTester tester,
+  ) async {
+    final FakeAuthRepository repository = FakeAuthRepository();
+    await pumpApp(tester, repository);
+
+    // The app starts on the dashboard; the link can arrive from anywhere.
+    expect(find.widgetWithText(AppBar, 'Dashboard'), findsOneWidget);
+
+    repository.emitPasswordRecovery();
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(AppBar, 'New password'), findsOneWidget);
+  });
+
+  testWidgets('nothing happens without a reset link', (
+    WidgetTester tester,
+  ) async {
+    await pumpApp(tester, FakeAuthRepository());
+
+    expect(find.widgetWithText(AppBar, 'New password'), findsNothing);
+    expect(find.widgetWithText(AppBar, 'Dashboard'), findsOneWidget);
+  });
+}

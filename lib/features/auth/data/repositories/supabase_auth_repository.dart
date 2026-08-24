@@ -30,6 +30,67 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<void> sendPasswordReset({required String email}) async {
+    try {
+      await _client.auth.resetPasswordForEmail(
+        email.trim(),
+        // Without this the link opens a browser page instead of the app, and
+        // there is no recovery session on this device. Must also be registered
+        // in the dashboard — see docs/supabase_setup.md.
+        redirectTo: AppConfig.authRedirectUrl,
+      );
+    } on AuthException catch (error) {
+      throw _mapAuthError(error);
+    } catch (error) {
+      throw mapSupabaseError(error);
+    }
+  }
+
+  @override
+  Future<AuthenticatedUser> updatePassword({
+    required String newPassword,
+  }) async {
+    try {
+      final UserResponse response = await _client.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+
+      final User? user = response.user;
+      if (user == null) {
+        throw const AuthenticationException(
+          message: 'Could not update your password. Please try again.',
+          debugMessage: 'updateUser returned no user',
+        );
+      }
+
+      return _toEntity(user);
+    } on AuthSessionMissingException catch (error) {
+      // Caught before the shared mapper on purpose. In this flow a missing
+      // session does not mean "signed out", it means the reset link had already
+      // been used or had expired — and saying "sign in again" to someone who
+      // cannot remember their password is a dead end.
+      throw AuthenticationException(
+        message: 'That reset link has expired or was already used. Request a new one.',
+        debugMessage: '${error.code}: ${error.message}',
+        cause: error,
+      );
+    } on AuthException catch (error) {
+      throw _mapAuthError(error);
+    } catch (error) {
+      throw mapSupabaseError(error);
+    }
+  }
+
+  @override
+  Stream<void> passwordRecoveryRequests() {
+    return _client.auth.onAuthStateChange
+        .where(
+          (AuthState state) => state.event == AuthChangeEvent.passwordRecovery,
+        )
+        .map((_) {});
+  }
+
+  @override
   Stream<AuthenticatedUser?> authStateChanges() {
     return _client.auth.onAuthStateChange.map((AuthState state) {
       final User? user = state.session?.user;
@@ -161,6 +222,15 @@ class SupabaseAuthRepository implements AuthRepository {
         debugMessage: debug,
         cause: error,
       ),
+      // Supabase refuses a password identical to the current one. Worth its own
+      // message: it is a rule, not a failure, and the generic wording makes it
+      // look like the reset did not work.
+      'same_password' => ValidationException(
+        message: 'That is already your password. Choose a different one.',
+        debugMessage: debug,
+        cause: error,
+      ),
+
       'weak_password' => ValidationException(
         message: 'That password is too easy to guess. Try a longer one.',
         debugMessage: debug,

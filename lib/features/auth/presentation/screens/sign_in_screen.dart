@@ -135,6 +135,15 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               child: TextButton(
                 onPressed: isBusy
                     ? null
+                    : () =>
+                          context.pushNamed(AppRoutes.forgotPassword.routeName),
+                child: const Text('Forgot your password?'),
+              ),
+            ),
+            Center(
+              child: TextButton(
+                onPressed: isBusy
+                    ? null
                     : () => context.pushReplacementNamed(
                         AppRoutes.signUp.routeName,
                       ),

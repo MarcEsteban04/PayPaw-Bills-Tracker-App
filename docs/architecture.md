@@ -108,6 +108,8 @@ StatefulShellRoute.indexedStack     each branch keeps its own stack
   /profile     profile
 /sign-in                            above the shell, covers the nav bar
 /sign-up                            above the shell, covers the nav bar
+/forgot-password                    above the shell
+/reset-password                     above the shell, reached by the deep link
 /design-system                      developer gallery
 /components                         developer gallery
 ```

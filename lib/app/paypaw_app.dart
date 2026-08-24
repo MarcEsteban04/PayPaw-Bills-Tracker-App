@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../core/theme/app_palette.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/theme_mode_controller.dart';
+import '../features/auth/presentation/widgets/password_recovery_listener.dart';
 import 'router/app_router.dart';
 
 /// The root widget.
@@ -62,7 +63,11 @@ class PayPawApp extends ConsumerWidget {
       child: MediaQuery.withClampedTextScaling(
         minScaleFactor: minTextScale,
         maxScaleFactor: maxTextScale,
-        child: child ?? const SizedBox.shrink(),
+        // Wraps everything, because a password reset link can arrive while the
+        // app is on any screen — or can be what launched it.
+        child: PasswordRecoveryListener(
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
     );
   }

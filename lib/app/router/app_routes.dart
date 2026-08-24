@@ -30,6 +30,13 @@ enum AppRoutes {
   /// Registration.
   signUp(path: '/sign-up', routeName: 'sign-up'),
 
+  /// Requests a password reset email.
+  forgotPassword(path: '/forgot-password', routeName: 'forgot-password'),
+
+  /// Sets a new password using the recovery session a reset link creates.
+  /// Reached automatically by the deep link, not from a menu.
+  resetPassword(path: '/reset-password', routeName: 'reset-password'),
+
   // --- Developer tools ------------------------------------------------------
 
   /// Gallery of every design token. Reached from Profile; not a user

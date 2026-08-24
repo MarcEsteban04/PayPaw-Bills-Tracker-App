@@ -59,8 +59,45 @@ class FakeAuthRepository implements AuthRepository {
     _sessions.add(user);
   }
 
+  /// Stands in for a password reset link being opened on the device.
+  void emitPasswordRecovery() => _recoveries.add(null);
+
   /// Call from a test teardown.
-  Future<void> dispose() => _sessions.close();
+  Future<void> dispose() async {
+    await _sessions.close();
+    await _recoveries.close();
+  }
+
+  int sendPasswordResetCalls = 0;
+  int updatePasswordCalls = 0;
+  String? lastResetEmail;
+  String? lastNewPassword;
+
+  final StreamController<void> _recoveries = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> passwordRecoveryRequests() => _recoveries.stream;
+
+  @override
+  Future<void> sendPasswordReset({required String email}) async {
+    sendPasswordResetCalls++;
+    lastResetEmail = email;
+    await _record(email, '');
+  }
+
+  @override
+  Future<AuthenticatedUser> updatePassword({
+    required String newPassword,
+  }) async {
+    updatePasswordCalls++;
+    lastNewPassword = newPassword;
+    await _record(lastEmail ?? '', newPassword);
+
+    _currentUser = signedInUser;
+    _sessions.add(signedInUser);
+
+    return signedInUser;
+  }
 
   @override
   Future<SignUpOutcome> signUp({

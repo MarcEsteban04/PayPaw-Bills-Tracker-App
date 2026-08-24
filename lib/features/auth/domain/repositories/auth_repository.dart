@@ -37,6 +37,30 @@ abstract interface class AuthRepository {
   /// flashing a sign-in screen at an already-authenticated user.
   AuthenticatedUser? get currentUser;
 
+  /// Sends a password reset email.
+  ///
+  /// Completes successfully **whether or not the address has an account**.
+  /// Supabase deliberately does not say, and neither should the app: an endpoint
+  /// that reports "no such user" is a way to enumerate who is registered here.
+  ///
+  /// Throws `ValidationException` when the backend rate-limits the request, which
+  /// is easy to mistake for the app being broken.
+  Future<void> sendPasswordReset({required String email});
+
+  /// Sets a new password for the user in the current session.
+  ///
+  /// Requires a session — either a normal one, or the temporary recovery session
+  /// created when a reset link is opened. Throws `AuthenticationException` when
+  /// there is none, which is what an expired or reused link looks like.
+  Future<AuthenticatedUser> updatePassword({required String newPassword});
+
+  /// Emits when a password reset link has been opened and a recovery session
+  /// exists, so the app can ask for the new password.
+  ///
+  /// A stream because the link can arrive at any moment — the app may be on any
+  /// screen, or may have been launched by the link itself.
+  Stream<void> passwordRecoveryRequests();
+
   /// Emits whenever the session changes: signing in, signing out, a token
   /// refresh, or a session expiring on its own.
   ///

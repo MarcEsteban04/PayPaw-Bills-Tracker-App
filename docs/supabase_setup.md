@@ -65,6 +65,10 @@ Add exactly this:
 com.paypaw.app://login-callback
 ```
 
+Password recovery depends on this more than anything else does: the reset link
+has to come back to the app to create a recovery session. If a reset link opens a
+browser page instead of PayPaw, this list is the first thing to check.
+
 This must match `AppConfig.authRedirectUrl` and the intent filter in
 `android/app/src/main/AndroidManifest.xml`. Supabase rejects any redirect not on
 this list, and the failure is **silent from the app's side** — the email link
