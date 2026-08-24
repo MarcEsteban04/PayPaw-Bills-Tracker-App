@@ -341,10 +341,23 @@ class AppPalette extends ThemeExtension<AppPalette> {
     primaryPressed: Color(0xFFC2E035),
     primaryText: Color(0xFFD9F94A),
     primarySoft: Color(0xFF2A3007),
-    navSurface: Color(0xFF22252A),
+    // Near-black, the same bar as light mode.
+    //
+    // It used to be #22252A — deliberately *lighter* than the old #121316
+    // canvas, so it read as floating above the page. Against a true black canvas
+    // that stopped being a floating bar and became a grey slab, the lightest
+    // thing on the screen after the lime pill.
+    //
+    // It still clears the canvas, by a hair, which is all a bar needs when its
+    // own contents give it shape: the sunken circles below are lighter again,
+    // and the active pill is lime.
+    navSurface: Color(0xFF0A0B0D),
     navActivePill: Color(0xFFD9F94A),
     navOnActivePill: Color(0xFF0F1011),
-    navItemSunken: Color(0xFF15171A),
+    // Lighter than the bar, not darker. On a near-black surface a darker recess
+    // is invisible — the same rule light mode follows, and the reason this one
+    // had to move up when the bar moved down.
+    navItemSunken: Color(0xFF1C1F24),
     navInactiveIcon: Color(0xFFA8AEB8),
     // Green survives here and nowhere else. It is no longer the brand, so it no
     // longer means "press me" — it means settled, and only that.

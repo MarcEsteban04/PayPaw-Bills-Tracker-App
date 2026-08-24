@@ -236,12 +236,16 @@ CTA looking pasted onto the page.
 
 The reference is light-only, so the dark palette is derived from it:
 
-- **A near-neutral charcoal canvas**, matching the reference's cool grey rather
-  than warming it.
-- **The navigation bar inverts.** In light mode a near-black bar floats above a
-  light page; in dark mode a darker bar would sink into it, so the bar becomes
-  *lighter* than the canvas. A test asserts that relationship in both themes.
-- **Shadows get much stronger.** A 5%-black shadow is invisible on charcoal.
+- **The navigation bar is the same near-black in both themes.** It used to
+  invert: against the old charcoal canvas a darker bar would have sunk into the
+  page, so dark mode lifted it to #22252A. On a true black canvas that stopped
+  reading as a floating bar and became a grey slab — the lightest thing on the
+  screen after the lime pill. It is #0A0B0D in both now, still a hair above the
+  canvas, and its own contents give it shape: the sunken circles are lighter
+  again and the active pill is lime. A test still asserts it clears the canvas.
+- **Shadows go the other way.** In light mode they lift a card off the page. On
+  black a shade of black does nothing, so the card shadows are transparent and
+  the cards separate by being *lighter* than the ground instead.
 - `primary` is the **same lime in both themes**; `primaryText` is that lime in
   dark mode and a dark olive in light, since one has to survive white behind it
   and the other does not.
