@@ -36,7 +36,11 @@ class BillFormValues {
   });
 
   /// The values a form starts from when editing an existing bill.
-  factory BillFormValues.of(Bill bill) => BillFormValues(
+  ///
+  /// [rule] comes from the bill's template when it has one, so the Repeat field
+  /// opens on the schedule already in force rather than claiming it does not
+  /// repeat.
+  factory BillFormValues.of(Bill bill, {Recurrence? rule}) => BillFormValues(
     name: bill.name,
     // Formatted the way the amount field formats, so opening a bill and saving
     // it without touching anything is not an edit. `formatBare` groups with
@@ -46,6 +50,7 @@ class BillFormValues {
     categoryId: bill.categoryId,
     payee: bill.payee,
     notes: bill.notes,
+    recurrence: rule,
   );
 
   final String name;
@@ -90,7 +95,6 @@ class BillForm extends ConsumerStatefulWidget {
     this.initial,
     this.isSaving = false,
     this.errorMessage,
-    this.showRecurrence = true,
     super.key,
   });
 
@@ -108,15 +112,6 @@ class BillForm extends ConsumerStatefulWidget {
 
   /// A failure from the write, shown above the fields.
   final String? errorMessage;
-
-  /// Whether to offer the Repeat field.
-  ///
-  /// **Off when editing.** `BillWriteController.update` writes a `Bill`, and a
-  /// recurrence is not one of its columns — so the field took a value and threw
-  /// it away on save, which is worse than not offering it at all. Turning an
-  /// existing bill into a schedule, or changing the schedule behind one, is
-  /// Sprint 32.
-  final bool showRecurrence;
 
   @override
   ConsumerState<BillForm> createState() => _BillFormState();
@@ -269,33 +264,34 @@ class _BillFormState extends ConsumerState<BillForm> {
                   ),
                   const SizedBox(height: AppSpacing.lg),
 
-                  if (widget.showRecurrence) ...<Widget>[
-                    RecurrenceField(
-                      value: _recurrence,
-                      today: today,
-                      // The due date, so a rule opens on the day already typed
-                      // above rather than on today.
-                      startFrom: _dueOn,
-                      enabled: !isBusy,
-                      onChanged: (Recurrence? value) =>
-                          setState(() => _recurrence = value),
-                    ),
-                    // Saving a repeating bill creates a schedule, not the bill in
-                    // front of you — the occurrences come from the generator. Said
-                    // here rather than discovered afterwards, when the list shows a
-                    // bill dated differently from the due date that was typed.
-                    if (_recurrence != null) ...<Widget>[
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        'Saved as a repeating bill. PayPaw will add each one as it '
-                        'comes due.',
-                        style: textTheme.bodySmall?.copyWith(
-                          color: colors.textTertiary,
-                        ),
+                  RecurrenceField(
+                    value: _recurrence,
+                    today: today,
+                    // The due date, so a rule opens on the day already typed
+                    // above rather than on today.
+                    startFrom: _dueOn,
+                    enabled: !isBusy,
+                    onChanged: (Recurrence? value) =>
+                        setState(() => _recurrence = value),
+                  ),
+                  // The occurrences come from the generator, not from this save.
+                  // Said here rather than discovered afterwards, when the list
+                  // shows a bill dated differently from the due date typed above.
+                  //
+                  // Present tense, because this form is also the edit form: "saved
+                  // as a repeating bill" reads as a report on something that has
+                  // not happened yet on one screen and already happened on the
+                  // other.
+                  if (_recurrence != null) ...<Widget>[
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      'PayPaw adds each one as it comes due.',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colors.textTertiary,
                       ),
-                    ],
-                    const SizedBox(height: AppSpacing.lg),
+                    ),
                   ],
+                  const SizedBox(height: AppSpacing.lg),
 
                   AppTextField(
                     controller: _payee,

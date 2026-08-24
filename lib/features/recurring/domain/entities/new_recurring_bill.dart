@@ -23,6 +23,7 @@ class NewRecurringBill {
     this.categoryId,
     this.payee,
     this.isActive = true,
+    this.alreadyCoveredThrough,
   });
 
   final String name;
@@ -33,16 +34,30 @@ class NewRecurringBill {
   final String? payee;
   final bool isActive;
 
+  /// A date whose occurrence already exists as a bill.
+  ///
+  /// Set when an *existing* bill is being turned into a schedule: that bill is
+  /// the occurrence for its own due date, so generation has to start after it.
+  ///
+  /// The unique index would catch the duplicate anyway, but only once the bill is
+  /// linked to the template — and between creating the template and linking it,
+  /// the scheduled job can run. This closes that window rather than relying on
+  /// losing the race.
+  final DateTime? alreadyCoveredThrough;
+
   /// The bookmark to store, derived rather than accepted.
   ///
   /// `next_due_on` is `not null` with no default, so something has to supply it on
-  /// insert — and the only correct value at creation is the rule's own first
-  /// occurrence. Taking it as a parameter would let a caller store a template
-  /// whose bookmark the rule can never reach, which generation would either skip
-  /// forever or satisfy with a date the user never asked for.
+  /// insert. Taking it as a *parameter* would let a caller store a template whose
+  /// bookmark the rule can never reach, which generation would either skip forever
+  /// or satisfy with a date the user never asked for. [alreadyCoveredThrough] says
+  /// where to start instead of what to store, so the value always comes from the
+  /// rule.
   ///
   /// Null when the rule produces nothing at all, which [validate] rejects first.
-  DateTime? get nextDueOn => recurrence.firstOccurrence;
+  DateTime? get nextDueOn => alreadyCoveredThrough == null
+      ? recurrence.firstOccurrence
+      : recurrence.occurrenceAfter(alreadyCoveredThrough!);
 
   /// Why this cannot be stored, or null when it can.
   ///

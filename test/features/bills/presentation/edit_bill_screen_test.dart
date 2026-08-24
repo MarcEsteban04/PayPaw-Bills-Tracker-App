@@ -14,7 +14,12 @@ import 'package:paypaw/features/bills/presentation/controllers/bill_repository_p
 import 'package:paypaw/features/bills/presentation/screens/edit_bill_screen.dart';
 import 'package:paypaw/features/categories/domain/entities/category.dart';
 import 'package:paypaw/features/categories/presentation/controllers/category_providers.dart';
+import 'package:paypaw/features/recurring/domain/entities/recurrence.dart';
+import 'package:paypaw/features/recurring/domain/entities/recurrence_frequency.dart';
+import 'package:paypaw/features/recurring/domain/entities/recurring_bill.dart';
+import 'package:paypaw/features/recurring/presentation/controllers/recurring_bill_providers.dart';
 
+import '../../recurring/helpers/fake_recurring_bill_repository.dart';
 import '../helpers/fake_bill_repository.dart';
 
 /// Editing a bill.
@@ -40,6 +45,7 @@ void main() {
     String? categoryId = 'cat-electricity',
     String? payee = 'Meralco',
     String? notes = 'account 1234',
+    String? recurringBillId = 'recurring-7',
   }) => Bill(
     id: 'bill-1',
     userId: 'user-1',
@@ -50,7 +56,7 @@ void main() {
     categoryId: categoryId,
     // The form never shows this. It has to survive an edit anyway, or a
     // generated occurrence loses its link to the template that made it.
-    recurringBillId: 'recurring-7',
+    recurringBillId: recurringBillId,
     notes: notes,
     createdAt: DateTime(2026, 8, 2),
     updatedAt: DateTime(2026, 8, 2),
@@ -65,17 +71,20 @@ void main() {
   );
 
   late FakeBillRepository repository;
+  late FakeRecurringBillRepository recurring;
 
   Future<void> pumpEdit(
     WidgetTester tester, {
     Bill? bill,
     String openId = 'bill-1',
+    List<RecurringBill> templates = const <RecurringBill>[],
   }) async {
     repository = FakeBillRepository(
       bills: bill == null
           ? const <BillWithStatus>[]
           : <BillWithStatus>[withStatus(bill)],
     );
+    recurring = FakeRecurringBillRepository(templates: templates);
 
     // Tall enough that the whole form is built: it is a ListView, so a button
     // below the fold does not exist to be tapped.
@@ -88,6 +97,7 @@ void main() {
       ProviderScope(
         overrides: [
           billRepositoryProvider.overrideWithValue(repository),
+          recurringBillRepositoryProvider.overrideWithValue(recurring),
           categoriesProvider.overrideWith(
             (Ref ref) => Future<List<Category>>.value(categories),
           ),
@@ -129,17 +139,59 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// The schedule `stored()` points at.
+  RecurringBill schedule({bool isActive = true, int dayOfMonth = 5}) =>
+      RecurringBill(
+        id: 'recurring-7',
+        userId: 'user-1',
+        kind: RecurringBillKind.bill,
+        name: 'Meralco electricity',
+        amount: const Money.php(245050),
+        recurrence: Recurrence(
+          frequency: RecurrenceFrequency.monthly,
+          dayOfMonth: dayOfMonth,
+          startsOn: DateTime(2026, 8, 2),
+        ),
+        nextDueOn: DateTime(2026, 10, 5),
+        isActive: isActive,
+        createdAt: DateTime(2026, 8, 2),
+        updatedAt: DateTime(2026, 8, 2),
+      );
+
   group('opening it', () {
-    testWidgets('does not offer Repeat, because saving would discard it', (
+    testWidgets('shows the schedule the bill already belongs to', (
       WidgetTester tester,
     ) async {
-      // `update` writes a `Bill`, and a recurrence is not one of its columns. The
-      // field was on this screen for a sprint and silently threw its value away
-      // on save, which is worse than not offering it. Sprint 32 wires it.
-      await pumpEdit(tester, bill: stored());
+      // Not "Does not repeat". The field claiming a repeating bill was one-off
+      // meant saving anything at all silently stopped the schedule.
+      await pumpEdit(
+        tester,
+        bill: stored(),
+        templates: <RecurringBill>[schedule()],
+      );
+
+      expect(find.text('Every month on the 5th'), findsOneWidget);
+    });
+
+    testWidgets('waits for it rather than showing the wrong answer first', (
+      WidgetTester tester,
+    ) async {
+      // Building before the template arrives shows "Does not repeat" and then
+      // flips — and anyone who saved in that moment would have cancelled a
+      // schedule without meaning to.
+      await pumpEdit(
+        tester,
+        bill: stored(),
+        templates: <RecurringBill>[schedule()],
+      );
 
       expect(find.text('Does not repeat'), findsNothing);
-      expect(find.text('Repeat'), findsNothing);
+    });
+
+    testWidgets('a bill with no schedule says so', (WidgetTester tester) async {
+      await pumpEdit(tester, bill: stored(recurringBillId: null));
+
+      expect(find.text('Does not repeat'), findsOneWidget);
     });
 
     testWidgets('the fields arrive filled', (WidgetTester tester) async {
@@ -169,6 +221,112 @@ void main() {
       await pumpEdit(tester, openId: 'missing');
 
       expect(find.text('Bill not found'), findsOneWidget);
+    });
+  });
+
+  group('changing whether it repeats', () {
+    /// Opens the Repeat editor and accepts whatever it defaults to.
+    Future<void> setRepeat(WidgetTester tester, String from) async {
+      await tester.tap(find.text(from));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('turning it on creates a schedule and joins this bill to it', (
+      WidgetTester tester,
+    ) async {
+      await pumpEdit(tester, bill: stored(recurringBillId: null));
+
+      await setRepeat(tester, 'Does not repeat');
+      await saveChanges(tester);
+
+      expect(recurring.created, isNotNull);
+      // The bill is linked, so it counts as the schedule's occurrence rather
+      // than sitting beside one.
+      expect(repository.updated!.recurringBillId, 'rec-new');
+    });
+
+    testWidgets('and the schedule starts after this bill, not on it', (
+      WidgetTester tester,
+    ) async {
+      // The bill is due 5 September and the default rule is monthly on the 5th.
+      // A bookmark of 5 September would have the generator create a second bill
+      // for a date this one already covers.
+      await pumpEdit(tester, bill: stored(recurringBillId: null));
+
+      await setRepeat(tester, 'Does not repeat');
+      await saveChanges(tester);
+
+      expect(recurring.created!.nextDueOn, DateTime(2026, 10, 5));
+    });
+
+    testWidgets('turning it off stops the schedule rather than deleting it', (
+      WidgetTester tester,
+    ) async {
+      // Deleting would null out `recurring_bill_id` on every bill it produced —
+      // `on delete set null` — and the record that those months came from a
+      // schedule is worth more than the row.
+      await pumpEdit(
+        tester,
+        bill: stored(),
+        templates: <RecurringBill>[schedule()],
+      );
+
+      await tester.tap(find.text('Every month on the 5th'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Does not repeat'));
+      await tester.pumpAndSettle();
+      await saveChanges(tester);
+
+      expect(recurring.updated!.isActive, isFalse);
+      expect(recurring.deleted, isNull);
+    });
+
+    testWidgets('changing the rule moves the bookmark past this bill', (
+      WidgetTester tester,
+    ) async {
+      // Everything up to and including the bill being edited already exists.
+      await pumpEdit(
+        tester,
+        bill: stored(),
+        templates: <RecurringBill>[schedule()],
+      );
+
+      await tester.tap(find.text('Every month on the 5th'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Quarterly'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      await saveChanges(tester);
+
+      expect(
+        recurring.updated!.recurrence.frequency,
+        RecurrenceFrequency.quarterly,
+      );
+      // November, not December. A quarterly rule steps from the month it starts
+      // in — August here — so its occurrences are Aug, Nov, Feb. Anchoring on the
+      // bill being edited instead would silently shift the whole schedule.
+      expect(recurring.updated!.nextDueOn, DateTime(2026, 11, 5));
+    });
+
+    testWidgets('leaving it alone changes no schedule', (
+      WidgetTester tester,
+    ) async {
+      // Opening a repeating bill, renaming it and saving must not touch the rule.
+      await pumpEdit(
+        tester,
+        bill: stored(),
+        templates: <RecurringBill>[schedule()],
+      );
+
+      await tester.enterText(field('Bill name'), 'Renamed');
+      await tester.pump();
+      await saveChanges(tester);
+
+      expect(recurring.updated!.recurrence, schedule().recurrence);
+      expect(recurring.updated!.isActive, isTrue);
     });
   });
 

@@ -534,12 +534,43 @@ bill as well would be a duplicate the generator then tries to create again. The
 form's due date becomes the schedule's *start*, not an occurrence: "due on the 5th,
 monthly on the 15th" is two answers to one question.
 
-## Sprint 32 — Recurring Bill Management
+## Sprint 32 — Recurring Bill Management — partly done, from the bill's edit form
 
-* Pause recurrence
-* Resume recurrence
-* Modify recurrence
-* Cancel recurrence
+Reached from a bill rather than from a list of schedules: open a repeating bill,
+tap Edit, and the Repeat field is the schedule it belongs to. Four outcomes,
+decided by what the form had and what it has now:
+
+| had a schedule | wants one | outcome |
+|----------------|-----------|---------|
+| no  | no  | an ordinary edit |
+| no  | yes | **modify** — a schedule is created and this bill joins it |
+| yes | yes | **modify** — the rule changes, and resumes if it was stopped |
+| yes | no  | **cancel** — the schedule stops |
+
+* Modify recurrence — done. The bookmark moves to the first occurrence after the
+  bill being edited, because everything up to and including it already exists.
+  Bills generated beyond it under the old rule stay, and the unique index stops
+  the generator remaking them.
+* Cancel recurrence — done, as `is_active = false` rather than a delete. Deleting
+  would null out `recurring_bill_id` on every bill the schedule ever produced —
+  `on delete set null` — and the record that those months came from a schedule is
+  worth more than the row.
+* Resume recurrence — done implicitly: giving a stopped schedule a workable rule
+  turns it back on.
+* Pause recurrence — **not built as a distinct action.** Pausing and cancelling
+  would both be `is_active = false`, so a separate control would be a second word
+  for one state. It needs a real difference — a resume date, or a reason — before
+  it earns a column.
+
+**Still no screen listing the schedules themselves.** Every one is reachable
+through a bill it produced, which covers the case that prompted this, but a
+schedule whose bills have all been deleted is unreachable. That screen, and a
+`pause` that means something, are what is left of this sprint.
+
+Turning an existing bill into a schedule sets `alreadyCoveredThrough` so the
+generator starts *after* it: that bill is the occurrence for its own due date, and
+a bookmark on or before it would produce a duplicate. The unique index would catch
+it, but only once the bill is linked — and the scheduled job can run in between.
 
 ## Sprint 33 — Recurrence Testing
 

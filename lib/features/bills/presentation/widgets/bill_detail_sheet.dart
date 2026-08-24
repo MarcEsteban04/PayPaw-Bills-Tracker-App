@@ -164,20 +164,28 @@ class _BillDetail extends ConsumerWidget {
           if (item.bill.recurringBillId
               case final String templateId) ...<Widget>[
             const SizedBox(height: AppSpacing.md),
-            _Fact(
-              icon: Icons.repeat_rounded,
-              label: 'Repeats',
-              // The rule if it has arrived, and the plain fact if it has not.
-              // "Repeats" alone is still true and still more than the drawer said
-              // before, so a slow query degrades rather than showing a spinner in
-              // the middle of a list of facts.
-              value: switch (ref.watch(recurringBillProvider(templateId))) {
-                AsyncData<RecurringBill?>(value: final RecurringBill? template)
-                    when template != null =>
-                  template.recurrence.describe(),
-                _ => 'On a schedule',
-              },
-            ),
+            switch (ref.watch(recurringBillProvider(templateId))) {
+              AsyncData<RecurringBill?>(value: final RecurringBill? template)
+                  when template != null =>
+                _Fact(
+                  icon: Icons.repeat_rounded,
+                  // A stopped schedule still produced this bill, so the row stays
+                  // — in the past tense. Saying "Repeats" about something that no
+                  // longer does would have the drawer promising bills that are
+                  // never coming.
+                  label: template.isActive ? 'Repeats' : 'Repeated',
+                  value: template.recurrence.describe(),
+                  detail: template.isActive ? null : 'Stopped',
+                ),
+              // The rule has not arrived, or will not. "On a schedule" is still
+              // true and still more than the drawer said before, so a slow query
+              // degrades rather than putting a spinner in a list of facts.
+              _ => const _Fact(
+                icon: Icons.repeat_rounded,
+                label: 'Repeats',
+                value: 'On a schedule',
+              ),
+            },
           ],
           if (item.bill.notes case final String notes) ...<Widget>[
             const SizedBox(height: AppSpacing.md),

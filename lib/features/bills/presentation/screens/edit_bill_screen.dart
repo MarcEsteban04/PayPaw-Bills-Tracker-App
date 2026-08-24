@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/presentation/widgets/app_error_state.dart';
 import '../../../../core/presentation/widgets/app_loading_indicator.dart';
 import '../../../../core/presentation/widgets/app_state_message.dart';
+import '../../../recurring/domain/entities/recurring_bill.dart';
+import '../../../recurring/presentation/controllers/recurring_bill_providers.dart';
 import '../../domain/entities/bill_with_status.dart';
 import '../controllers/bill_detail_provider.dart';
 import '../controllers/bill_write_controller.dart';
@@ -74,23 +76,49 @@ class EditBillScreen extends ConsumerWidget {
                 'This bill is no longer here. It may have been deleted from '
                 'another device.',
           ),
-          AsyncData<BillWithStatus?>(value: final BillWithStatus item) =>
-            BillForm(
-              // Keyed by the bill, so arriving at a different one rebuilds the
-              // fields instead of showing the previous bill's values in them.
-              key: ValueKey<String>(item.bill.id),
-              submitLabel: 'Save changes',
-              // See BillForm.showRecurrence: editing cannot write one yet.
-              showRecurrence: false,
-              initial: BillFormValues.of(item.bill),
-              isSaving: state.isSaving,
-              errorMessage: state.errorMessage,
-              onSubmit: (BillFormValues values) => ref
-                  .read(billWriteControllerProvider.notifier)
-                  .update(item.bill, values),
-            ),
+          AsyncData<BillWithStatus?>(value: final BillWithStatus item) => _form(
+            ref,
+            item,
+            state,
+          ),
         },
       ),
+    );
+  }
+
+  /// The form, once the bill's schedule is known.
+  ///
+  /// A bill with a `recurring_bill_id` waits for its template before rendering.
+  /// Building without it would show "Does not repeat" and then flip to the real
+  /// rule a moment later — and anyone who saved in that moment would have stopped
+  /// the schedule without meaning to.
+  Widget _form(WidgetRef ref, BillWithStatus item, BillWriteState state) {
+    final String? templateId = item.bill.recurringBillId;
+
+    final AsyncValue<RecurringBill?>? template = templateId == null
+        ? null
+        : ref.watch(recurringBillProvider(templateId));
+
+    if (template != null && template.isLoading) {
+      return const Center(child: AppLoadingIndicator());
+    }
+
+    // A template that will not load is shown as no schedule rather than blocking
+    // the edit. Everything else on this form still works, and the error is
+    // already reported by the drawer this screen was opened from.
+    final RecurringBill? rule = template?.value;
+
+    return BillForm(
+      // Keyed by the bill, so arriving at a different one rebuilds the fields
+      // instead of showing the previous bill's values in them.
+      key: ValueKey<String>(item.bill.id),
+      submitLabel: 'Save changes',
+      initial: BillFormValues.of(item.bill, rule: rule?.recurrence),
+      isSaving: state.isSaving,
+      errorMessage: state.errorMessage,
+      onSubmit: (BillFormValues values) => ref
+          .read(billWriteControllerProvider.notifier)
+          .update(item.bill, values, template: rule),
     );
   }
 
