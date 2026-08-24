@@ -20,6 +20,7 @@ class RecurrenceField extends StatelessWidget {
     required this.value,
     required this.today,
     required this.onChanged,
+    this.startFrom,
     this.enabled = true,
     super.key,
   });
@@ -33,6 +34,14 @@ class RecurrenceField extends StatelessWidget {
 
   /// Called with the new rule, or null when the user chose not to repeat.
   final ValueChanged<Recurrence?> onChanged;
+
+  /// Where a new rule should start, when the screen already knows.
+  ///
+  /// The bill form passes its due date: "due 20 September, monthly" means the
+  /// 20th, and a rule that opened on today's date instead disagreed with the
+  /// field directly above it. Ignored once a rule exists — see the note in
+  /// [showRecurrenceEditor].
+  final DateTime? startFrom;
 
   final bool enabled;
 
@@ -104,6 +113,7 @@ class RecurrenceField extends StatelessWidget {
       context: context,
       today: today,
       initial: value,
+      startFrom: startFrom,
     );
 
     // Null means dismissed, which must leave an existing rule alone. Only an

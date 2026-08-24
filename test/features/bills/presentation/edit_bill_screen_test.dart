@@ -130,6 +130,18 @@ void main() {
   }
 
   group('opening it', () {
+    testWidgets('does not offer Repeat, because saving would discard it', (
+      WidgetTester tester,
+    ) async {
+      // `update` writes a `Bill`, and a recurrence is not one of its columns. The
+      // field was on this screen for a sprint and silently threw its value away
+      // on save, which is worse than not offering it. Sprint 32 wires it.
+      await pumpEdit(tester, bill: stored());
+
+      expect(find.text('Does not repeat'), findsNothing);
+      expect(find.text('Repeat'), findsNothing);
+    });
+
     testWidgets('the fields arrive filled', (WidgetTester tester) async {
       await pumpEdit(tester, bill: stored());
 

@@ -344,6 +344,28 @@ void main() {
       expect(find.text('Does not repeat'), findsOneWidget);
     });
 
+    testWidgets('the rule starts from the due date, not from today', (
+      WidgetTester tester,
+    ) async {
+      // The two are the same fact. Someone who typed a due date and then asked
+      // for it monthly means that day — and a rule opening on today's date
+      // disagreed with the field directly above it on the same screen.
+      await pumpForm(tester);
+      await fillRequired(tester);
+
+      // `fillRequired` accepts whatever day the picker opens on, so the expected
+      // day is read back from the field rather than assumed.
+      final DateTime due = DateTime.now();
+
+      await tester.tap(find.text('Does not repeat'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Every month on the ${due.day}'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('saving writes a template instead of a bill', (
       WidgetTester tester,
     ) async {

@@ -90,6 +90,7 @@ class BillForm extends ConsumerStatefulWidget {
     this.initial,
     this.isSaving = false,
     this.errorMessage,
+    this.showRecurrence = true,
     super.key,
   });
 
@@ -107,6 +108,15 @@ class BillForm extends ConsumerStatefulWidget {
 
   /// A failure from the write, shown above the fields.
   final String? errorMessage;
+
+  /// Whether to offer the Repeat field.
+  ///
+  /// **Off when editing.** `BillWriteController.update` writes a `Bill`, and a
+  /// recurrence is not one of its columns — so the field took a value and threw
+  /// it away on save, which is worse than not offering it at all. Turning an
+  /// existing bill into a schedule, or changing the schedule behind one, is
+  /// Sprint 32.
+  final bool showRecurrence;
 
   @override
   ConsumerState<BillForm> createState() => _BillFormState();
@@ -259,28 +269,33 @@ class _BillFormState extends ConsumerState<BillForm> {
                   ),
                   const SizedBox(height: AppSpacing.lg),
 
-                  RecurrenceField(
-                    value: _recurrence,
-                    today: today,
-                    enabled: !isBusy,
-                    onChanged: (Recurrence? value) =>
-                        setState(() => _recurrence = value),
-                  ),
-                  // Saving a repeating bill creates a schedule, not the bill in
-                  // front of you — the occurrences come from the generator. Said
-                  // here rather than discovered afterwards, when the list shows a
-                  // bill dated differently from the due date that was typed.
-                  if (_recurrence != null) ...<Widget>[
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'Saved as a repeating bill. PayPaw will add each one as it '
-                      'comes due.',
-                      style: textTheme.bodySmall?.copyWith(
-                        color: colors.textTertiary,
-                      ),
+                  if (widget.showRecurrence) ...<Widget>[
+                    RecurrenceField(
+                      value: _recurrence,
+                      today: today,
+                      // The due date, so a rule opens on the day already typed
+                      // above rather than on today.
+                      startFrom: _dueOn,
+                      enabled: !isBusy,
+                      onChanged: (Recurrence? value) =>
+                          setState(() => _recurrence = value),
                     ),
+                    // Saving a repeating bill creates a schedule, not the bill in
+                    // front of you — the occurrences come from the generator. Said
+                    // here rather than discovered afterwards, when the list shows a
+                    // bill dated differently from the due date that was typed.
+                    if (_recurrence != null) ...<Widget>[
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        'Saved as a repeating bill. PayPaw will add each one as it '
+                        'comes due.',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colors.textTertiary,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.lg),
                   ],
-                  const SizedBox(height: AppSpacing.lg),
 
                   AppTextField(
                     controller: _payee,

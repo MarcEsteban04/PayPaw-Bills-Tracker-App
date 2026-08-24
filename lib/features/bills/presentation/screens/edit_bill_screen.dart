@@ -80,6 +80,8 @@ class EditBillScreen extends ConsumerWidget {
               // fields instead of showing the previous bill's values in them.
               key: ValueKey<String>(item.bill.id),
               submitLabel: 'Save changes',
+              // See BillForm.showRecurrence: editing cannot write one yet.
+              showRecurrence: false,
               initial: BillFormValues.of(item.bill),
               isSaving: state.isSaving,
               errorMessage: state.errorMessage,

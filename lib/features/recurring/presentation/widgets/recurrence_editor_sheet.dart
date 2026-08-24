@@ -41,10 +41,15 @@ Future<RecurrenceEditorResult?> showRecurrenceEditor({
   required BuildContext context,
   required DateTime today,
   Recurrence? initial,
+  DateTime? startFrom,
 }) => showAppBottomSheet<RecurrenceEditorResult>(
   context: context,
   title: 'Repeat',
-  child: _RecurrenceEditor(initial: initial, today: today),
+  child: _RecurrenceEditor(
+    initial: initial,
+    today: today,
+    startFrom: startFrom,
+  ),
 );
 
 /// The editor.
@@ -64,10 +69,26 @@ Future<RecurrenceEditorResult?> showRecurrenceEditor({
 /// turns the whole control into something checkable, and it is the only place the
 /// month-end clamping is visible before a bill is generated months later.
 class _RecurrenceEditor extends StatefulWidget {
-  const _RecurrenceEditor({required this.initial, required this.today});
+  const _RecurrenceEditor({
+    required this.initial,
+    required this.today,
+    required this.startFrom,
+  });
 
   final Recurrence? initial;
   final DateTime today;
+
+  /// Where a *new* rule should begin, when the screen already knows.
+  ///
+  /// The bill form passes the due date the user has already picked, because the
+  /// two are the same fact: someone who typed "due 20 September" and then asked
+  /// for it monthly means the 20th. Defaulting to today instead made the editor
+  /// open on a different day from the one on the form behind it and quietly
+  /// disagree with it.
+  ///
+  /// Only a default. An existing rule keeps its own start, and changing the due
+  /// date afterwards does not silently rewrite a schedule the user configured.
+  final DateTime? startFrom;
 
   @override
   State<_RecurrenceEditor> createState() => _RecurrenceEditorState();
@@ -89,7 +110,7 @@ class _RecurrenceEditorState extends State<_RecurrenceEditor> {
     final Recurrence? initial = widget.initial;
     _frequency = initial?.frequency ?? RecurrenceFrequency.monthly;
     _interval = initial?.intervalCount ?? 1;
-    _startsOn = initial?.startsOn ?? widget.today;
+    _startsOn = initial?.startsOn ?? widget.startFrom ?? widget.today;
     _endsOn = initial?.endsOn;
 
     // Defaults taken from the start date rather than fixed, so a new rule already
