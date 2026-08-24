@@ -44,4 +44,7 @@ matters: later migrations reference tables earlier ones create.
 
 ## Status
 
-Empty. Sprint 17 writes the first migration.
+Sprint 17 **written, not yet applied**: `profiles`, `reminder_preferences` and the
+shared `set_updated_at` helper. Nothing exists in the database until someone runs
+them. See [`migrations/README.md`](migrations/README.md) for the
+list and for queries that verify an apply.

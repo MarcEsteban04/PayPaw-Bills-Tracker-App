@@ -47,6 +47,7 @@ Progress is tracked sprint-by-sprint in [`docs/project_dev_roadmap.md`](docs/pro
 | 14 | Password recovery | ✅ Complete — needs your project to run end to end |
 | 15 | Authentication state | ✅ Complete — Phase 3 done |
 | 16 | Database planning | ✅ Complete — design only, nothing applied yet |
+| 17 | User tables | ✅ Migrations written — you apply them |
 
 ---
 
