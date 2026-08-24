@@ -55,6 +55,9 @@ dependencies:
   json_annotation: ^4.12.0
 
 dev_dependencies:
+  # Only so repository tests can hand SupabaseClient a recording http client and
+  # assert on the PostgREST requests it actually sends. Never imported by lib/.
+  http: ^1.6.0
   flutter_test:
     sdk: flutter
 

@@ -1,5 +1,6 @@
 import '../../../../core/domain/money.dart';
 import '../../domain/entities/bill.dart';
+import '../../domain/entities/new_bill.dart';
 
 /// Maps a `public.bills` row to and from [Bill].
 ///
@@ -49,33 +50,65 @@ abstract final class BillDto {
   /// zero amount standing in for a row nobody could parse.
   static Bill toEntity(Map<String, dynamic> row) {
     return Bill(
-      id: _requireString(row, columnId),
-      userId: _requireString(row, columnUserId),
+      id: requireString(row, columnId),
+      userId: requireString(row, columnUserId),
       categoryId: row[columnCategoryId] as String?,
       recurringBillId: row[columnRecurringBillId] as String?,
-      name: _requireString(row, columnName),
+      name: requireString(row, columnName),
       payee: row[columnPayee] as String?,
       amount: Money(
-        minorUnits: _requireInt(row, columnAmountMinor),
+        minorUnits: requireInt(row, columnAmountMinor),
         currency: (row[columnCurrency] as String?) ?? 'PHP',
       ),
-      dueOn: parseDate(_requireString(row, columnDueOn)),
+      dueOn: parseDate(requireString(row, columnDueOn)),
       notes: row[columnNotes] as String?,
-      archivedAt: _optionalTimestamp(row[columnArchivedAt]),
-      createdAt: _requireTimestamp(row, columnCreatedAt),
-      updatedAt: _requireTimestamp(row, columnUpdatedAt),
+      archivedAt: optionalTimestamp(row[columnArchivedAt]),
+      createdAt: requireTimestamp(row, columnCreatedAt),
+      updatedAt: requireTimestamp(row, columnUpdatedAt),
     );
   }
 
   /// Values for an `insert`.
   ///
-  /// Omits `id`, `created_at` and `updated_at`: the database owns all three, and
-  /// sending a client-side `updated_at` would be overwritten by the trigger
-  /// anyway. Sending `id` is possible — the entity can carry a client-generated
-  /// uuid — but leaving it out keeps the common path simple.
-  static Map<String, dynamic> toInsert(Bill bill) {
+  /// Takes a [NewBill], not a [Bill]. The database owns `id`, `created_at` and
+  /// `updated_at`, so a draft is the honest input — a [Bill] would have to carry
+  /// invented values for all three, and an invented timestamp is a lie some later
+  /// code believes.
+  ///
+  /// `archived_at` is not sent either: a bill is not created archived. The column
+  /// defaults to null, and offering it here would be offering a state nothing
+  /// needs.
+  ///
+  /// `user_id` comes from the caller rather than the draft, because the draft
+  /// deliberately has no owner — the repository takes it from the session so no
+  /// call site can get it wrong.
+  static Map<String, dynamic> toInsert(
+    NewBill draft, {
+    required String userId,
+  }) {
     return <String, dynamic>{
-      columnUserId: bill.userId,
+      columnUserId: userId,
+      columnCategoryId: draft.categoryId,
+      columnRecurringBillId: draft.recurringBillId,
+      columnName: draft.name,
+      columnPayee: draft.payee,
+      columnAmountMinor: draft.amount.minorUnits,
+      columnCurrency: draft.amount.currency,
+      columnDueOn: formatDate(draft.dueOn),
+      columnNotes: draft.notes,
+    };
+  }
+
+  /// Values for an `update`.
+  ///
+  /// Excludes `user_id` as well as the database-owned columns. Ownership is not
+  /// an editable property, and sending it would be an update the RLS policy has
+  /// to reject rather than one it never sees.
+  ///
+  /// Includes `archived_at`, which *is* editable — archiving and restoring are
+  /// updates to this column, and sending it as null is how a restore says so.
+  static Map<String, dynamic> toUpdate(Bill bill) {
+    return <String, dynamic>{
       columnCategoryId: bill.categoryId,
       columnRecurringBillId: bill.recurringBillId,
       columnName: bill.name,
@@ -86,17 +119,6 @@ abstract final class BillDto {
       columnNotes: bill.notes,
       columnArchivedAt: bill.archivedAt?.toUtc().toIso8601String(),
     };
-  }
-
-  /// Values for an `update`.
-  ///
-  /// Excludes `user_id` as well as the database-owned columns. Ownership is not
-  /// an editable property, and sending it would be an update the RLS policy has
-  /// to reject rather than one it never sees.
-  static Map<String, dynamic> toUpdate(Bill bill) {
-    final Map<String, dynamic> values = toInsert(bill)..remove(columnUserId);
-
-    return values;
   }
 
   /// Parses a SQL `date` (`YYYY-MM-DD`) as a local date at midnight.
@@ -126,7 +148,11 @@ abstract final class BillDto {
     return '${date.year}-$month-$day';
   }
 
-  static String _requireString(Map<String, dynamic> row, String column) {
+  // The four readers below are shared with `BillWithStatusDto`, which reads the
+  // same columns from the view. Public rather than private so there is one
+  // definition of how each column type is read, instead of two that drift.
+
+  static String requireString(Map<String, dynamic> row, String column) {
     final Object? value = row[column];
     if (value is String && value.isNotEmpty) {
       return value;
@@ -140,7 +166,7 @@ abstract final class BillDto {
   /// PostgREST sends `bigint` as a JSON number, but a value beyond 2^53 arrives
   /// as a string to preserve precision. Amounts never get that large, and relying
   /// on that is how a crash reaches production.
-  static int _requireInt(Map<String, dynamic> row, String column) {
+  static int requireInt(Map<String, dynamic> row, String column) {
     final Object? value = row[column];
     if (value is int) {
       return value;
@@ -155,8 +181,8 @@ abstract final class BillDto {
     throw FormatException('bills.$column missing or not an integer: $value');
   }
 
-  static DateTime _requireTimestamp(Map<String, dynamic> row, String column) {
-    final DateTime? parsed = _optionalTimestamp(row[column]);
+  static DateTime requireTimestamp(Map<String, dynamic> row, String column) {
+    final DateTime? parsed = optionalTimestamp(row[column]);
     if (parsed != null) {
       return parsed;
     }
@@ -164,7 +190,7 @@ abstract final class BillDto {
     throw FormatException('bills.$column missing or not a timestamp');
   }
 
-  static DateTime? _optionalTimestamp(Object? value) {
+  static DateTime? optionalTimestamp(Object? value) {
     if (value is! String || value.isEmpty) {
       return null;
     }

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:paypaw/core/domain/money.dart';
 import 'package:paypaw/features/bills/data/dtos/bill_dto.dart';
 import 'package:paypaw/features/bills/domain/entities/bill.dart';
+import 'package:paypaw/features/bills/domain/entities/new_bill.dart';
 
 /// The mapping between a `bills` row and a `Bill`.
 ///
@@ -125,8 +126,19 @@ void main() {
       updatedAt: DateTime(2026, 8, 24),
     );
 
+    final NewBill draft = NewBill(
+      name: bill.name,
+      payee: bill.payee,
+      amount: bill.amount,
+      dueOn: bill.dueOn,
+      notes: bill.notes,
+    );
+
     test('insert omits what the database owns', () {
-      final Map<String, dynamic> values = BillDto.toInsert(bill);
+      final Map<String, dynamic> values = BillDto.toInsert(
+        draft,
+        userId: 'user-1',
+      );
 
       // A client-sent updated_at would be overwritten by the trigger anyway, and
       // a client-sent id makes the common path more complicated than it needs.
@@ -135,8 +147,26 @@ void main() {
       expect(values.containsKey('updated_at'), isFalse);
     });
 
+    test('insert takes the owner from the caller, not the draft', () {
+      // A NewBill has no userId at all, so a call site cannot pass the wrong one
+      // — or somebody else's. The repository supplies it from the session.
+      expect(BillDto.toInsert(draft, userId: 'user-1')['user_id'], 'user-1');
+    });
+
+    test('insert does not create a bill already archived', () {
+      // The column defaults to null, and there is no state that wants a bill
+      // filed away before it existed.
+      expect(
+        BillDto.toInsert(draft, userId: 'user-1').containsKey('archived_at'),
+        isFalse,
+      );
+    });
+
     test('insert sends minor units and the currency', () {
-      final Map<String, dynamic> values = BillDto.toInsert(bill);
+      final Map<String, dynamic> values = BillDto.toInsert(
+        draft,
+        userId: 'user-1',
+      );
 
       expect(values['amount_minor'], 245050);
       expect(values['currency'], 'PHP');
@@ -145,24 +175,28 @@ void main() {
     test('insert sends due_on as a bare date', () {
       // toIso8601String() would append a time and a timezone, making the value
       // depend on where the device is.
-      expect(BillDto.toInsert(bill)['due_on'], '2026-09-05');
+      expect(BillDto.toInsert(draft, userId: 'user-1')['due_on'], '2026-09-05');
     });
 
-    test('update also omits user_id', () {
-      // Ownership is not an editable property. Sending it would be an update the
-      // RLS policy has to reject rather than one it never sees.
-      expect(BillDto.toUpdate(bill).containsKey('user_id'), isFalse);
-      expect(BillDto.toInsert(bill).containsKey('user_id'), isTrue);
+    test('update omits user_id but keeps archived_at', () {
+      // Ownership is not editable — sending it would be an update the RLS policy
+      // has to reject rather than one it never sees. archived_at *is* editable:
+      // archiving and restoring are both writes to that column.
+      final Map<String, dynamic> values = BillDto.toUpdate(bill);
+
+      expect(values.containsKey('user_id'), isFalse);
+      expect(values.containsKey('id'), isFalse);
+      expect(values.containsKey('archived_at'), isTrue);
     });
 
     test('round-trips through a row', () {
-      final Map<String, dynamic> asRow = BillDto.toInsert(bill)
-        ..addAll(<String, dynamic>{
-          'id': bill.id,
-          'user_id': bill.userId,
-          'created_at': bill.createdAt.toIso8601String(),
-          'updated_at': bill.updatedAt.toIso8601String(),
-        });
+      final Map<String, dynamic> asRow =
+          BillDto.toInsert(draft, userId: bill.userId)
+            ..addAll(<String, dynamic>{
+              'id': bill.id,
+              'created_at': bill.createdAt.toIso8601String(),
+              'updated_at': bill.updatedAt.toIso8601String(),
+            });
 
       final Bill parsed = BillDto.toEntity(asRow);
 
