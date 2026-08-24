@@ -11,6 +11,7 @@ import '../../features/auth/presentation/screens/sign_in_screen.dart';
 import '../../features/auth/presentation/screens/sign_up_screen.dart';
 import '../../features/bills/presentation/screens/add_bill_screen.dart';
 import '../../features/bills/presentation/screens/bills_screen.dart';
+import '../../features/bills/presentation/screens/edit_bill_screen.dart';
 import '../../features/calendar/presentation/screens/calendar_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/design_system/presentation/screens/components_screen.dart';
@@ -141,6 +142,17 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>(
         pageBuilder: (_, GoRouterState state) => AppPageTransitions.forward(
           state: state,
           child: const AddBillScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.editBill.path,
+        name: AppRoutes.editBill.routeName,
+        pageBuilder: (_, GoRouterState state) => AppPageTransitions.forward(
+          state: state,
+          // The id is required by the path, so a missing one is a wiring bug
+          // rather than a user-facing case — hence the assertion rather than a
+          // fallback screen.
+          child: EditBillScreen(billId: state.pathParameters['id']!),
         ),
       ),
       GoRoute(

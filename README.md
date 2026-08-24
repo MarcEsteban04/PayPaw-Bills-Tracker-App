@@ -54,6 +54,7 @@ Progress is tracked sprint-by-sprint in [`docs/project_dev_roadmap.md`](docs/pro
 | 21 | Bill model | ✅ Complete |
 | 22 | Bill repository | ✅ Complete |
 | 23 | Add bill UI | ✅ Complete |
+| 24 | Edit bill | ✅ Complete — includes a plain bill list, four sprints early, so edit is reachable |
 | 11A | Welcome screen | ✅ Complete |
 | 11B | Account onboarding | ✅ Complete |
 

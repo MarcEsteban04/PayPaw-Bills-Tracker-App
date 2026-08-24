@@ -51,6 +51,11 @@ enum AppRoutes {
   /// navigation bar sitting under it.
   addBill(path: '/bills/new', routeName: 'add-bill'),
 
+  /// The edit form for one bill. Carries the id in the path rather than the
+  /// object in an extra, so a deep link and a back-button restore both work and
+  /// the form opens on what the database currently holds.
+  editBill(path: '/bills/:id/edit', routeName: 'edit-bill'),
+
   // --- Developer tools ------------------------------------------------------
 
   /// Gallery of every design token. Reached from Profile; not a user

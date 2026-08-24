@@ -7,59 +7,12 @@ import 'package:paypaw/core/domain/money.dart';
 import 'package:paypaw/core/error/app_exception.dart';
 import 'package:paypaw/core/presentation/widgets/app_text_field.dart';
 import 'package:paypaw/core/theme/app_theme.dart';
-import 'package:paypaw/features/bills/domain/entities/bill.dart';
-import 'package:paypaw/features/bills/domain/entities/bill_with_status.dart';
-import 'package:paypaw/features/bills/domain/entities/new_bill.dart';
-import 'package:paypaw/features/bills/domain/repositories/bill_repository.dart';
 import 'package:paypaw/features/bills/presentation/controllers/bill_repository_provider.dart';
 import 'package:paypaw/features/bills/presentation/screens/add_bill_screen.dart';
 import 'package:paypaw/features/categories/domain/entities/category.dart';
 import 'package:paypaw/features/categories/presentation/controllers/category_providers.dart';
 
-/// Records what was sent, and can be told to fail.
-class _FakeBillRepository implements BillRepository {
-  NewBill? created;
-  int calls = 0;
-  AppException? failure;
-
-  @override
-  Future<Bill> createBill(NewBill draft) async {
-    calls++;
-    if (failure case final AppException exception) {
-      throw exception;
-    }
-    created = draft;
-
-    return Bill(
-      id: 'bill-1',
-      userId: 'user-1',
-      name: draft.name,
-      payee: draft.payee,
-      amount: draft.amount,
-      dueOn: draft.dueOn,
-      categoryId: draft.categoryId,
-      notes: draft.notes,
-      createdAt: DateTime(2026, 8, 24),
-      updatedAt: DateTime(2026, 8, 24),
-    );
-  }
-
-  // Not exercised here. Sprint 23 is the form; the rest of the contract is
-  // covered against real HTTP in supabase_bill_repository_test.dart.
-  @override
-  Future<Bill> archiveBill(String id) => throw UnimplementedError();
-  @override
-  Future<void> deleteBill(String id) => throw UnimplementedError();
-  @override
-  Future<BillWithStatus?> fetchBill(String id) => throw UnimplementedError();
-  @override
-  Future<List<BillWithStatus>> fetchBills({bool includeArchived = false}) =>
-      throw UnimplementedError();
-  @override
-  Future<Bill> unarchiveBill(String id) => throw UnimplementedError();
-  @override
-  Future<Bill> updateBill(Bill bill) => throw UnimplementedError();
-}
+import '../helpers/fake_bill_repository.dart';
 
 void main() {
   const List<Category> categories = <Category>[
@@ -79,9 +32,9 @@ void main() {
     ),
   ];
 
-  late _FakeBillRepository repository;
+  late FakeBillRepository repository;
 
-  setUp(() => repository = _FakeBillRepository());
+  setUp(() => repository = FakeBillRepository());
 
   Future<void> pumpForm(
     WidgetTester tester, {
@@ -193,7 +146,7 @@ void main() {
 
       await save(tester);
 
-      expect(repository.calls, 0);
+      expect(repository.createCalls, 0);
     });
 
     testWidgets('and says what is wrong with every field at once', (
@@ -231,7 +184,7 @@ void main() {
 
       await save(tester);
 
-      expect(repository.calls, 0);
+      expect(repository.createCalls, 0);
     });
   });
 
@@ -396,7 +349,7 @@ void main() {
       repository.failure = null;
       await save(tester);
 
-      expect(repository.calls, 2);
+      expect(repository.createCalls, 2);
       expect(repository.created!.name, 'Meralco electricity');
     });
   });
