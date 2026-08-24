@@ -1,0 +1,13 @@
+{
+  // Applies to every `flutter run` started from VS Code in this workspace — the
+  // Run button, F5, the codelens above main(), and any launch configuration.
+  //
+  // Without it, only a launch config carrying the same flag in `toolArgs` gets
+  // the credentials. Everything else starts unconfigured, which produces an app
+  // that opens on the dashboard with no route to sign-in and no visible reason
+  // why. That happened twice before this setting existed.
+  //
+  // Workspace-scoped on purpose: the same key in user settings would apply the
+  // flag to every Flutter project on the machine.
+  "dart.flutterRunAdditionalArgs": ["--dart-define-from-file=config/dev.json"]
+}

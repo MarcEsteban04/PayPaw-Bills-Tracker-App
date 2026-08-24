@@ -2,25 +2,20 @@
   "version": "0.2.0",
   "configurations": [
     {
+      // The credentials come from `dart.flutterRunAdditionalArgs` in
+      // .vscode/settings.json, so they are not repeated here — and so a run
+      // started any other way gets them too.
       "name": "PayPaw (dev)",
       "request": "launch",
       "type": "dart",
-      "program": "lib/main.dart",
-      "toolArgs": ["--dart-define-from-file=config/dev.json"]
+      "program": "lib/main.dart"
     },
     {
       "name": "PayPaw (dev, profile mode)",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
-      "flutterMode": "profile",
-      "toolArgs": ["--dart-define-from-file=config/dev.json"]
-    },
-    {
-      "name": "PayPaw (no backend)",
-      "request": "launch",
-      "type": "dart",
-      "program": "lib/main.dart"
+      "flutterMode": "profile"
     }
   ]
 }

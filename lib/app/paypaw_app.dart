@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/presentation/widgets/unconfigured_backend_banner.dart';
 import '../core/theme/app_palette.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/theme_mode_controller.dart';
@@ -72,12 +73,17 @@ class PayPawApp extends ConsumerWidget {
       child: MediaQuery.withClampedTextScaling(
         minScaleFactor: minTextScale,
         maxScaleFactor: maxTextScale,
-        // Wraps everything, because a password reset link can arrive while the
-        // app is on any screen — or can be what launched it.
-        child: SessionExpiryListener(
-          messengerKey: messengerKey,
-          child: PasswordRecoveryListener(
-            child: child ?? const SizedBox.shrink(),
+        // Outermost of the three, so the warning is above every screen and every
+        // listener. In a configured build `wrap` returns its child untouched, so
+        // the tree is identical to one without it.
+        child: UnconfiguredBackendBanner.wrap(
+          // Wraps everything, because a password reset link can arrive while the
+          // app is on any screen — or can be what launched it.
+          SessionExpiryListener(
+            messengerKey: messengerKey,
+            child: PasswordRecoveryListener(
+              child: child ?? const SizedBox.shrink(),
+            ),
           ),
         ),
       ),
