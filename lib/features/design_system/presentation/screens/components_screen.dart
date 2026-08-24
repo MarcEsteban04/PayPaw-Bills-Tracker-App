@@ -17,6 +17,8 @@ import '../../../../core/presentation/widgets/app_skeleton.dart';
 import '../../../../core/presentation/widgets/app_status_chip.dart';
 import '../../../../core/presentation/widgets/app_text_field.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../recurring/domain/entities/recurrence.dart';
+import '../../../recurring/presentation/widgets/recurrence_field.dart';
 
 /// A gallery of every reusable component, live.
 ///
@@ -34,6 +36,7 @@ class _ComponentsScreenState extends State<ComponentsScreen> {
   bool _isBusy = false;
   bool _isFilterApplied = false;
   _SampleCategory? _category;
+  Recurrence? _recurrence;
 
   @override
   Widget build(BuildContext context) {
@@ -116,6 +119,23 @@ class _ComponentsScreenState extends State<ComponentsScreen> {
               itemLabel: (_SampleCategory value) => value.label,
               onChanged: (_SampleCategory? value) =>
                   setState(() => _category = value),
+            ),
+          ),
+          _Section(
+            title: 'Recurrence',
+            note:
+                'Tap it. The editor builds a rule from a unit and a count rather '
+                'than a list of named presets, and previews the next three dates '
+                'as they change — which is the only place "every month on the '
+                '31st" admits what it does in February.',
+            child: RecurrenceField(
+              value: _recurrence,
+              // A fixed date, not the device clock: a gallery that renders
+              // differently every day is a gallery nobody can compare against
+              // yesterday.
+              today: DateTime(2026, 8, 25),
+              onChanged: (Recurrence? value) =>
+                  setState(() => _recurrence = value),
             ),
           ),
           _Section(

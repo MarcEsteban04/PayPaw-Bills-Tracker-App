@@ -468,11 +468,31 @@ Sprint 33 is the dedicated recurrence-testing sprint, but the month-boundary cas
 are not something to write this arithmetic without — leap years, century non-leap
 years, the last-day sentinel and year rollover are covered here (42 tests).
 
-## Sprint 30 — Recurring Bill UI
+## Sprint 30 — Recurring Bill UI — done, as a component
 
-* Recurrence selector
-* Custom recurrence settings
-* Next occurrence preview
+* Recurrence selector — `RecurrenceField` (a row, not an input: the value is a
+  sentence like "Every 2 weeks on Friday" and no text box holds that) opening
+  `showRecurrenceEditor`.
+* Custom recurrence settings — **frequency and interval are separate controls.**
+  A single list of named presets has to enumerate the product of a unit and a
+  count, which is exactly where "custom" comes from as a concept. A unit chip plus
+  a stepper covers every combination the model allows, including the ones nobody
+  thought to put on the list. Only the fields a frequency uses are shown, matching
+  the database's own shape constraint.
+* Next occurrence preview — the next three dates, updating as the rule is built.
+  This is the point of the control: "every month on the 31st" says nothing about
+  February, and without the preview the answer only appears when a bill generates
+  months later.
+
+**Not on the bill form yet.** There is no repository for `recurring_bills`, so a
+"Repeats" field on Add Bill would take a value and discard it on save — worse than
+no field. Sprint 31 adds persistence and generation, and wires it there. Until
+then it is live in the Components gallery (Profile → Components), which is where
+the project's other interactive components are demoed.
+
+The editor returns a sealed `RecurrenceEditorResult`, not a nullable `Recurrence`:
+dismissing the sheet must leave an existing rule alone and tapping "Does not
+repeat" must remove it, and one nullable value cannot say both.
 
 ## Sprint 31 — Automatic Bill Generation
 
