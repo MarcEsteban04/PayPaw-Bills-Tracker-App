@@ -12,14 +12,15 @@ abstract final class AppRadii {
   /// 12 — inputs and compact cards.
   static const double sm = 12;
 
-  /// 16 — list cards.
-  static const double md = 16;
+  /// 20 — list cards. The new reference rounds its cards noticeably more than
+  /// the old one did.
+  static const double md = 20;
 
-  /// 20 — feature cards, such as the reference's overview panel.
-  static const double lg = 20;
+  /// 24 — feature cards and summary panels.
+  static const double lg = 24;
 
-  /// 24 — bottom sheets and dialogs.
-  static const double xl = 24;
+  /// 28 — bottom sheets and dialogs.
+  static const double xl = 28;
 
   /// Fully rounded. Large enough to round any height PayPaw uses.
   static const double pill = 999;

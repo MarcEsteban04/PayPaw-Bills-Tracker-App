@@ -25,9 +25,11 @@ abstract final class AppTheme {
   /// guidance regardless of how small the icon looks in the design.
   static const double minTapTarget = 48;
 
-  /// Height of a primary button. The reference's CTA is taller than Material's
-  /// 48dp default.
-  static const double buttonHeight = 52;
+  /// Height of a primary button.
+  ///
+  /// 48 to match the reference, whose pill buttons are shorter than the previous
+  /// design.s. Still at Material.s minimum tap target, so nothing is lost.
+  static const double buttonHeight = 48;
 
   /// The light theme, sampled from the reference design.
   static ThemeData get light => of(AppPalette.light);
@@ -133,8 +135,8 @@ abstract final class AppTheme {
     onSurface: palette.textPrimary,
     onSurfaceVariant: palette.textSecondary,
     surfaceContainerLowest: palette.surface,
-    surfaceContainerLow: palette.canvasWhite,
-    surfaceContainer: palette.canvasCream,
+    surfaceContainerLow: palette.canvasEnd,
+    surfaceContainer: palette.canvasMid,
     surfaceContainerHigh: palette.surfaceMuted,
     surfaceContainerHighest: palette.surfaceInput,
     outline: palette.border,
@@ -149,8 +151,8 @@ abstract final class AppTheme {
   // Component themes
   // ---------------------------------------------------------------------------
 
-  /// Flat and transparent, because the reference has no app bar surface: the
-  /// title sits directly on the canvas.
+  /// Flat and transparent. The reference has no app bar surface — its header sits
+  /// directly on the page, alongside a greeting and an avatar.
   static AppBarTheme _appBarTheme(AppPalette palette, TextTheme textTheme) =>
       AppBarTheme(
         backgroundColor: Colors.transparent,
@@ -172,7 +174,7 @@ abstract final class AppTheme {
     clipBehavior: Clip.antiAlias,
   );
 
-  /// The primary CTA: an orange pill, flat, full width where it is used.
+  /// The primary CTA: a green pill, flat, full width where it is used.
   ///
   /// Shared by `ElevatedButton` and `FilledButton` so the two are
   /// indistinguishable — there is only one primary button in this design.
@@ -232,8 +234,8 @@ abstract final class AppTheme {
     ),
   );
 
-  /// Inline action. Uses the text-safe orange, because this is orange as text on
-  /// a light surface.
+  /// Inline action. Uses the text-safe green, because this is the brand colour as
+  /// text on a surface rather than as a fill.
   static TextButtonThemeData _textButtonTheme(
     AppPalette palette,
     TextTheme textTheme,
@@ -322,8 +324,8 @@ abstract final class AppTheme {
         showCheckmark: false,
       );
 
-  /// The underline tab row from the reference: an orange bar under the active
-  /// label, no pill, no background, no divider.
+  /// The underline tab row: a green bar under the active label, no pill, no
+  /// background, no divider.
   static TabBarThemeData _tabBarTheme(
     AppPalette palette,
     TextTheme textTheme,

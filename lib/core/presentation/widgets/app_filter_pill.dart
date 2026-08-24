@@ -9,7 +9,7 @@ import '../../theme/app_spacing.dart';
 /// which for PayPaw becomes `Category ▾`, `Status ▾`, `Due date ▾`.
 ///
 /// Tapping one opens its own picker; the pill itself only shows the current
-/// choice. When a filter is applied the pill switches to the orange tint, so the
+/// choice. When a filter is applied the pill switches to the green tint, so the
 /// row shows at a glance how narrow the current view is.
 ///
 /// **On tap targets:** the pill is 36dp tall to match the reference, which is

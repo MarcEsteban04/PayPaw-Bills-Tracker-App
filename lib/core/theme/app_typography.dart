@@ -82,8 +82,8 @@ abstract final class AppTypography {
   static TextStyle get bodySmall =>
       GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w400, height: 1.4);
 
-  /// Button labels. Semibold at 15 keeps white-on-orange within WCAG's
-  /// large-text allowance; see `AppPalette.primary`.
+  /// Button labels. Semibold at 15 keeps white-on-green within WCAG.s large-text
+  /// allowance; see `AppPalette.primary`.
   static TextStyle get labelLarge => GoogleFonts.inter(
     fontSize: 15,
     fontWeight: FontWeight.w600,

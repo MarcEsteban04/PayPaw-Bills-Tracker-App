@@ -44,6 +44,12 @@ class PayPawBottomNav extends StatelessWidget {
   /// Height of the bar itself, excluding the floating margin.
   static const double _barHeight = 64;
 
+  /// Space between one destination and the next.
+  ///
+  /// Small on purpose: the destinations should read as a group, not as four
+  /// separate buttons spread across the screen.
+  static const double _itemGap = AppSpacing.sm;
+
   @override
   Widget build(BuildContext context) {
     // scale(1) yields the user's effective text scale factor, already clamped by
@@ -56,40 +62,58 @@ class PayPawBottomNav extends StatelessWidget {
       minimum: const EdgeInsets.only(bottom: AppSpacing.lg),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-        child: Container(
-          height: _barHeight,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-          decoration: BoxDecoration(
-            color: context.colors.navSurface,
-            borderRadius: AppRadii.round,
-            boxShadow: context.colors.floatingShadow,
-          ),
-          child: LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              final bool showLabels =
-                  constraints.maxWidth >=
-                  AppBreakpoints.navLabelMinWidth * textScale;
+        // Centred and hugging its content, rather than stretched edge to edge.
+        // Spreading four destinations across the full width left large gaps
+        // between them; the reference bar is a compact pill.
+        //
+        // Align with heightFactor: 1, not Center. Center expands to fill the
+        // height it is offered, and this slot is measured with the whole screen
+        // as its maximum — the same trap that once put the bar at the top of the
+        // display. There is a test for it.
+        child: Align(
+          heightFactor: 1,
+          child: Container(
+            height: _barHeight,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: context.colors.navSurface,
+              borderRadius: AppRadii.round,
+              boxShadow: context.colors.floatingShadow,
+            ),
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final bool showLabels =
+                    constraints.maxWidth >=
+                    AppBreakpoints.navLabelMinWidth * textScale;
 
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: <Widget>[
-                  for (final AppDestination destination
-                      in AppDestination.values)
-                    // Flexible so no destination can push the row past the bar.
-                    // The selected pill needs more room than the others, so it
-                    // gets twice the share.
-                    Flexible(
-                      flex: destination.index == currentIndex ? 2 : 1,
-                      child: _NavItem(
-                        destination: destination,
-                        isSelected: destination.index == currentIndex,
-                        showLabel: showLabels,
-                        onTap: () => onDestinationSelected(destination.index),
+                return Row(
+                  // min, so the bar is as wide as its destinations and no wider.
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    for (final AppDestination destination
+                        in AppDestination.values)
+                      // Flexible so no destination can push the row past the
+                      // available width. The selected pill needs more room than
+                      // the others, so it gets twice the share.
+                      Flexible(
+                        flex: destination.index == currentIndex ? 2 : 1,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: _itemGap / 2,
+                          ),
+                          child: _NavItem(
+                            destination: destination,
+                            isSelected: destination.index == currentIndex,
+                            showLabel: showLabels,
+                            onTap: () =>
+                                onDestinationSelected(destination.index),
+                          ),
+                        ),
                       ),
-                    ),
-                ],
-              );
-            },
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),

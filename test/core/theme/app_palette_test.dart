@@ -142,7 +142,7 @@ void main() {
   group('the two palettes are actually different', () {
     test('surfaces and canvas differ', () {
       expect(AppPalette.light.surface, isNot(AppPalette.dark.surface));
-      expect(AppPalette.light.canvasPeach, isNot(AppPalette.dark.canvasPeach));
+      expect(AppPalette.light.canvasStart, isNot(AppPalette.dark.canvasStart));
       expect(AppPalette.light.textPrimary, isNot(AppPalette.dark.textPrimary));
     });
 
@@ -157,11 +157,11 @@ void main() {
       // to be lighter than the page, or it sinks into it.
       expect(
         AppPalette.light.navSurface.computeLuminance(),
-        lessThan(AppPalette.light.canvasCream.computeLuminance()),
+        lessThan(AppPalette.light.canvasMid.computeLuminance()),
       );
       expect(
         AppPalette.dark.navSurface.computeLuminance(),
-        greaterThan(AppPalette.dark.canvasCream.computeLuminance()),
+        greaterThan(AppPalette.dark.canvasMid.computeLuminance()),
       );
     });
   });

@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 /// without knowing which mode it is in.
 ///
 /// Material's own `ColorScheme` covers only part of what this design needs: it
-/// has no slot for a peach canvas gradient, a lime navigation pill, a third text
+/// has no slot for the canvas gradient, a lime navigation pill, a third text
 /// grey, or eight status tints. Rather than split colours across two lookups —
 /// some from `colorScheme`, some from here — **everything** lives here, and
 /// `AppTheme` builds the `ColorScheme` from it. One rule for widgets: use
@@ -22,9 +22,9 @@ import 'package:flutter/material.dart';
 class AppPalette extends ThemeExtension<AppPalette> {
   const AppPalette({
     required this.brightness,
-    required this.canvasPeach,
-    required this.canvasCream,
-    required this.canvasWhite,
+    required this.canvasStart,
+    required this.canvasMid,
+    required this.canvasEnd,
     required this.primary,
     required this.primaryPressed,
     required this.primaryText,
@@ -69,14 +69,14 @@ class AppPalette extends ThemeExtension<AppPalette> {
 
   // --- Canvas ---------------------------------------------------------------
 
-  /// Warmest stop of the app background.
-  final Color canvasPeach;
+  /// Lightest stop of the app background.
+  final Color canvasStart;
 
-  /// Mid stop of the app background.
-  final Color canvasCream;
+  /// Middle stop of the app background.
+  final Color canvasMid;
 
-  /// Coolest stop of the app background.
-  final Color canvasWhite;
+  /// Deepest stop of the app background.
+  final Color canvasEnd;
 
   // --- Brand ----------------------------------------------------------------
 
@@ -86,11 +86,12 @@ class AppPalette extends ThemeExtension<AppPalette> {
   /// Pressed state of [primary].
   final Color primaryPressed;
 
-  /// Orange as *text or an icon on a light surface*, darkened (or lightened, in
-  /// dark mode) to clear 4.5:1 where [primary] would not.
+  /// The brand green as *text or an icon on a surface*, darkened (or lightened,
+  /// in dark mode) to clear 4.5:1 where [primary] would not.
   final Color primaryText;
 
-  /// Soft wash behind tinted icons.
+  /// Soft green wash. Behind tinted icons, and behind the reference design.s
+  /// promotional and referral cards.
   final Color primarySoft;
 
   // --- Bottom navigation ----------------------------------------------------
@@ -193,18 +194,23 @@ class AppPalette extends ThemeExtension<AppPalette> {
   /// Colour of the shadow under floating elements.
   final Color shadowFloating;
 
-  /// Warm glow under the primary CTA. Orange rather than black, which is what
-  /// stops the button looking pasted onto the page.
+  /// Glow under the primary CTA. Tinted with the brand green rather than black,
+  /// which is what stops the button looking pasted onto the page.
   final Color glow;
 
   // --- Derived --------------------------------------------------------------
 
-  /// The app background. Reproducing this diagonal fade is most of what makes a
-  /// screen look like the reference design.
+  /// The app background.
+  ///
+  /// Very nearly flat in light mode: the reference sits white content sheets on a
+  /// plain light grey, so the three stops differ only slightly. The gradient is
+  /// kept rather than replaced with a single colour because dark mode uses the
+  /// same mechanism, and because a flat token would have to become a gradient
+  /// again the first time a screen wants one.
   LinearGradient get canvas => LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: <Color>[canvasPeach, canvasCream, canvasWhite],
+    colors: <Color>[canvasStart, canvasMid, canvasEnd],
     stops: const <double>[0, 0.45, 1],
   );
 
@@ -256,73 +262,73 @@ class AppPalette extends ThemeExtension<AppPalette> {
   /// Sampled from `design/app_ref_design/`.
   static const AppPalette light = AppPalette(
     brightness: Brightness.light,
-    canvasPeach: Color(0xFFFDEEE3),
-    canvasCream: Color(0xFFFFF7F1),
-    canvasWhite: Color(0xFFFFFDFC),
-    primary: Color(0xFFF26B21),
-    primaryPressed: Color(0xFFD95A14),
-    primaryText: Color(0xFFC2410C),
-    primarySoft: Color(0xFFFFF1E8),
-    navSurface: Color(0xFF17181A),
+    canvasStart: Color(0xFFF3F4F6),
+    canvasMid: Color(0xFFF0F1F3),
+    canvasEnd: Color(0xFFECEEF1),
+    primary: Color(0xFF16A34A),
+    primaryPressed: Color(0xFF12833B),
+    primaryText: Color(0xFF0F7A38),
+    primarySoft: Color(0xFFE8F8EE),
+    navSurface: Color(0xFF0A0B0D),
     navActivePill: Color(0xFFD9F94A),
     navOnActivePill: Color(0xFF0F1011),
-    navItemSunken: Color(0xFF0E0F10),
-    navInactiveIcon: Color(0xFFB6BBC1),
-    paid: Color(0xFF34C759),
-    dueSoon: Color(0xFFF5A623),
-    overdue: Color(0xFFE5484D),
+    navItemSunken: Color(0xFF1C1F24),
+    navInactiveIcon: Color(0xFFA8AEB8),
+    paid: Color(0xFF16A34A),
+    dueSoon: Color(0xFFF59E0B),
+    overdue: Color(0xFFEF4444),
     info: Color(0xFF3B82F6),
-    paidTint: Color(0xFFE7F8EC),
-    paidText: Color(0xFF1B7A32),
-    dueSoonTint: Color(0xFFFFF4E0),
+    paidTint: Color(0xFFE8F8EE),
+    paidText: Color(0xFF0F7A38),
+    dueSoonTint: Color(0xFFFEF3E2),
     dueSoonText: Color(0xFF8A5200),
     overdueTint: Color(0xFFFDECEC),
     overdueText: Color(0xFFB3262A),
     infoTint: Color(0xFFE8F0FE),
     infoText: Color(0xFF1A4FA0),
-    textPrimary: Color(0xFF1A1A1C),
-    textSecondary: Color(0xFF5F5F66),
-    textTertiary: Color(0xFF6A6A74),
+    textPrimary: Color(0xFF14161A),
+    textSecondary: Color(0xFF5C6167),
+    textTertiary: Color(0xFF666A72),
     textOnPrimary: Color(0xFFFFFFFF),
     textOnDark: Color(0xFFF5F5F7),
     surface: Color(0xFFFFFFFF),
-    surfaceMuted: Color(0xFFF4F2F0),
-    surfaceInput: Color(0xFFF7F5F3),
-    border: Color(0xFFECE8E4),
-    disabled: Color(0xFFE3E0DC),
-    onDisabled: Color(0xFF5E5A56),
+    surfaceMuted: Color(0xFFF1F2F4),
+    surfaceInput: Color(0xFFF4F5F7),
+    border: Color(0xFFE6E8EC),
+    disabled: Color(0xFFE3E5E9),
+    onDisabled: Color(0xFF5A5D63),
     shadowSubtle: Color(0x0A000000),
     shadowCard: Color(0x0D000000),
     shadowFloating: Color(0x1F000000),
-    glow: Color(0x40F26B21),
+    glow: Color(0x3316A34A),
   );
 
   /// Derived from [light], since the reference design has no dark mode.
   ///
   /// Three decisions shape it:
   ///
-  /// * The canvas is a **warm** charcoal, not neutral black, so the peach
-  ///   character survives the inversion.
+  /// * The canvas is a near-neutral charcoal, matching the reference.s cool grey
+  ///   rather than warming it.
   /// * The navigation bar becomes *lighter* than the canvas rather than darker.
   ///   In light mode a dark bar floats; in dark mode a darker bar would sink.
   /// * Shadows are much stronger. A 5%-black shadow is invisible on charcoal,
   ///   so the alpha rises to keep cards reading as lifted.
   static const AppPalette dark = AppPalette(
     brightness: Brightness.dark,
-    canvasPeach: Color(0xFF1A1512),
-    canvasCream: Color(0xFF151312),
-    canvasWhite: Color(0xFF111111),
-    primary: Color(0xFFF26B21),
-    primaryPressed: Color(0xFFD95A14),
-    primaryText: Color(0xFFFFA06B),
-    primarySoft: Color(0xFF3A2416),
-    navSurface: Color(0xFF262324),
+    canvasStart: Color(0xFF121316),
+    canvasMid: Color(0xFF0F1012),
+    canvasEnd: Color(0xFF0D0E10),
+    primary: Color(0xFF16A34A),
+    primaryPressed: Color(0xFF12833B),
+    primaryText: Color(0xFF4ADE80),
+    primarySoft: Color(0xFF15321F),
+    navSurface: Color(0xFF22252A),
     navActivePill: Color(0xFFD9F94A),
     navOnActivePill: Color(0xFF0F1011),
-    navItemSunken: Color(0xFF1A1819),
-    navInactiveIcon: Color(0xFFB6BBC1),
-    paid: Color(0xFF34C759),
-    dueSoon: Color(0xFFF5A623),
+    navItemSunken: Color(0xFF15171A),
+    navInactiveIcon: Color(0xFFA8AEB8),
+    paid: Color(0xFF16A34A),
+    dueSoon: Color(0xFFF59E0B),
     overdue: Color(0xFFFF5A5F),
     info: Color(0xFF5B9BFF),
     paidTint: Color(0xFF14301E),
@@ -333,21 +339,21 @@ class AppPalette extends ThemeExtension<AppPalette> {
     overdueText: Color(0xFFFF9A9D),
     infoTint: Color(0xFF132A45),
     infoText: Color(0xFF8FBBFF),
-    textPrimary: Color(0xFFF5F3F1),
-    textSecondary: Color(0xFFB5B0AC),
-    textTertiary: Color(0xFFA39D96),
+    textPrimary: Color(0xFFF2F3F5),
+    textSecondary: Color(0xFFB3B8C0),
+    textTertiary: Color(0xFF969CA6),
     textOnPrimary: Color(0xFFFFFFFF),
     textOnDark: Color(0xFFF5F5F7),
-    surface: Color(0xFF1F1D1C),
-    surfaceMuted: Color(0xFF2A2726),
-    surfaceInput: Color(0xFF232120),
-    border: Color(0xFF322E2C),
-    disabled: Color(0xFF2E2A28),
-    onDisabled: Color(0xFFA6A199),
+    surface: Color(0xFF1A1C1F),
+    surfaceMuted: Color(0xFF23262A),
+    surfaceInput: Color(0xFF1F2226),
+    border: Color(0xFF2C2F34),
+    disabled: Color(0xFF2A2D32),
+    onDisabled: Color(0xFF9DA3AC),
     shadowSubtle: Color(0x33000000),
     shadowCard: Color(0x4D000000),
     shadowFloating: Color(0x66000000),
-    glow: Color(0x40F26B21),
+    glow: Color(0x3316A34A),
   );
 
   /// Returns `this`.
@@ -370,9 +376,9 @@ class AppPalette extends ThemeExtension<AppPalette> {
 
     return AppPalette(
       brightness: t < 0.5 ? brightness : other.brightness,
-      canvasPeach: mix(canvasPeach, other.canvasPeach),
-      canvasCream: mix(canvasCream, other.canvasCream),
-      canvasWhite: mix(canvasWhite, other.canvasWhite),
+      canvasStart: mix(canvasStart, other.canvasStart),
+      canvasMid: mix(canvasMid, other.canvasMid),
+      canvasEnd: mix(canvasEnd, other.canvasEnd),
       primary: mix(primary, other.primary),
       primaryPressed: mix(primaryPressed, other.primaryPressed),
       primaryText: mix(primaryText, other.primaryText),

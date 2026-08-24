@@ -10,7 +10,7 @@ import '../../theme/app_spacing.dart';
 /// Most of the styling already comes from the theme, so this widget only adds
 /// what a themed `FilledButton` cannot:
 ///
-/// * the warm orange glow beneath the button, as in the reference design;
+/// * the soft green glow beneath the button, as in the reference design;
 /// * a busy state that shows a spinner and blocks repeat taps.
 ///
 /// For a plain action with neither, use `FilledButton` directly — wrapping it for
@@ -103,7 +103,7 @@ class AppSecondaryButton extends StatelessWidget {
 
 /// A destructive action: delete a bill, remove a debt, sign out.
 ///
-/// Red rather than orange, and never the default focus of a screen. It exists so
+/// Red rather than the brand green, and never the default focus of a screen. It exists so
 /// that "this cannot be undone" is visible before the tap, not only in the
 /// confirmation dialog that follows.
 class AppDangerButton extends StatelessWidget {

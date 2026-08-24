@@ -169,7 +169,7 @@ void main() {
       // ever regressed to a constant, this is what would catch it.
       expect(
         paletteOf(tester).canvas.colors.first,
-        AppPalette.dark.canvasPeach,
+        AppPalette.dark.canvasStart,
       );
     });
   });

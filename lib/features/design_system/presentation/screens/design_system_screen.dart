@@ -123,8 +123,8 @@ class _ColourGrid extends StatelessWidget {
           onColor: context.colors.textOnPrimary,
         ),
         _Swatch(
-          label: 'canvasPeach',
-          color: context.colors.canvasPeach,
+          label: 'canvasStart',
+          color: context.colors.canvasStart,
           onColor: context.colors.textPrimary,
         ),
         _Swatch(
