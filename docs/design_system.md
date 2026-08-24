@@ -118,6 +118,14 @@ The bar also **hugs its content and centres itself** rather than stretching edge
 to edge. Spread across the full width, four destinations sat too far apart; the
 reference bar is a compact pill.
 
+Because it floats *over* the page, the shell paints a **bottom fade** beneath it:
+content dissolves into the canvas just above the bar rather than running under it
+and being cut off by the screen edge. That was always faintly odd and became a
+visible band once cards gained an outline — the card's left and right edges poked
+out either side of the pill and read as a second bar. The fade's height is
+computed from `PayPawBottomNav.barHeight` and the device's gesture inset, not
+guessed, so it reaches full opacity exactly at the bar's top edge.
+
 It carries destinations only. An add button floated beside it until Sprint 40's
 follow-up, so that recording a bill worked from every tab; it moved to the Bills
 screen's own header, above the list it adds to. The dashboard's "Add bill"
