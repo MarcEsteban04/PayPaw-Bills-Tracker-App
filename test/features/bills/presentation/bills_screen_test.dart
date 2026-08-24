@@ -231,8 +231,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('edit bill-2'), findsNothing);
-      expect(find.text('Edit bill'), findsOneWidget);
-      expect(find.text('Outstanding'), findsOneWidget);
+      expect(find.byTooltip('Edit'), findsOneWidget);
+      expect(find.text('OUTSTANDING'), findsOneWidget);
     });
 
     testWidgets('a bill with no category still renders', (

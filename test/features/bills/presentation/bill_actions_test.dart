@@ -119,22 +119,25 @@ void main() {
 
       await openDetail(tester, 'Meralco electricity');
 
-      expect(find.text('Amount'), findsOneWidget);
-      expect(find.text('₱2,450.50'), findsOneWidget);
-      expect(find.text('Paid'), findsOneWidget);
-      expect(find.text('₱1,000.00'), findsOneWidget);
-      expect(find.text('Outstanding'), findsWidgets);
+      // One headline figure, then the split beneath it. The reader should not
+      // have to decide which of two equal rows is the answer.
+      //
+      // The amount itself is not asserted by a bare finder: the summary card and
+      // the list row behind the sheet legitimately show the same figure.
+      expect(find.text('OUTSTANDING'), findsOneWidget);
+      expect(find.text('₱1,000.00 paid of ₱2,450.50'), findsOneWidget);
     });
 
-    testWidgets('hides the paid line when nothing has been paid', (
+    testWidgets('hides the split when nothing has been paid', (
       WidgetTester tester,
     ) async {
-      // A row reading "Paid ₱0.00" is a line that only ever says nothing.
+      // The bar would be empty and the line under it would repeat the figure
+      // above — two ways of saying what the headline already said.
       await pumpList(tester, <BillWithStatus>[item()]);
 
       await openDetail(tester, 'Meralco electricity');
 
-      expect(find.text('Paid'), findsNothing);
+      expect(find.textContaining('paid of'), findsNothing);
     });
 
     testWidgets('shows the notes and the payee when there are any', (
@@ -146,8 +149,9 @@ void main() {
 
       await openDetail(tester, 'Meralco electricity');
 
-      expect(find.text('NOTES'), findsOneWidget);
+      expect(find.text('Notes'), findsOneWidget);
       expect(find.text('Account 1234'), findsOneWidget);
+      expect(find.text('Paid to'), findsOneWidget);
       expect(find.text('Meralco'), findsOneWidget);
     });
 
@@ -158,7 +162,7 @@ void main() {
 
       await openDetail(tester, 'Meralco electricity');
 
-      expect(find.text('NOTES'), findsNothing);
+      expect(find.text('Notes'), findsNothing);
       expect(find.text('Paid to'), findsNothing);
     });
 
@@ -166,7 +170,7 @@ void main() {
       await pumpList(tester, <BillWithStatus>[item()]);
       await openDetail(tester, 'Meralco electricity');
 
-      await tester.tap(find.text('Edit bill'));
+      await tester.tap(find.byTooltip('Edit'));
       await tester.pumpAndSettle();
 
       expect(find.text('edit bill-1'), findsOneWidget);
@@ -181,9 +185,7 @@ void main() {
       await pumpList(tester, <BillWithStatus>[item()]);
       await openDetail(tester, 'Meralco electricity');
 
-      final Rect delete = tester.getRect(
-        find.widgetWithText(FilledButton, 'Delete'),
-      );
+      final Rect delete = tester.getRect(find.byTooltip('Delete'));
 
       // On screen and not clipped, which is what the nav bar was preventing.
       expect(delete.bottom, lessThanOrEqualTo(1200));
@@ -198,8 +200,8 @@ void main() {
       await pumpList(tester, <BillWithStatus>[item()]);
       await openDetail(tester, 'Meralco electricity');
 
-      expect(find.text('Archive'), findsOneWidget);
-      expect(find.text('Restore'), findsNothing);
+      expect(find.byTooltip('Archive'), findsOneWidget);
+      expect(find.byTooltip('Restore'), findsNothing);
     });
   });
 
@@ -210,7 +212,7 @@ void main() {
       await pumpList(tester, <BillWithStatus>[item()]);
       await openDetail(tester, 'Meralco electricity');
 
-      await tester.tap(find.text('Archive'));
+      await tester.tap(find.byTooltip('Archive'));
       await tester.pumpAndSettle();
 
       expect(repository.archived, 'bill-1');
@@ -230,7 +232,7 @@ void main() {
       ]);
       await openDetail(tester, 'Meralco electricity');
 
-      await tester.tap(find.text('Delete'));
+      await tester.tap(find.byTooltip('Delete'));
       await tester.pumpAndSettle();
 
       expect(find.text('Delete Meralco electricity?'), findsOneWidget);
@@ -242,7 +244,7 @@ void main() {
     testWidgets('cancelling deletes nothing', (WidgetTester tester) async {
       await pumpList(tester, <BillWithStatus>[item()]);
       await openDetail(tester, 'Meralco electricity');
-      await tester.tap(find.text('Delete'));
+      await tester.tap(find.byTooltip('Delete'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.widgetWithText(OutlinedButton, 'Cancel'));
@@ -254,7 +256,7 @@ void main() {
     testWidgets('confirming deletes it', (WidgetTester tester) async {
       await pumpList(tester, <BillWithStatus>[item()]);
       await openDetail(tester, 'Meralco electricity');
-      await tester.tap(find.text('Delete'));
+      await tester.tap(find.byTooltip('Delete'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
@@ -271,7 +273,7 @@ void main() {
       // a lie. The confirmation is what stands in for it.
       await pumpList(tester, <BillWithStatus>[item()]);
       await openDetail(tester, 'Meralco electricity');
-      await tester.tap(find.text('Delete'));
+      await tester.tap(find.byTooltip('Delete'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
       await tester.pumpAndSettle();

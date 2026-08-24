@@ -10,6 +10,7 @@ import '../../../categories/presentation/controllers/category_providers.dart';
 import '../../../categories/presentation/widgets/category_icon.dart';
 import '../../domain/entities/bill_status.dart';
 import '../../domain/entities/bill_with_status.dart';
+import 'bill_status_display.dart';
 
 /// One bill in a list.
 ///
@@ -150,7 +151,7 @@ class BillListTile extends ConsumerWidget {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      if (_badge(item.status)
+                      if (BillStatusDisplay.badge(item.status)
                           case final String label) ...<Widget>[
                         const SizedBox(height: AppSpacing.xxs),
                         Text(
@@ -205,17 +206,6 @@ class BillListTile extends ConsumerWidget {
       final int days => 'Due in $days days',
     };
   }
-
-  /// The badge, or null where the due line already says it.
-  ///
-  /// Overdue and due-soon are urgent enough to repeat. Part-paid is the one the
-  /// date cannot express at all: a bill can be half settled and not due for weeks.
-  static String? _badge(BillStatus? status) => switch (status) {
-    BillStatus.overdue => 'OVERDUE',
-    BillStatus.dueSoon => 'DUE SOON',
-    BillStatus.partiallyPaid => 'PART PAID',
-    _ => null,
-  };
 }
 
 /// How much of a part-paid bill has been cleared.
