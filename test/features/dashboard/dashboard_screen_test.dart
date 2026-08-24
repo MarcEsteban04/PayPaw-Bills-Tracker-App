@@ -4,14 +4,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:paypaw/app/router/app_routes.dart';
 import 'package:paypaw/core/domain/money.dart';
+import 'package:paypaw/core/presentation/widgets/app_skeleton.dart';
 import 'package:paypaw/core/theme/app_theme.dart';
 import 'package:paypaw/features/bills/domain/entities/bill.dart';
 import 'package:paypaw/features/bills/domain/entities/bill_status.dart';
 import 'package:paypaw/features/bills/domain/entities/bill_with_status.dart';
+import 'package:paypaw/features/bills/presentation/controllers/bill_detail_provider.dart';
 import 'package:paypaw/features/bills/presentation/controllers/bill_repository_provider.dart';
 import 'package:paypaw/features/categories/domain/entities/category.dart';
 import 'package:paypaw/features/categories/presentation/controllers/category_providers.dart';
 import 'package:paypaw/features/dashboard/presentation/screens/dashboard_screen.dart';
+import 'package:paypaw/features/dashboard/presentation/widgets/dashboard_cards.dart';
 import 'package:paypaw/features/dashboard/presentation/widgets/dashboard_header.dart';
 import 'package:paypaw/features/payments/presentation/controllers/payment_providers.dart';
 import 'package:paypaw/features/recurring/presentation/controllers/recurring_bill_providers.dart';
@@ -53,6 +56,8 @@ void main() {
     today: DateTime(2026, 9, 3),
   );
 
+  late FakeBillRepository billRepository;
+
   Future<void> pumpDashboard(
     WidgetTester tester,
     List<BillWithStatus> bills,
@@ -62,12 +67,12 @@ void main() {
       ..devicePixelRatio = 3;
     addTearDown(tester.view.reset);
 
+    billRepository = FakeBillRepository(bills: bills);
+
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          billRepositoryProvider.overrideWithValue(
-            FakeBillRepository(bills: bills),
-          ),
+          billRepositoryProvider.overrideWithValue(billRepository),
           recurringBillRepositoryProvider.overrideWithValue(
             FakeRecurringBillRepository(),
           ),
@@ -96,6 +101,33 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
+  }
+
+  /// Drags the list down far enough to arm the refresh, then lets it run.
+  ///
+  /// Stepped by hand rather than through `fling` or `drag`. `RefreshIndicator`
+  /// arms by accumulating overscroll across scroll notifications, and both of
+  /// those helpers deliver the whole travel in one move — one notification, no
+  /// arming, and a test that reports the feature missing when it is present.
+  ///
+  /// The travel also has to clear a quarter of the viewport, which on this
+  /// test's tall view is 400 logical pixels. A shorter drag shows the spinner
+  /// and then silently cancels on release — indistinguishable, from the
+  /// assertion's side, from no gesture at all.
+  Future<void> pullToRefresh(WidgetTester tester) async {
+    final TestGesture gesture = await tester.startGesture(
+      tester.getCenter(find.byType(DashboardHeader)),
+    );
+
+    for (int i = 0; i < 15; i++) {
+      await gesture.moveBy(const Offset(0, 40));
+      await tester.pump();
+    }
+
+    await gesture.up();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
   }
 
@@ -564,6 +596,132 @@ void main() {
       expect(DashboardHeader.displayName(''), 'Welcome back');
       expect(DashboardHeader.displayName('@nothing.com'), 'Welcome back');
       expect(DashboardHeader.initial(null), 'W');
+    });
+  });
+
+  group('while it is loading', () {
+    testWidgets('stands in for the shape of what is coming', (
+      WidgetTester tester,
+    ) async {
+      // Three plain rectangles said "something is loading" and nothing else, so
+      // the screen jumped when the data landed. A skeleton exists to stop that
+      // jump — otherwise a spinner would do, and cost less.
+      await pumpDashboard(tester, const <BillWithStatus>[]);
+      billRepository.blockFetch();
+
+      final ProviderContainer container = ProviderScope.containerOf(
+        tester.element(find.byType(DashboardScreen)),
+      );
+      container.invalidate(billsProvider);
+      await tester.pump();
+
+      // The header is real before the bills are, and never waits.
+      expect(find.byType(DashboardHeader), findsOneWidget);
+
+      billRepository.releaseFetch();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('and never replaces figures it already has', (
+      WidgetTester tester,
+    ) async {
+      // The defect this exists for: a refresh is *also* AsyncLoading, with the
+      // previous value still attached. Matching on that first meant recording a
+      // payment blanked the whole screen back to placeholders — the user's own
+      // action looking like the app losing its place.
+      await pumpDashboard(tester, <BillWithStatus>[
+        item(
+          id: 'a',
+          name: 'Water',
+          status: BillStatus.dueSoon,
+          dueOn: DateTime(2026, 9, 5),
+          amount: 150000,
+        ),
+      ]);
+
+      expect(find.text('₱1,500.00'), findsWidgets);
+
+      billRepository.blockFetch();
+      final ProviderContainer container = ProviderScope.containerOf(
+        tester.element(find.byType(DashboardScreen)),
+      );
+      container.invalidate(billsProvider);
+      await tester.pump();
+
+      // Mid-refresh, and the figures are still on screen.
+      expect(find.byType(AppSkeleton), findsNothing);
+      expect(find.text('₱1,500.00'), findsWidgets);
+      expect(find.text('Water'), findsOneWidget);
+
+      billRepository.releaseFetch();
+      await tester.pumpAndSettle();
+    });
+  });
+
+  group('refreshing', () {
+    testWidgets('is possible at all', (WidgetTester tester) async {
+      // Before this the only way to ask for fresh figures was to kill the app,
+      // on the screen a user opens specifically to check on something.
+      await pumpDashboard(tester, <BillWithStatus>[
+        item(
+          id: 'a',
+          name: 'Water',
+          status: BillStatus.dueSoon,
+          dueOn: DateTime(2026, 9, 5),
+        ),
+      ]);
+
+      expect(find.byType(RefreshIndicator), findsOneWidget);
+      final int before = billRepository.fetchCalls;
+
+      await pullToRefresh(tester);
+
+      expect(billRepository.fetchCalls, greaterThan(before));
+    });
+
+    testWidgets('even with almost nothing on the screen to pull', (
+      WidgetTester tester,
+    ) async {
+      // A dashboard with two bills does not fill the viewport, and that is
+      // exactly when someone wonders whether the figures are current. Without
+      // AlwaysScrollableScrollPhysics the gesture has nowhere to travel.
+      await pumpDashboard(tester, const <BillWithStatus>[]);
+
+      final int before = billRepository.fetchCalls;
+
+      await pullToRefresh(tester);
+
+      expect(billRepository.fetchCalls, greaterThan(before));
+    });
+  });
+
+  group('the figures that move', () {
+    testWidgets('land on their value rather than counting up to it', (
+      WidgetTester tester,
+    ) async {
+      // A total that counts from zero on every launch is a loading animation
+      // pretending to be information — it withholds the one number the reader
+      // opened the screen for.
+      await pumpDashboard(tester, <BillWithStatus>[
+        item(
+          id: 'a',
+          name: 'Water',
+          status: BillStatus.dueSoon,
+          dueOn: DateTime(2026, 9, 5),
+          amount: 150000,
+        ),
+      ]);
+
+      // Scoped to the animated widget itself. The money card legitimately shows
+      // ₱0.00 for overdue and paid, so a bare finder proves nothing about the
+      // figure that animates.
+      expect(
+        find.descendant(
+          of: find.byType(AnimatedMoney),
+          matching: find.text('₱1,500.00'),
+        ),
+        findsOneWidget,
+      );
     });
   });
 }

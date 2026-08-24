@@ -2,9 +2,60 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/domain/money.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
+
+/// A money figure that counts to its new value when it changes.
+///
+/// ## It animates on change, never on arrival
+///
+/// A total that counts up from zero every time the app opens is a loading
+/// animation pretending to be information — it delays the one number the reader
+/// came for, on a screen that already had it.
+///
+/// This runs only when the figure *moves*, which on this screen means the user
+/// did something: recorded a payment, added a bill. Then the count is worth the
+/// half-second, because it is the app showing the effect of their action rather
+/// than silently redrawing. `TweenAnimationBuilder` gives exactly that — a tween
+/// with no `begin` settles on `end` for the first build and animates from the
+/// current value on every one after.
+///
+/// Whole minor units only. Tweening a `Money` would mean inventing addition on a
+/// value object for the sake of an animation; the interpolation is a double, and
+/// only the endpoints are ever real amounts.
+class AnimatedMoney extends StatelessWidget {
+  const AnimatedMoney({
+    required this.value,
+    this.style,
+    this.duration = const Duration(milliseconds: 450),
+    super.key,
+  });
+
+  final Money value;
+  final TextStyle? style;
+  final Duration duration;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(end: value.minorUnits.toDouble()),
+      duration: duration,
+      // Fast out of the old figure, slow into the new one, so the value the
+      // reader ends up with is the one they spend the time looking at.
+      curve: Curves.easeOutCubic,
+      builder: (BuildContext context, double minorUnits, _) => Text(
+        Money(
+          minorUnits: minorUnits.round(),
+          currency: value.currency,
+        ).format(),
+        maxLines: 1,
+        style: style,
+      ),
+    );
+  }
+}
 
 /// The dashboard's own surface.
 ///
@@ -249,45 +300,60 @@ class ProgressRing extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppPalette colors = context.colors;
     final TextTheme textTheme = Theme.of(context).textTheme;
-    final double value = fraction.clamp(0.0, 1.0);
+    final double target = fraction.clamp(0.0, 1.0);
 
     return Semantics(
       label: 'Settled',
-      value: '${(value * 100).round()} percent',
+      // The target, not the frame. A screen reader should be told where the ring
+      // is going, not read out a sweep it cannot see.
+      value: '${(target * 100).round()} percent',
       child: SizedBox(
         width: size,
         height: size,
-        child: CustomPaint(
-          painter: _RingPainter(
-            fraction: value,
-            // `border`, not `surfaceMuted`: this ring sits on a white card, and
-            // the muted token is close enough to white that the track read as a
-            // faint smudge rather than as the other half of the figure.
-            track: colors.border,
-            // The brand green, at full strength. This is the one place on the
-            // dashboard where green means "done" rather than "press me", and the
-            // ring is unmistakably not a button.
-            fill: colors.primary,
-          ),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Text(
-                  '${(value * 100).round()}%',
-                  style: textTheme.titleMedium?.copyWith(
-                    color: colors.textPrimary,
-                    fontWeight: FontWeight.w700,
+        // Sweeps to its new fraction when it changes, and settles straight onto
+        // it on the first build — the same rule as [AnimatedMoney], for the same
+        // reason. Recording a payment is the moment this is worth watching; app
+        // launch is not.
+        child: TweenAnimationBuilder<double>(
+          tween: Tween<double>(end: target),
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeOutCubic,
+          builder: (BuildContext context, double value, Widget? child) =>
+              CustomPaint(
+                painter: _RingPainter(
+                  fraction: value,
+                  // `border`, not `surfaceMuted`: this ring sits on a white card,
+                  // and the muted token is close enough to white that the track
+                  // read as a faint smudge rather than as the other half of the
+                  // figure.
+                  track: colors.border,
+                  // The brand green, at full strength. This is the one place on
+                  // the dashboard where green means "done" rather than "press
+                  // me", and the ring is unmistakably not a button.
+                  fill: colors.primary,
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text(
+                        '${(value * 100).round()}%',
+                        style: textTheme.titleMedium?.copyWith(
+                          color: colors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      // Rebuilt on every frame above, but this does not change —
+                      // handed through as the builder's `child` so the caption is
+                      // laid out once rather than sixty times a second.
+                      ?child,
+                    ],
                   ),
                 ),
-                Text(
-                  caption,
-                  style: textTheme.labelSmall?.copyWith(
-                    color: colors.textTertiary,
-                  ),
-                ),
-              ],
-            ),
+              ),
+          child: Text(
+            caption,
+            style: textTheme.labelSmall?.copyWith(color: colors.textTertiary),
           ),
         ),
       ),

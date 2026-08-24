@@ -38,6 +38,17 @@ class DashboardQuickActions extends StatelessWidget {
 
   final List<QuickAction> actions;
 
+  /// Width of one shortcut, circle and label together.
+  ///
+  /// Public so the loading placeholder can lay itself out on the same grid. A
+  /// skeleton that packs its circles tighter than the real row makes every icon
+  /// slide sideways the moment the data lands — which is the jump a skeleton
+  /// exists to prevent, reintroduced by the thing meant to prevent it.
+  static const double itemWidth = 72;
+
+  /// Diameter of the circle inside that width.
+  static const double itemCircle = 56;
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -62,11 +73,11 @@ class _ActionButton extends StatelessWidget {
 
   final QuickAction action;
 
-  static const double _circle = 56;
+  static const double _circle = DashboardQuickActions.itemCircle;
 
   /// Wide enough for two short words without wrapping, which is what keeps the
   /// row's height from changing as actions are added.
-  static const double _labelWidth = 72;
+  static const double _labelWidth = DashboardQuickActions.itemWidth;
 
   @override
   Widget build(BuildContext context) {

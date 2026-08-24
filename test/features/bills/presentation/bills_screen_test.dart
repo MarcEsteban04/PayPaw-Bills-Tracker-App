@@ -4,10 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:paypaw/app/router/app_routes.dart';
 import 'package:paypaw/core/domain/money.dart';
+import 'package:paypaw/core/presentation/widgets/app_loading_indicator.dart';
 import 'package:paypaw/core/theme/app_theme.dart';
 import 'package:paypaw/features/bills/domain/entities/bill.dart';
 import 'package:paypaw/features/bills/domain/entities/bill_status.dart';
 import 'package:paypaw/features/bills/domain/entities/bill_with_status.dart';
+import 'package:paypaw/features/bills/presentation/controllers/bill_detail_provider.dart';
 import 'package:paypaw/features/bills/presentation/controllers/bill_repository_provider.dart';
 import 'package:paypaw/features/bills/presentation/screens/bills_screen.dart';
 import 'package:paypaw/features/bills/presentation/widgets/bill_list_tile.dart';
@@ -64,8 +66,12 @@ void main() {
   Future<void> pumpList(
     WidgetTester tester, {
     List<BillWithStatus> bills = const <BillWithStatus>[],
+    bool holdFirstFetch = false,
   }) async {
     repository = FakeBillRepository(bills: bills);
+    if (holdFirstFetch) {
+      repository.blockFetch();
+    }
 
     tester.view
       ..physicalSize = const Size(392 * 3, 900 * 3)
@@ -106,7 +112,13 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+
+    // A held fetch leaves a spinner on screen, and a spinner never settles.
+    if (holdFirstFetch) {
+      await tester.pump();
+    } else {
+      await tester.pumpAndSettle();
+    }
   }
 
   group('with no bills', () {
@@ -265,6 +277,47 @@ void main() {
 
       expect(find.text('Meralco electricity'), findsOneWidget);
       expect(find.text('Cancelled gym'), findsNothing);
+    });
+  });
+
+  group('refreshing', () {
+    testWidgets('keeps the rows on screen while it reloads', (
+      WidgetTester tester,
+    ) async {
+      // The same defect the dashboard had, in the same place: a refresh is also
+      // AsyncLoading, with the previous rows still attached. Matching on that
+      // first replaced the whole list with a centred spinner — a second spinner,
+      // under the pull gesture's own — every time a payment was recorded.
+      await pumpList(tester, bills: <BillWithStatus>[item()]);
+
+      expect(find.text('Meralco electricity'), findsOneWidget);
+
+      repository.blockFetch();
+      final ProviderContainer container = ProviderScope.containerOf(
+        tester.element(find.byType(BillsScreen)),
+      );
+      container.invalidate(billsProvider);
+      await tester.pump();
+
+      expect(find.text('Meralco electricity'), findsOneWidget);
+      expect(find.byType(AppLoadingIndicator), findsNothing);
+
+      repository.releaseFetch();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('and still spins on the very first load', (
+      WidgetTester tester,
+    ) async {
+      // The stale-data rule must not cost the one case a spinner is for: there
+      // is nothing to show yet, so something has to say so.
+      await pumpList(tester, holdFirstFetch: true);
+
+      expect(find.byType(AppLoadingIndicator), findsOneWidget);
+
+      repository.releaseFetch();
+      await tester.pumpAndSettle();
+      expect(find.byType(AppLoadingIndicator), findsNothing);
     });
   });
 }

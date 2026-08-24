@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:paypaw/core/error/app_exception.dart';
 import 'package:paypaw/features/bills/domain/entities/bill.dart';
 import 'package:paypaw/features/bills/domain/entities/bill_status.dart';
@@ -36,9 +38,28 @@ class FakeBillRepository implements BillRepository {
   }) async {
     fetchCalls++;
 
+    if (_gate case final Completer<void> gate) {
+      await gate.future;
+    }
+
     return includeArchived
         ? _bills
         : _bills.where((BillWithStatus b) => !b.bill.isArchived).toList();
+  }
+
+  Completer<void>? _gate;
+
+  /// Holds the next fetch open until [releaseFetch].
+  ///
+  /// The only way to observe what a screen shows *while* it is refreshing. With
+  /// an instant fake the loading state exists for less than a frame, so a screen
+  /// that wrongly blanks itself mid-refresh passes every test — which is exactly
+  /// how the dashboard shipped a skeleton flash on every payment recorded.
+  void blockFetch() => _gate = Completer<void>();
+
+  void releaseFetch() {
+    _gate?.complete();
+    _gate = null;
   }
 
   @override

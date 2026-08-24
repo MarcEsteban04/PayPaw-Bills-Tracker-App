@@ -19,6 +19,7 @@ class AppSkeleton extends StatefulWidget {
     this.width,
     this.height = 16,
     this.borderRadius = AppRadii.chip,
+    this.color,
     super.key,
   });
 
@@ -28,16 +29,31 @@ class AppSkeleton extends StatefulWidget {
   final double height;
   final BorderRadius borderRadius;
 
+  /// Overrides the fill. Defaults to `surfaceMuted`.
+  ///
+  /// **Pass `border` for a placeholder that sits on the canvas rather than on a
+  /// card.** `surfaceMuted` is #F1F2F4 and the canvas runs #F3F4F6 to #ECEEF1, so
+  /// a muted block on the app background is invisible — a skeleton nobody can see
+  /// is a screen that appears to have loaded empty. That token has caught out
+  /// `AppFilterPill`, `DashboardBlock`, the progress ring's track and this widget
+  /// in turn, every time by someone looking at the screen rather than by anything
+  /// the analyzer can check.
+  final Color? color;
+
   /// A single line of placeholder text.
-  factory AppSkeleton.line({double? width}) =>
-      AppSkeleton(width: width, height: 14);
+  ///
+  /// Generative and `const`, not a factory: a skeleton is pure geometry, and the
+  /// screens that compose a dozen of them into a placeholder layout should be
+  /// able to make that whole layout `const`.
+  const AppSkeleton.line({this.width, this.color, super.key})
+    : height = 14,
+      borderRadius = AppRadii.chip;
 
   /// A placeholder for a circular avatar or icon.
-  factory AppSkeleton.circle({double diameter = 40}) => AppSkeleton(
-    width: diameter,
-    height: diameter,
-    borderRadius: AppRadii.round,
-  );
+  const AppSkeleton.circle({double diameter = 40, this.color, super.key})
+    : width = diameter,
+      height = diameter,
+      borderRadius = AppRadii.round;
 
   @override
   State<AppSkeleton> createState() => _AppSkeletonState();
@@ -73,7 +89,7 @@ class _AppSkeletonState extends State<AppSkeleton>
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            color: context.colors.surfaceMuted,
+            color: widget.color ?? context.colors.surfaceMuted,
             borderRadius: widget.borderRadius,
           ),
         ),

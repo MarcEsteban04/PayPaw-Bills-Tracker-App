@@ -166,30 +166,32 @@ class BillsScreen extends ConsumerWidget {
   ) {
     final DateTime? today = _today(ref);
 
+    // Rows we already have outrank a load in flight.
+    //
+    // This matched `AsyncLoading` first, which is right for the first fetch and
+    // wrong for every refresh after it: a refresh is *also* `AsyncLoading`, with
+    // the previous rows still attached. So pulling to refresh replaced the list
+    // with a centred spinner — a second spinner, under the pull gesture's own —
+    // and recording a payment made the whole list vanish and come back.
     return switch (bills) {
-      AsyncLoading<List<BillWithStatus>>() => const Center(
-        child: AppLoadingIndicator(),
-      ),
-      AsyncError<List<BillWithStatus>>(error: final Object error) =>
-        AppErrorState(
-          error: error,
-          onRetry: () => ref.invalidate(billsProvider),
-        ),
       // No bills at all. The whole screen is the empty state: there is no total
       // worth showing and nothing to search, so a summary card reading ₱0.00
       // above an empty search box would be furniture around an apology.
       //
       // Keyed off `today` rather than the filtered list, because that comes from
       // the unfiltered rows — a filter matching nothing is the *other* case.
-      AsyncData<List<BillWithStatus>>() when today == null => AppEmptyState(
-        icon: Icons.receipt_long_rounded,
-        title: 'No bills yet',
-        message:
-            'Add the first one and PayPaw will remind you before it is due.',
-        actionLabel: 'Add bill',
-        onAction: () => context.pushNamed(AppRoutes.addBill.routeName),
-      ),
-      AsyncData<List<BillWithStatus>>(value: final List<BillWithStatus> list) =>
+      AsyncValue<List<BillWithStatus>>(hasValue: true) when today == null =>
+        AppEmptyState(
+          icon: Icons.receipt_long_rounded,
+          title: 'No bills yet',
+          message:
+              'Add the first one and PayPaw will remind you before it is due.',
+          actionLabel: 'Add bill',
+          onAction: () => context.pushNamed(AppRoutes.addBill.routeName),
+        ),
+      AsyncValue<List<BillWithStatus>>(
+        value: final List<BillWithStatus> list?,
+      ) =>
         _BillList(
           bills: list,
           sort: filter.sort,
@@ -199,6 +201,15 @@ class BillsScreen extends ConsumerWidget {
           onClearFilters: () => ref.read(billFilterProvider.notifier).clear(),
           onRefresh: () => _refresh(ref),
         ),
+      // Only reached with nothing to fall back on. A refresh that fails leaves
+      // the rows in place; they are still true as of the last fetch, and the
+      // gesture is how the user asks again.
+      AsyncError<List<BillWithStatus>>(error: final Object error) =>
+        AppErrorState(
+          error: error,
+          onRetry: () => ref.invalidate(billsProvider),
+        ),
+      _ => const Center(child: AppLoadingIndicator()),
     };
   }
 

@@ -794,13 +794,87 @@ records something that happened, and the fix for a wrong one is to remove it and
 enter what occurred. No delete either, because nothing offers it yet — it arrives
 with the confirmation it needs.
 
-## Sprint 38 — Dashboard Polish
+## Sprint 38 — Dashboard Polish — done
 
-* Animations
-* Loading states
-* Empty states
-* Error states
-* Performance optimization
+"Polish" is where a sprint turns into decoration, so this one started with an
+audit of the five bullets rather than with a list of effects to add. Two of them
+were already done, two were broken, and one was not a problem.
+
+**Empty and error states already existed** and were sound — `AppEmptyState` for a
+user with no bills, `_AllClear` for one with nothing pending, `AppErrorState`
+with a retry. Nothing to add; adding anyway would have been churn.
+
+**Performance had no defect to fix.** The three aggregates are microseconds over
+a list of tens, the one `CustomPainter` already guards `shouldRepaint`, and the
+content is bounded. Caching the arithmetic in providers would have been ceremony
+dressed as optimisation. The perceived-performance defect was real, and is below.
+
+### The loading state was wrong twice
+
+**It did not look like what was coming.** Three plain rectangles of arbitrary
+height, so the screen jumped when the data landed — which is the one thing a
+skeleton exists to prevent. Otherwise a spinner would do and cost less. It is now
+shaped after the real first screenful: the hero with its figure and ring, the row
+of shortcuts, the four-figure money card. And it pulses; the blocks it replaced
+were static, which reads as content that finished loading and turned out blank.
+
+**And it replaced live content on every refresh.** This is the serious one. A
+refresh is *also* `AsyncLoading`, with the previous value still attached, so
+matching on it first meant recording a payment blanked the whole dashboard back
+to placeholders and rebuilt it — the user's own action looking like the app
+losing its place. Data now outranks loading whenever there is any.
+
+The Bills screen had the identical bug in the identical place: pulling to refresh
+replaced the list with a centred spinner, *underneath* the pull gesture's own
+spinner. Fixed the same way, because it is the same bug.
+
+A failed refresh now keeps the old figures rather than replacing them with a red
+panel. They are still true as of the last fetch, and throwing away good data
+because a poll failed is worse than being a minute out of date.
+
+### Refreshing was impossible
+
+There was no way to ask for fresh figures short of killing the app — on the
+screen a user opens specifically to check on something. `RefreshIndicator`, with
+`AlwaysScrollableScrollPhysics` so the gesture has somewhere to travel on a
+dashboard that does not fill the viewport, which is exactly when someone wonders
+whether what they are looking at is current.
+
+### Animation only where it carries information
+
+One rule: **animate on change, never on arrival.** A total that counts up from
+zero every launch is a loading animation pretending to be information — it
+withholds the one number the reader opened the screen for.
+
+So `AnimatedMoney` and the progress ring both settle straight onto their value on
+the first build and animate only when it *moves* — which on this screen means the
+user did something. Record a payment and the total counts down and the ring
+sweeps: the app showing the effect of the action rather than silently redrawing.
+`TweenAnimationBuilder` with no `begin` gives exactly that behaviour.
+
+The body crossfades once when the placeholders give way, keyed on the *state*
+rather than the data — keyed on the data, every refresh would fade the screen out
+and back. And there is no staggered entrance: it would look considered and read
+as slow, deliberately withholding every block after the first.
+
+### Found on the way
+
+`AppSkeleton.line` and `.circle` were factories, so no screen could make a
+placeholder layout `const`. They are generative and `const` now.
+
+The shortcut row had to be built twice. First it was invisible: `surfaceMuted`
+on the canvas, the same token that has now caught out `AppFilterPill`,
+`DashboardBlock`, the ring's track and this — found by looking at the screen,
+since nothing an analyzer checks can see it. Then, once the circles were laid
+out on the real row's 72dp grid so the icons would not slide sideways on load,
+four of them came to 336 on a 320dp phone's 328 and the responsive suite caught
+the overflow. The real row scrolls sideways; matching its geometry meant matching
+that too.
+
+`FakeBillRepository` gained `blockFetch`/`releaseFetch`. With an instant fake the
+loading state exists for less than a frame, so a screen that wrongly blanks
+itself mid-refresh passes every test — which is precisely how the skeleton flash
+shipped in the first place.
 
 ---
 

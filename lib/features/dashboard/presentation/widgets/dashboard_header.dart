@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_palette.dart';
-import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
 
 /// Who is looking, and roughly when.
@@ -137,36 +136,6 @@ class _Avatar extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// A rounded square that stands in for a block that has not loaded.
-///
-/// Used by the dashboard's own skeleton. Here rather than in `core` because it is
-/// shaped after this screen's blocks; a general one lives in `AppSkeleton`.
-///
-/// **White with an outline, not `surfaceMuted`.** That token is #F1F2F4 and the
-/// canvas runs #F3F4F6 to #ECEEF1, so a muted block on this background is
-/// invisible — the same mistake `AppFilterPill` had, made a second time here and
-/// caught the same way: by looking at it. A skeleton nobody can see is a screen
-/// that appears to have loaded empty.
-class DashboardBlock extends StatelessWidget {
-  const DashboardBlock({required this.height, super.key});
-
-  final double height;
-
-  @override
-  Widget build(BuildContext context) {
-    final AppPalette colors = context.colors;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: AppRadii.panel,
-        border: Border.all(color: colors.border),
-      ),
-      child: SizedBox(height: height, width: double.infinity),
     );
   }
 }

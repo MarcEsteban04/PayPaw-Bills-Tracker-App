@@ -34,6 +34,7 @@ import '../../../recurring/presentation/controllers/recurring_bill_providers.dar
 import '../widgets/dashboard_cards.dart';
 import '../widgets/dashboard_header.dart';
 import '../widgets/dashboard_quick_actions.dart';
+import '../widgets/dashboard_skeleton.dart';
 
 /// PayPaw's landing screen.
 ///
@@ -67,40 +68,60 @@ class DashboardScreen extends ConsumerWidget {
     return Scaffold(
       body: SafeArea(
         child: AppContentWidth(
-          child: switch (bills) {
-            // The header is real before the bills are, so it is drawn either way
-            // and only the blocks below it wait. A whole screen replaced by a
-            // spinner on every launch is a launch that feels slow even when it
-            // is not.
-            AsyncLoading<List<BillWithStatus>>() => _Scaffold(
+          child: RefreshIndicator(
+            // The only way to ask for fresh figures was to kill the app. The
+            // dashboard is the screen a user opens to check on something, which
+            // makes "is this current?" the question it has to be able to answer.
+            onRefresh: () => ref.refresh(billsProvider.future),
+            child: _Scaffold(
               ref: ref,
-              children: const <Widget>[
-                DashboardBlock(height: 132),
-                SizedBox(height: AppSpacing.sectionGap),
-                DashboardBlock(height: 88),
-                SizedBox(height: AppSpacing.sectionGap),
-                DashboardBlock(height: 160),
-              ],
+              // Which *state* the screen is in, not which data it holds. The
+              // crossfade should play once when the placeholders give way to the
+              // real thing, and never when a figure changes — a whole screen
+              // that fades on every refresh is a screen that flickers.
+              stateKey: switch (bills) {
+                AsyncValue<List<BillWithStatus>>(hasValue: true) => 'data',
+                AsyncError<List<BillWithStatus>>() => 'error',
+                _ => 'loading',
+              },
+              children: _body(context, ref, bills),
             ),
-            AsyncError<List<BillWithStatus>>(error: final Object error) =>
-              _Scaffold(
-                ref: ref,
-                children: <Widget>[
-                  AppErrorState(
-                    error: error,
-                    onRetry: () => ref.invalidate(billsProvider),
-                  ),
-                ],
-              ),
-            AsyncData<List<BillWithStatus>>(
-              value: final List<BillWithStatus> list,
-            ) =>
-              _Scaffold(ref: ref, children: _blocks(context, ref, list)),
-          },
+          ),
         ),
       ),
     );
   }
+
+  /// The blocks for whichever state the bills are in.
+  ///
+  /// ## Data outranks loading, whenever there is any
+  ///
+  /// This used to match on `AsyncLoading` first, which is right exactly once —
+  /// the first fetch. Every refresh after that is *also* `AsyncLoading`, with the
+  /// previous value still attached, so recording a payment blanked the entire
+  /// screen back to placeholders and rebuilt it. The user's own action looked
+  /// like the app losing its place.
+  ///
+  /// So the order is: show what we have; fall back to the error only when there
+  /// is nothing to show instead.
+  ///
+  /// **A failed refresh keeps the old figures rather than replacing them with a
+  /// red panel.** They are still true as of the last fetch, and a dashboard that
+  /// throws away good data because a background poll failed is worse than one
+  /// that is briefly a minute out of date. The pull gesture is how the user asks
+  /// again.
+  List<Widget> _body(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<List<BillWithStatus>> bills,
+  ) => switch (bills) {
+    AsyncValue<List<BillWithStatus>>(value: final List<BillWithStatus> list?) =>
+      _blocks(context, ref, list),
+    AsyncError<List<BillWithStatus>>(error: final Object error) => <Widget>[
+      AppErrorState(error: error, onRetry: () => ref.invalidate(billsProvider)),
+    ],
+    _ => DashboardSkeleton.blocks(),
+  };
 
   /// Everything under the header, once the bills have arrived.
   List<Widget> _blocks(
@@ -305,14 +326,28 @@ class DashboardScreen extends ConsumerWidget {
 
 /// The header, then whatever the screen currently has to say.
 class _Scaffold extends StatelessWidget {
-  const _Scaffold({required this.ref, required this.children});
+  const _Scaffold({
+    required this.ref,
+    required this.children,
+    required this.stateKey,
+  });
 
   final WidgetRef ref;
   final List<Widget> children;
 
+  /// Identifies the *state* — loading, error, data — so the body crossfades once
+  /// on the way in and holds still afterwards. Keyed on the data instead, every
+  /// refresh would fade the screen out and back.
+  final String stateKey;
+
   @override
   Widget build(BuildContext context) {
     return ListView(
+      // Always scrollable, even when the content is short. The pull-to-refresh
+      // gesture needs somewhere to travel, and a dashboard with two bills on it
+      // does not overflow the screen — which is exactly when someone wonders
+      // whether the figures are current.
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screenInset,
         AppSpacing.lg,
@@ -327,7 +362,20 @@ class _Scaffold extends StatelessWidget {
           onAvatarPressed: () => context.goNamed(AppRoutes.profile.routeName),
         ),
         const SizedBox(height: AppSpacing.sectionGap),
-        ...children,
+        // One switcher over the whole body rather than a stagger down the list.
+        //
+        // A staggered entrance would look considered and read as slow: every
+        // block after the first is deliberately withheld from someone who opened
+        // this screen to find out one number. A single short crossfade covers the
+        // swap from placeholders and gets out of the way.
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          child: Column(
+            key: ValueKey<String>(stateKey),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: children,
+          ),
+        ),
       ],
     );
   }
@@ -411,9 +459,12 @@ class _Figures extends StatelessWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
-          child: Text(
-            totals.outstanding.format(),
-            maxLines: 1,
+          // Counts to its new value when it moves, and only then. On this screen
+          // the figure moves because the user recorded a payment or added a
+          // bill, so the count is the app showing the effect of what they just
+          // did rather than silently redrawing.
+          child: AnimatedMoney(
+            value: totals.outstanding,
             style: textTheme.displaySmall?.copyWith(
               color: colors.textPrimary,
               fontWeight: FontWeight.w700,
