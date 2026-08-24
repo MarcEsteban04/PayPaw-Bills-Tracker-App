@@ -59,10 +59,21 @@ class AppFilterPill extends StatelessWidget {
             height: _pillHeight,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             decoration: BoxDecoration(
+              // White with an outline when idle, not `surfaceMuted`.
+              //
+              // `surfaceMuted` is #F1F2F4 and the canvas it sits on runs #F3F4F6
+              // to #ECEEF1 — within two units of it. The pill was invisible by
+              // construction: on the bills screen the row read as four words with
+              // carets after them rather than four controls. White on grey is how
+              // every card on these screens reads, so this borrows the same
+              // contrast instead of inventing one.
               color: isApplied
                   ? context.colors.primarySoft
-                  : context.colors.surfaceMuted,
+                  : context.colors.surface,
               borderRadius: AppRadii.chip,
+              border: isApplied
+                  ? null
+                  : Border.all(color: context.colors.border),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,

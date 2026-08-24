@@ -1,26 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/entities/bill_filter.dart';
 import '../../domain/entities/bill_with_status.dart';
+import 'bill_filter_controller.dart';
 import 'bill_repository_provider.dart';
-
-/// Whether the list includes bills the user has archived.
-///
-/// Off by default, because archiving means "stop showing me this". It exists at
-/// all because without it archiving is a one-way trip: the drawer offers Restore,
-/// but an archived bill cannot be reached to open its drawer, and the undo
-/// snackbar is gone in seconds. A soft delete you cannot undo is a hard delete
-/// wearing a friendlier word.
-///
-/// Sprint 28 folds this into the real filters. Until then it is one switch.
-class ShowArchived extends Notifier<bool> {
-  @override
-  bool build() => false;
-
-  void toggle() => state = !state;
-}
-
-final NotifierProvider<ShowArchived, bool> showArchivedProvider =
-    NotifierProvider<ShowArchived, bool>(ShowArchived.new);
 
 /// Every bill the signed-in user has, soonest due first.
 ///
@@ -30,15 +13,36 @@ final NotifierProvider<ShowArchived, bool> showArchivedProvider =
 /// invalidate this instead. Revisit when bills can change from elsewhere: shared
 /// bills in Sprint 75, or recurring generation running server-side in Phase 6.
 ///
-/// Watching [showArchivedProvider] rather than taking a parameter: flipping the
-/// switch should refetch, and a family keyed on a bool would keep two independent
-/// caches that a write has to invalidate separately.
+/// **Every row, archived included.** [filteredBillsProvider] narrows it, and
+/// `BillFilter` leaves archived bills out by default — so the fetch does not have
+/// to.
+///
+/// This used to pass `includeArchived` from the filter, which kept those rows on
+/// the server until something asked for them. It also meant a user whose only
+/// bills were archived saw "No bills yet" with no filter bar rendered, and so no
+/// way to ask: the screen was in a state it could not get out of. Fetching them
+/// always costs a handful of rows on one person's list, and there is one rule
+/// instead of a rule and a fetch flag that have to agree.
 final FutureProvider<List<BillWithStatus>> billsProvider =
     FutureProvider<List<BillWithStatus>>(
-      (Ref ref) => ref
-          .watch(billRepositoryProvider)
-          .fetchBills(includeArchived: ref.watch(showArchivedProvider)),
+      (Ref ref) =>
+          ref.watch(billRepositoryProvider).fetchBills(includeArchived: true),
     );
+
+/// The bills the current filter admits, in the order it asks for.
+///
+/// A plain `Provider` over [billsProvider]'s `AsyncValue` rather than its own
+/// `FutureProvider`: filtering is synchronous and local, so making it async would
+/// hand the screen a second loading state for work that takes no time — and the
+/// list would flash empty on every keystroke.
+final Provider<AsyncValue<List<BillWithStatus>>> filteredBillsProvider =
+    Provider<AsyncValue<List<BillWithStatus>>>((Ref ref) {
+      final BillFilter filter = ref.watch(billFilterProvider);
+
+      return ref
+          .watch(billsProvider)
+          .whenData((List<BillWithStatus> all) => filter.apply(all));
+    });
 
 /// One bill, by id.
 ///

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:paypaw/app/router/app_routes.dart';
 import 'package:paypaw/core/domain/money.dart';
 import 'package:paypaw/core/error/app_exception.dart';
+import 'package:paypaw/core/presentation/widgets/app_search_field.dart';
 import 'package:paypaw/core/theme/app_palette.dart';
 import 'package:paypaw/core/theme/app_theme.dart';
 import 'package:paypaw/features/bills/domain/entities/bill.dart';
@@ -137,6 +138,20 @@ void main() {
 
   Future<void> openDetail(WidgetTester tester, String name) async {
     await tester.tap(find.text(name));
+    await tester.pumpAndSettle();
+  }
+
+  /// Applies one status through the pill and its sheet.
+  ///
+  /// Driven through the real controls rather than by writing to the provider: the
+  /// pill, the sheet's checkbox and its Apply button all have to line up, and
+  /// each of them is fine in isolation.
+  Future<void> filterToStatus(WidgetTester tester, String label) async {
+    await tester.tap(find.text('Status'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(label));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Apply'));
     await tester.pumpAndSettle();
   }
 
@@ -311,9 +326,12 @@ void main() {
   });
 
   group('archived bills', () {
-    testWidgets('are out of the list until the switch is on', (
+    testWidgets('are out of the list until the status filter asks for them', (
       WidgetTester tester,
     ) async {
+      // Sprint 25 had a dedicated switch in the app bar for this. Sprint 28
+      // folded it into the status filter — "show me the ones I put away" is a
+      // filter, and two controls for one question is one too many.
       await pumpList(tester, <BillWithStatus>[
         item(),
         item(
@@ -326,8 +344,7 @@ void main() {
 
       expect(find.text('Old gym membership'), findsNothing);
 
-      await tester.tap(find.byTooltip('Show archived'));
-      await tester.pumpAndSettle();
+      await filterToStatus(tester, 'Archived');
 
       expect(find.text('Old gym membership'), findsOneWidget);
     });
@@ -346,32 +363,37 @@ void main() {
           archivedAt: DateTime(2026, 8, 12),
         ),
       ]);
-      await tester.tap(find.byTooltip('Show archived'));
-      await tester.pumpAndSettle();
+      await filterToStatus(tester, 'Archived');
 
       expect(find.text('ARCHIVED'), findsOneWidget);
       expect(find.text('UPCOMING'), findsNothing);
     });
 
-    testWidgets('say so when the switch finds nothing', (
+    testWidgets('a filter that finds nothing says so, and offers the way out', (
       WidgetTester tester,
     ) async {
-      // A control that appears to do nothing reads as broken.
+      // Distinct from an empty account: the way out is to widen the filter, not
+      // to add a bill.
       await pumpList(tester, <BillWithStatus>[item()]);
 
-      await tester.tap(find.byTooltip('Show archived'));
+      await filterToStatus(tester, 'Archived');
+
+      expect(find.text('No bills match'), findsOneWidget);
+      expect(find.text('No bills yet'), findsNothing);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Clear filters'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Nothing archived.'), findsOneWidget);
+      expect(find.text('Meralco electricity'), findsOneWidget);
     });
 
     testWidgets('can be restored, which is what makes archiving reversible', (
       WidgetTester tester,
     ) async {
-      // The round trip end to end. Before the switch existed, an archived bill
-      // could not be reached to open its drawer, so the drawer's Restore was
-      // unreachable and the undo snackbar was the only way back — for a few
-      // seconds.
+      // The round trip end to end. Before there was any way to see them, an
+      // archived bill could not be reached to open its drawer, so the drawer's
+      // Restore was unreachable and the undo snackbar was the only way back —
+      // for four seconds.
       await pumpList(tester, <BillWithStatus>[item()]);
 
       await openDetail(tester, 'Meralco electricity');
@@ -380,8 +402,7 @@ void main() {
 
       expect(find.text('Meralco electricity'), findsNothing);
 
-      await tester.tap(find.byTooltip('Show archived'));
-      await tester.pumpAndSettle();
+      await filterToStatus(tester, 'Archived');
       await openDetail(tester, 'Meralco electricity');
 
       expect(find.byTooltip('Restore'), findsOneWidget);
@@ -390,7 +411,86 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repository.restored, 'bill-1');
-      expect(find.text('ARCHIVED'), findsNothing);
+    });
+  });
+
+  group('search', () {
+    testWidgets('narrows the list as it is typed', (WidgetTester tester) async {
+      await pumpList(tester, <BillWithStatus>[
+        item(),
+        item(id: 'bill-2', name: 'Maynilad water'),
+      ]);
+
+      await tester.enterText(find.byType(AppSearchField), 'water');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Maynilad water'), findsOneWidget);
+      expect(find.text('Meralco electricity'), findsNothing);
+    });
+
+    testWidgets('survives matching nothing', (WidgetTester tester) async {
+      // The bar used to live inside the scrolling list, so the box being typed
+      // into disappeared on the keystroke that narrowed too far — leaving no way
+      // to correct the query. It is a fixed header for exactly this reason.
+      await pumpList(tester, <BillWithStatus>[item()]);
+
+      await tester.enterText(find.byType(AppSearchField), 'nothing matches me');
+      await tester.pumpAndSettle();
+
+      expect(find.text('No bills match'), findsOneWidget);
+      expect(find.byType(AppSearchField), findsOneWidget);
+    });
+
+    testWidgets('and the app bar offers to clear it', (
+      WidgetTester tester,
+    ) async {
+      await pumpList(tester, <BillWithStatus>[item()]);
+
+      expect(find.textContaining('Clear ('), findsNothing);
+
+      await tester.enterText(find.byType(AppSearchField), 'meralco');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Clear (1)'), findsOneWidget);
+
+      await tester.tap(find.text('Clear (1)'));
+      await tester.pumpAndSettle();
+
+      // The box empties with it, rather than showing a query that no longer
+      // applies.
+      expect(find.textContaining('Clear ('), findsNothing);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller?.text,
+        isEmpty,
+      );
+    });
+  });
+
+  group('sorting', () {
+    testWidgets('largest first flattens the urgency groups', (
+      WidgetTester tester,
+    ) async {
+      // The groups are a due-date order. Sorting by amount inside "Overdue" then
+      // "Upcoming" would give the largest overdue bill, not the largest bill —
+      // a different question from the one asked.
+      await pumpList(tester, <BillWithStatus>[
+        item(status: BillStatus.overdue),
+        item(id: 'bill-2', name: 'Maynilad water'),
+      ]);
+
+      // Two 'OVERDUE': the section heading and the row's own badge. The badge
+      // survives the sort — it describes the bill, not the grouping — so the
+      // heading has to be counted rather than looked for.
+      expect(find.text('OVERDUE'), findsNWidgets(2));
+
+      await tester.tap(find.byTooltip('Sort: Due soonest'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Largest first'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('LARGEST FIRST'), findsOneWidget);
+      // Only the badge left.
+      expect(find.text('OVERDUE'), findsOneWidget);
     });
   });
 

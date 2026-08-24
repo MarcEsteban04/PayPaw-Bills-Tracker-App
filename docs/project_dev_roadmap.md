@@ -388,16 +388,41 @@ and shows "Unknown".
   list already groups both. Two words for one state is how a status column starts
   drifting. Reopen this if cancelled should mean something archived does not.
 
-## Sprint 28 — Bill Search & Filters
+## Sprint 28 — Bill Search & Filters — done
 
-Implement:
+A search field and a row of filter pills above the list, all of it applied on the
+client. One person's bills are tens of rows and already in memory, so a
+server-side filter would be a round trip per keystroke and a loading state per
+change. Revisit alongside pagination if anyone ever has thousands.
 
-* Search
-* Category filtering
-* Status filtering
-* Date filtering
-* Amount filtering
-* Sorting
+* Search — name and payee, case-insensitive, no debounce (there is no request to
+  delay). Notes are deliberately not searched: they hold account numbers and
+  reminders to self, and matching them surfaces a bill for a reason invisible on
+  the row that came back.
+* Category filtering — multi-select. A bill with no category is excluded once any
+  category is chosen, rather than treated as a wildcard.
+* Status filtering — multi-select over all seven statuses. **This absorbed the
+  archive switch** Sprint 25 put in the app bar; two controls for one question was
+  one too many. An empty selection means "everything except archived", which is
+  the one exception to empty-means-all — archiving means "stop showing me this".
+* Date filtering — presets (Past due, Next 7, Next 30, This month) plus a custom
+  range. Relative to the user's `today` from the view row, never the device clock.
+* Amount filtering — a min/max sheet rather than preset brackets. "Over ₱1,000" is
+  a guess about somebody else's bills.
+* Sorting — due soonest (default), due latest, largest, smallest, name. In the app
+  bar, **not** the pill row: as a fifth pill it sat at x=594 on a 392dp screen,
+  reachable only by scrolling to something invisible, and reordering a list
+  narrows nothing so it never fitted that row's meaning.
+
+The urgency groups only survive the default order. They *are* a due-date sort, so
+largest-first inside "Overdue" then "Upcoming" gives the largest overdue bill —
+a different question from the one asked. Any other sort flattens the list under
+one heading naming the order.
+
+Also fixed here: `AppFilterPill` used `surfaceMuted` (#F1F2F4) on a canvas running
+#F3F4F6 to #ECEEF1, so an unapplied pill was invisible by construction — the row
+read as four words with carets rather than four controls. It is white with an
+outline now, the same contrast every card on these screens uses.
 
 ---
 

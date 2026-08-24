@@ -11,11 +11,16 @@ import '../../../../core/presentation/widgets/app_loading_indicator.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../domain/entities/bill_filter.dart';
+import '../../domain/entities/bill_sort.dart';
 import '../../domain/entities/bill_status.dart';
 import '../../domain/entities/bill_with_status.dart';
 import '../controllers/bill_actions_controller.dart';
 import '../controllers/bill_detail_provider.dart';
+import '../controllers/bill_filter_controller.dart';
 import '../widgets/bill_detail_sheet.dart';
+import '../widgets/bill_filter_bar.dart';
+import '../widgets/bill_filter_sheets.dart';
 import '../widgets/bill_list_tile.dart';
 import '../widgets/bill_swipe_actions.dart';
 import '../widgets/bills_summary_card.dart';
@@ -37,22 +42,29 @@ import '../widgets/bills_summary_card.dart';
 /// Empty groups are absent rather than shown empty. A heading reading "Overdue"
 /// with nothing under it is a small daily untruth.
 ///
-/// ## Still deliberately the plain version
+/// ## Searching and filtering
 ///
-/// Sprint 28 adds search, filters and sorting. This exists early because the edit
-/// form needs something to tap, and a feature that cannot be reached cannot be
-/// tested.
+/// Both live in [BillFilterBar] above the summary, and both are applied on the
+/// client — see `BillFilter`. The archive switch that used to sit in the app bar
+/// is gone: "show me the ones I put away" is a status filter, and having it in two
+/// places was two controls for one question.
 ///
-/// Archived bills are hidden by default, because that is what archiving means —
-/// but the app bar can bring them back into the list, which is what keeps
-/// archiving reversible rather than a delete wearing a friendlier word.
+/// The groups only survive the default order. They *are* a due-date sort, so
+/// asking for largest-first and getting the largest overdue bill followed by the
+/// largest upcoming one answers a question nobody asked. Any other sort flattens
+/// the list.
 class BillsScreen extends ConsumerWidget {
   const BillsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<List<BillWithStatus>> bills = ref.watch(billsProvider);
-    final bool showArchived = ref.watch(showArchivedProvider);
+    // The filtered list, not the raw one. The summary card is fed the same
+    // narrowed list on purpose: a total that ignores the filter would answer a
+    // question the screen is no longer asking.
+    final AsyncValue<List<BillWithStatus>> bills = ref.watch(
+      filteredBillsProvider,
+    );
+    final BillFilter filter = ref.watch(billFilterProvider);
 
     // Failures from archive, restore and delete.
     //
@@ -87,54 +99,142 @@ class BillsScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Bills'),
         actions: <Widget>[
+          // Only when there is something to clear. A permanently visible
+          // "Clear filters" on an unfiltered screen is a button that does
+          // nothing, and the pill row already shows what is applied.
+          if (filter.isNarrowed)
+            TextButton(
+              onPressed: () => ref.read(billFilterProvider.notifier).clear(),
+              child: Text('Clear (${filter.narrowCount})'),
+            ),
+          // Sort lives here rather than among the filter pills. As a fifth pill
+          // it sat off the end of a 392dp row, reachable only by scrolling to
+          // something the user could not see — and it never belonged in that row
+          // anyway, since reordering a list narrows nothing.
           IconButton(
-            onPressed: () => ref.read(showArchivedProvider.notifier).toggle(),
-            tooltip: showArchived ? 'Hide archived' : 'Show archived',
-            isSelected: showArchived,
-            icon: const Icon(Icons.inventory_2_outlined),
-            selectedIcon: const Icon(Icons.inventory_2_rounded),
+            onPressed: () => _pickSort(context, ref, filter.sort),
+            tooltip: 'Sort: ${filter.sort.label}',
+            isSelected: !filter.sort.isDefault,
+            icon: const Icon(Icons.swap_vert_rounded),
           ),
           const SizedBox(width: AppSpacing.xs),
         ],
       ),
       body: SafeArea(
         child: AppContentWidth(
-          child: switch (bills) {
-            AsyncLoading<List<BillWithStatus>>() => const Center(
-              child: AppLoadingIndicator(),
-            ),
-            AsyncError<List<BillWithStatus>>(error: final Object error) =>
-              AppErrorState(
-                error: error,
-                onRetry: () => ref.invalidate(billsProvider),
-              ),
-            AsyncData<List<BillWithStatus>>(
-              value: final List<BillWithStatus> list,
-            )
-                when list.isEmpty =>
-              AppEmptyState(
-                icon: Icons.receipt_long_rounded,
-                title: 'No bills yet',
-                message:
-                    'Add the first one and PayPaw will remind you before it is '
-                    'due.',
-                actionLabel: 'Add bill',
-                onAction: () => context.pushNamed(AppRoutes.addBill.routeName),
-              ),
-            AsyncData<List<BillWithStatus>>(
-              value: final List<BillWithStatus> list,
-            ) =>
-              _BillList(
-                bills: list,
-                showArchived: showArchived,
-                onRefresh: () => _refresh(ref),
-              ),
-          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              // A fixed header, above the results rather than scrolling with
+              // them.
+              //
+              // It has to outlive the list it filters. Inside the scroll view it
+              // vanished the moment a query matched nothing — so the box the user
+              // was typing into disappeared on the keystroke that narrowed too
+              // far, and there was no way back except an empty-state button.
+              //
+              // `today` comes from the *unfiltered* rows, which are still there
+              // when the filtered ones are not. Absent entirely only when the
+              // user has no bills at all, and then there is nothing to filter.
+              if (_today(ref) case final DateTime today) ...<Widget>[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.screenInset,
+                    AppSpacing.md,
+                    AppSpacing.screenInset,
+                    AppSpacing.md,
+                  ),
+                  child: BillFilterBar(today: today),
+                ),
+                Divider(height: 1, color: context.colors.border),
+              ],
+              Expanded(child: _results(context, ref, bills, filter)),
+            ],
+          ),
         ),
       ),
       // No floating button. Adding a bill moved into the shell, beside the
       // navigation bar, so it works from every tab rather than only this one.
     );
+  }
+
+  static Future<void> _pickSort(
+    BuildContext context,
+    WidgetRef ref,
+    BillSort current,
+  ) async {
+    final BillSort? chosen = await showFilterSingleSelect<BillSort>(
+      context: context,
+      title: 'Sort by',
+      options: BillSort.values
+          .map(
+            (BillSort sort) =>
+                FilterOption<BillSort>(value: sort, label: sort.label),
+          )
+          .toList(),
+      selected: current,
+    );
+
+    if (chosen != null) {
+      ref.read(billFilterProvider.notifier).setSort(chosen);
+    }
+  }
+
+  /// Today in the user's zone, from any row the server returned.
+  ///
+  /// Null when there are no bills — including while the first fetch is still in
+  /// flight, which is why the header is absent rather than showing a date the
+  /// device guessed.
+  static DateTime? _today(WidgetRef ref) =>
+      ref.watch(billsProvider).value?.firstOrNull?.today;
+
+  Widget _results(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<List<BillWithStatus>> bills,
+    BillFilter filter,
+  ) {
+    return switch (bills) {
+      AsyncLoading<List<BillWithStatus>>() => const Center(
+        child: AppLoadingIndicator(),
+      ),
+      AsyncError<List<BillWithStatus>>(error: final Object error) =>
+        AppErrorState(
+          error: error,
+          onRetry: () => ref.invalidate(billsProvider),
+        ),
+      // Nothing matched, but there are bills. A different situation from
+      // an empty account and it has to read differently: the way out is to
+      // widen the filter, not to add a bill.
+      AsyncData<List<BillWithStatus>>(value: final List<BillWithStatus> list)
+          when list.isEmpty && filter.isNarrowed =>
+        AppEmptyState(
+          icon: Icons.filter_alt_off_rounded,
+          title: 'No bills match',
+          message:
+              'Nothing here fits what you are looking for. Widen the '
+              'filters or clear them to see everything again.',
+          actionLabel: 'Clear filters',
+          onAction: () => ref.read(billFilterProvider.notifier).clear(),
+        ),
+      AsyncData<List<BillWithStatus>>(value: final List<BillWithStatus> list)
+          when list.isEmpty =>
+        AppEmptyState(
+          icon: Icons.receipt_long_rounded,
+          title: 'No bills yet',
+          message:
+              'Add the first one and PayPaw will remind you before it is '
+              'due.',
+          actionLabel: 'Add bill',
+          onAction: () => context.pushNamed(AppRoutes.addBill.routeName),
+        ),
+      AsyncData<List<BillWithStatus>>(value: final List<BillWithStatus> list) =>
+        _BillList(
+          bills: list,
+          sort: filter.sort,
+          onRefresh: () => _refresh(ref),
+        ),
+    };
   }
 
   Future<void> _refresh(WidgetRef ref) async {
@@ -158,21 +258,26 @@ class _Group {
 class _BillList extends ConsumerWidget {
   const _BillList({
     required this.bills,
-    required this.showArchived,
+    required this.sort,
     required this.onRefresh,
   });
 
   final List<BillWithStatus> bills;
 
-  /// Only so the list can say so when the switch is on and there is nothing
-  /// archived. Without it the toggle looks broken on the common case.
-  final bool showArchived;
+  /// Decides whether the urgency headings appear at all. See the class doc on
+  /// [BillsScreen]: the groups are a due-date order, so they cannot coexist with
+  /// a different one.
+  final BillSort sort;
 
   final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final List<_Group> groups = _group(bills);
+    // Already filtered and already sorted by `BillFilter.apply`. Grouping
+    // preserves the order it was handed within each bucket.
+    final List<_Group> groups = sort.isDefault
+        ? _group(bills)
+        : <_Group>[_Group(label: sort.label, bills: bills)];
 
     return RefreshIndicator(
       onRefresh: onRefresh,
@@ -206,14 +311,6 @@ class _BillList extends ConsumerWidget {
               const SizedBox(height: AppSpacing.cardGap),
             ],
           ],
-          // The switch is on and nothing came back under it. Said out loud,
-          // because a control that appears to do nothing reads as broken.
-          if (showArchived &&
-              !groups.any((_Group group) => group.label == _archivedLabel))
-            const Padding(
-              padding: EdgeInsets.only(top: AppSpacing.sectionGap),
-              child: _Note('Nothing archived.'),
-            ),
         ],
       ),
     );
@@ -418,23 +515,6 @@ class _BillList extends ConsumerWidget {
 /// The heading archived bills sit under, and the marker the list checks for when
 /// deciding whether the switch found anything.
 const String _archivedLabel = 'Archived';
-
-/// A quiet line of prose in the list, for the things that are not bills.
-class _Note extends StatelessWidget {
-  const _Note(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      textAlign: TextAlign.center,
-      style: Theme.of(context).textTheme.bodySmall
-          ?.copyWith(color: context.colors.textTertiary),
-    );
-  }
-}
 
 /// A section label, as the reference draws them: small, quiet, with the count
 /// beside it.
