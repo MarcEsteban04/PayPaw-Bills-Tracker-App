@@ -10,6 +10,7 @@ import 'package:paypaw/features/bills/domain/entities/bill_status.dart';
 import 'package:paypaw/features/bills/domain/entities/bill_with_status.dart';
 import 'package:paypaw/features/bills/presentation/controllers/bill_repository_provider.dart';
 import 'package:paypaw/features/bills/presentation/screens/bills_screen.dart';
+import 'package:paypaw/features/bills/presentation/widgets/bill_list_tile.dart';
 import 'package:paypaw/features/categories/domain/entities/category.dart';
 import 'package:paypaw/features/categories/presentation/controllers/category_providers.dart';
 
@@ -138,7 +139,15 @@ void main() {
 
       expect(find.text('Meralco electricity'), findsOneWidget);
       expect(find.text('Due in 2 days'), findsOneWidget);
-      expect(find.text('Due soon'), findsOneWidget);
+      // Scoped to the row: 'Due soon' is now also a section heading and a figure
+      // on the summary card, so a bare finder matches three things.
+      expect(
+        find.descendant(
+          of: find.byType(BillListTile),
+          matching: find.text('Due soon'),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('the amount shown is what is still owed', (
@@ -157,7 +166,15 @@ void main() {
         ],
       );
 
-      expect(find.text('₱450.50'), findsOneWidget);
+      // Scoped to the row. The summary card totals the same figure, so it
+      // legitimately appears twice on the screen.
+      expect(
+        find.descendant(
+          of: find.byType(BillListTile),
+          matching: find.text('₱450.50'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('₱2,450.50'), findsNothing);
     });
 
@@ -173,7 +190,13 @@ void main() {
       );
 
       expect(find.text('4 days overdue'), findsOneWidget);
-      expect(find.text('Overdue'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(BillListTile),
+          matching: find.text('Overdue'),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('a settled bill does not nag about a date', (
@@ -186,7 +209,14 @@ void main() {
         ],
       );
 
-      expect(find.text('Settled'), findsOneWidget);
+      // Scoped to the row: 'Settled' is also the section heading it sits under.
+      expect(
+        find.descendant(
+          of: find.byType(BillListTile),
+          matching: find.text('Settled'),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('tapping a row opens that bill', (WidgetTester tester) async {

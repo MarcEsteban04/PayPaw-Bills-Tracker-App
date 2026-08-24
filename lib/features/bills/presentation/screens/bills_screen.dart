@@ -7,20 +7,36 @@ import '../../../../core/presentation/layout/app_content_width.dart';
 import '../../../../core/presentation/widgets/app_empty_state.dart';
 import '../../../../core/presentation/widgets/app_error_state.dart';
 import '../../../../core/presentation/widgets/app_loading_indicator.dart';
+import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../domain/entities/bill_status.dart';
 import '../../domain/entities/bill_with_status.dart';
 import '../controllers/bill_detail_provider.dart';
 import '../widgets/bill_list_tile.dart';
+import '../widgets/bills_summary_card.dart';
 
 /// The list of bills.
 ///
-/// ## Deliberately the plain version
+/// ## The shape, and where it comes from
 ///
-/// Sprint 28 is search, filters and sorting; this is the list without them. It
-/// exists now because Sprint 24 built an edit form and the roadmap puts the list
-/// four sprints later — so edit would have shipped with nothing to tap and no way
-/// for anyone to try it. A feature that cannot be reached cannot be tested, and
-/// an untested form is not a finished form.
+/// The reference design's screens are a stack of labelled sections on a grey
+/// canvas: a headline panel, then a section label, then cards. This follows that
+/// — a summary panel, then the bills under headings — rather than the bare list
+/// the first version was, which answered no question at all.
+///
+/// **Grouped by urgency, not by date.** A flat list sorted by due date puts a bill
+/// three days overdue below one due next week, and leaves the reader scanning for
+/// red text. The groups do that scanning once: Overdue, Due soon, Upcoming,
+/// Settled, in the order they need attention.
+///
+/// Empty groups are absent rather than shown empty. A heading reading "Overdue"
+/// with nothing under it is a small daily untruth.
+///
+/// ## Still deliberately the plain version
+///
+/// Sprint 28 adds search, filters and sorting. This exists early because the edit
+/// form needs something to tap, and a feature that cannot be reached cannot be
+/// tested.
 ///
 /// Archived bills are absent, because that is what archiving means. Sprint 25
 /// gives them a way back.
@@ -32,9 +48,9 @@ class BillsScreen extends ConsumerWidget {
     final AsyncValue<List<BillWithStatus>> bills = ref.watch(billsProvider);
 
     return Scaffold(
-      // Kept even though the list has its own heading in the reference design.
-      // The shell's tabs do not label the screen they switched to, so without
-      // this the user has no confirmation of where a tap landed.
+      // Kept even though the reference gives each screen its own heading. The
+      // shell's tabs do not label the screen they switched to, so without this
+      // there is no confirmation of where a tap landed.
       appBar: AppBar(title: const Text('Bills')),
       body: SafeArea(
         child: AppContentWidth(
@@ -58,7 +74,7 @@ class BillsScreen extends ConsumerWidget {
                     'Add the first one and PayPaw will remind you before it is '
                     'due.',
                 actionLabel: 'Add bill',
-                onAction: () => _openAdd(context),
+                onAction: () => context.pushNamed(AppRoutes.addBill.routeName),
               ),
             AsyncData<List<BillWithStatus>>(
               value: final List<BillWithStatus> list,
@@ -67,21 +83,10 @@ class BillsScreen extends ConsumerWidget {
           },
         ),
       ),
-      floatingActionButton: Padding(
-        // The navigation bar floats over content, so the button has to clear it
-        // or it sits under the pill.
-        padding: const EdgeInsets.only(bottom: AppSpacing.bottomNavClearance),
-        child: FloatingActionButton.extended(
-          onPressed: () => _openAdd(context),
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('Add bill'),
-        ),
-      ),
+      // No floating button. Adding a bill moved into the shell, beside the
+      // navigation bar, so it works from every tab rather than only this one.
     );
   }
-
-  void _openAdd(BuildContext context) =>
-      context.pushNamed(AppRoutes.addBill.routeName);
 
   Future<void> _refresh(WidgetRef ref) async {
     ref.invalidate(billsProvider);
@@ -90,6 +95,15 @@ class BillsScreen extends ConsumerWidget {
     // have refreshed.
     await ref.read(billsProvider.future);
   }
+}
+
+/// A group of bills under one heading.
+@immutable
+class _Group {
+  const _Group({required this.label, required this.bills});
+
+  final String label;
+  final List<BillWithStatus> bills;
 }
 
 class _BillList extends StatelessWidget {
@@ -102,31 +116,106 @@ class _BillList extends StatelessWidget {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       onRefresh: onRefresh,
-      child: ListView.separated(
+      child: ListView(
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.screenInset,
           AppSpacing.lg,
           AppSpacing.screenInset,
-          // Clears the floating navigation bar and the floating button above it.
-          AppSpacing.bottomNavClearance + AppSpacing.huge,
+          // Clears the floating navigation bar and the add button beside it.
+          AppSpacing.bottomNavClearance + AppSpacing.xl,
         ),
-        itemCount: bills.length,
-        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.cardGap),
-        itemBuilder: (BuildContext context, int index) {
-          final BillWithStatus item = bills[index];
-
-          return BillListTile(
-            item: item,
-            // Straight to edit, for now. Sprint 26 puts a detail screen in
-            // between, which is where a tap should land once there is more to
-            // show than the six fields the form already holds.
-            onTap: () => context.pushNamed(
-              AppRoutes.editBill.routeName,
-              pathParameters: <String, String>{'id': item.bill.id},
-            ),
-          );
-        },
+        children: <Widget>[
+          BillsSummaryCard(bills: bills),
+          for (final _Group group in _group(bills)) ...<Widget>[
+            const SizedBox(height: AppSpacing.sectionGap),
+            _SectionHeading(label: group.label, count: group.bills.length),
+            const SizedBox(height: AppSpacing.md),
+            for (final BillWithStatus item in group.bills) ...<Widget>[
+              BillListTile(
+                item: item,
+                // Straight to edit, for now. Sprint 26 puts a detail screen in
+                // between, which is where a tap should land once there is more
+                // to show than the six fields the form already holds.
+                onTap: () => context.pushNamed(
+                  AppRoutes.editBill.routeName,
+                  pathParameters: <String, String>{'id': item.bill.id},
+                ),
+              ),
+              const SizedBox(height: AppSpacing.cardGap),
+            ],
+          ],
+        ],
       ),
+    );
+  }
+
+  /// Buckets the bills by how much attention they need.
+  ///
+  /// The order is fixed rather than data-driven: overdue first because it is
+  /// already costing the user something, settled last because it is finished.
+  ///
+  /// A status this build does not recognise — one the view starts emitting before
+  /// the app is updated — falls in with Upcoming rather than being dropped. A bill
+  /// missing from the list is worse than a bill under the wrong heading.
+  static List<_Group> _group(List<BillWithStatus> bills) {
+    final List<BillWithStatus> overdue = <BillWithStatus>[];
+    final List<BillWithStatus> dueSoon = <BillWithStatus>[];
+    final List<BillWithStatus> upcoming = <BillWithStatus>[];
+    final List<BillWithStatus> settled = <BillWithStatus>[];
+
+    for (final BillWithStatus bill in bills) {
+      switch (bill.status) {
+        case BillStatus.overdue:
+          overdue.add(bill);
+        case BillStatus.dueSoon:
+          dueSoon.add(bill);
+        case BillStatus.paid:
+          settled.add(bill);
+        case BillStatus.upcoming:
+        case BillStatus.partiallyPaid:
+        case BillStatus.archived:
+        case null:
+          upcoming.add(bill);
+      }
+    }
+
+    return <_Group>[
+      if (overdue.isNotEmpty) _Group(label: 'Overdue', bills: overdue),
+      if (dueSoon.isNotEmpty) _Group(label: 'Due soon', bills: dueSoon),
+      if (upcoming.isNotEmpty) _Group(label: 'Upcoming', bills: upcoming),
+      if (settled.isNotEmpty) _Group(label: 'Settled', bills: settled),
+    ];
+  }
+}
+
+/// A section label, as the reference draws them: small, quiet, with the count
+/// beside it.
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading({required this.label, required this.count});
+
+  final String label;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
+    return Row(
+      children: <Widget>[
+        Text(
+          label,
+          style: textTheme.titleSmall?.copyWith(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Text(
+          '$count',
+          style: textTheme.bodySmall?.copyWith(color: colors.textTertiary),
+        ),
+      ],
     );
   }
 }

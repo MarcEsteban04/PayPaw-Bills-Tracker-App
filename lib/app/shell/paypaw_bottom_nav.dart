@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../core/presentation/layout/app_breakpoints.dart';
@@ -32,6 +34,7 @@ class PayPawBottomNav extends StatelessWidget {
   const PayPawBottomNav({
     required this.currentIndex,
     required this.onDestinationSelected,
+    required this.onAddPressed,
     super.key,
   });
 
@@ -40,6 +43,18 @@ class PayPawBottomNav extends StatelessWidget {
 
   /// Called with the tapped destination's index.
   final ValueChanged<int> onDestinationSelected;
+
+  /// Records a new bill.
+  ///
+  /// Lives beside the destinations rather than inside the pill, because it is not
+  /// a destination — tapping it does not change which tab you are on, and putting
+  /// an action in a row of places is how a navigation bar starts lying about what
+  /// its items do.
+  ///
+  /// It is here rather than on a screen so it works from all four tabs. Adding a
+  /// bill is the app's primary action, and having it only on the Bills tab meant
+  /// finding the right tab first.
+  final VoidCallback onAddPressed;
 
   /// Height of the bar itself, excluding the floating margin.
   static const double _barHeight = 64;
@@ -72,47 +87,134 @@ class PayPawBottomNav extends StatelessWidget {
         // display. There is a test for it.
         child: Align(
           heightFactor: 1,
-          child: Container(
-            height: _barHeight,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: context.colors.navSurface,
-              borderRadius: AppRadii.round,
-              boxShadow: context.colors.floatingShadow,
-            ),
-            child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints constraints) {
-                final bool showLabels =
-                    constraints.maxWidth >=
-                    AppBreakpoints.navLabelMinWidth * textScale;
+          // The pill and the add button, side by side and centred as a pair. Two
+          // surfaces rather than one: the dark pill is where you are, the green
+          // circle is what you can do, and they should not look like the same
+          // kind of thing.
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Flexible(child: _navPill(context, textScale)),
+              const SizedBox(width: AppSpacing.sm),
+              _AddButton(onPressed: onAddPressed),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-                return Row(
-                  // min, so the bar is as wide as its destinations and no wider.
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    for (final AppDestination destination
-                        in AppDestination.values)
-                      // Flexible so no destination can push the row past the
-                      // available width. The selected pill needs more room than
-                      // the others, so it gets twice the share.
-                      Flexible(
-                        flex: destination.index == currentIndex ? 2 : 1,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: _itemGap / 2,
-                          ),
-                          child: _NavItem(
-                            destination: destination,
-                            isSelected: destination.index == currentIndex,
-                            showLabel: showLabels,
-                            onTap: () =>
-                                onDestinationSelected(destination.index),
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              },
+  Widget _navPill(BuildContext context, double textScale) {
+    return Container(
+      height: _barHeight,
+      // xs, not sm. The add button beside the bar took a fixed cut of the row,
+      // and these eight points are the difference between the selected label
+      // fitting on a 412dp phone and being dropped on every phone.
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+      decoration: BoxDecoration(
+        color: context.colors.navSurface,
+        borderRadius: AppRadii.round,
+        boxShadow: context.colors.floatingShadow,
+      ),
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          // The threshold scales *up* with text and never down. Larger text needs
+          // a wider label, so the bar gives it up sooner — but smaller text does
+          // not shrink the icons or their padding, which are fixed. Scaling the
+          // threshold down let labels appear on a bar that could not hold them,
+          // and it overflowed by a pixel at the app's minimum text scale.
+          final bool showLabels =
+              constraints.maxWidth >=
+              AppBreakpoints.navLabelMinWidth * math.max(1, textScale);
+
+          return Row(
+            // min, so the bar is as wide as its destinations and no wider.
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              for (final AppDestination destination in AppDestination.values)
+                // Flexible so no destination can push the row past the
+                // available width. The selected pill needs more room than
+                // the others, so it gets twice the share.
+                Flexible(
+                  // The selected item only needs the extra share when it is
+                  // carrying a label. Giving it double the width in icon-only
+                  // mode starves the other three, whose circles cannot shrink
+                  // below the 48dp tap target — which showed up as the bar
+                  // overflowing by five pixels once the add button took its cut
+                  // of the row.
+                  flex: showLabels && destination.index == currentIndex ? 2 : 1,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      // Tighter without labels, where every point counts.
+                      horizontal: (showLabels ? _itemGap : AppSpacing.xs) / 2,
+                    ),
+                    child: _NavItem(
+                      destination: destination,
+                      isSelected: destination.index == currentIndex,
+                      showLabel: showLabels,
+                      onTap: () => onDestinationSelected(destination.index),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Records a bill, from any tab.
+///
+/// A circle rather than the extended pill the Bills screen used to carry: beside
+/// a bar that is already a pill, a second pill reads as a fifth destination. The
+/// icon alone is unambiguous here because the button is the only action on the
+/// screen's furniture, and it keeps its tooltip and semantics label for anyone
+/// who needs the word.
+class _AddButton extends StatelessWidget {
+  const _AddButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  /// Smaller than the bar, so the bar stays the anchor of the pair — and so it
+  /// takes as little width as possible from it. Every point this button occupies
+  /// is a point the four destinations do not have.
+  static const double _size = 48;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+
+    return Semantics(
+      button: true,
+      label: 'Add bill',
+      child: Tooltip(
+        message: 'Add bill',
+        // The shadow is painted by the container, not by Material's elevation:
+        // the bar beside it uses the palette's own `floatingShadow`, and the two
+        // have to match or one appears to hover above the other.
+        child: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: colors.floatingShadow,
+          ),
+          child: Material(
+            color: colors.primary,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onPressed,
+              child: SizedBox(
+                width: _size,
+                height: _size,
+                child: Center(
+                  child: Icon(
+                    Icons.add_rounded,
+                    size: 28,
+                    color: colors.textOnPrimary,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -183,7 +285,10 @@ class _NavItem extends StatelessWidget {
           height: _itemSize,
           constraints: const BoxConstraints(minWidth: _itemSize),
           padding: EdgeInsets.symmetric(
-            horizontal: _isLabelled ? AppSpacing.lg : AppSpacing.md,
+            // md rather than lg around a label: the pill hugs the word a little
+            // more tightly, which is what keeps it inside its share of a bar
+            // that now shares the row with the add button.
+            horizontal: _isLabelled ? AppSpacing.md : AppSpacing.md,
           ),
           decoration: BoxDecoration(
             color: isSelected

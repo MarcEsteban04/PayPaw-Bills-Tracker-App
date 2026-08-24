@@ -59,7 +59,20 @@ class _SheetBody extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.xl),
           ],
-          child,
+          // Flexible, not the child on its own.
+          //
+          // `isScrollControlled` offers the sheet the whole screen height, and
+          // `mainAxisSize.min` then asks the child how tall it wants to be. A
+          // scrolling child — a `ListView`, even a shrink-wrapping one — answers
+          // with its full content height, and a list of thirteen categories is
+          // taller than the room a title and the insets leave. The result was a
+          // sheet overflowing its own bottom by a few pixels and painting the
+          // yellow-and-black stripe over the last row.
+          //
+          // Flexible caps it at what is actually left, and the child scrolls
+          // inside that. A short sheet still hugs its content, because Flexible
+          // is a maximum and not a demand.
+          Flexible(child: child),
         ],
       ),
     );
