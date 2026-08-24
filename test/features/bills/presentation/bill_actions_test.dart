@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:paypaw/app/router/app_routes.dart';
 import 'package:paypaw/core/domain/money.dart';
+import 'package:paypaw/core/error/app_exception.dart';
 import 'package:paypaw/core/theme/app_theme.dart';
 import 'package:paypaw/features/bills/domain/entities/bill.dart';
 import 'package:paypaw/features/bills/domain/entities/bill_status.dart';
@@ -218,6 +219,134 @@ void main() {
       expect(repository.archived, 'bill-1');
       expect(find.text('Meralco electricity archived'), findsOneWidget);
       expect(find.text('Undo'), findsOneWidget);
+    });
+  });
+
+  group('archived bills', () {
+    testWidgets('are out of the list until the switch is on', (
+      WidgetTester tester,
+    ) async {
+      await pumpList(tester, <BillWithStatus>[
+        item(),
+        item(
+          id: 'bill-2',
+          name: 'Old gym membership',
+          status: BillStatus.archived,
+          archivedAt: DateTime(2026, 8, 12),
+        ),
+      ]);
+
+      expect(find.text('Old gym membership'), findsNothing);
+
+      await tester.tap(find.byTooltip('Show archived'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Old gym membership'), findsOneWidget);
+    });
+
+    testWidgets('sit under their own heading, not Upcoming', (
+      WidgetTester tester,
+    ) async {
+      // They used to fall in with Upcoming, which was invisible only for as long
+      // as they never reached the list. A bill the user put away announcing itself
+      // as upcoming is the opposite of what archiving was for.
+      await pumpList(tester, <BillWithStatus>[
+        item(
+          id: 'bill-2',
+          name: 'Old gym membership',
+          status: BillStatus.archived,
+          archivedAt: DateTime(2026, 8, 12),
+        ),
+      ]);
+      await tester.tap(find.byTooltip('Show archived'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('ARCHIVED'), findsOneWidget);
+      expect(find.text('UPCOMING'), findsNothing);
+    });
+
+    testWidgets('say so when the switch finds nothing', (
+      WidgetTester tester,
+    ) async {
+      // A control that appears to do nothing reads as broken.
+      await pumpList(tester, <BillWithStatus>[item()]);
+
+      await tester.tap(find.byTooltip('Show archived'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nothing archived.'), findsOneWidget);
+    });
+
+    testWidgets('can be restored, which is what makes archiving reversible', (
+      WidgetTester tester,
+    ) async {
+      // The round trip end to end. Before the switch existed, an archived bill
+      // could not be reached to open its drawer, so the drawer's Restore was
+      // unreachable and the undo snackbar was the only way back — for a few
+      // seconds.
+      await pumpList(tester, <BillWithStatus>[item()]);
+
+      await openDetail(tester, 'Meralco electricity');
+      await tester.tap(find.byTooltip('Archive'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Meralco electricity'), findsNothing);
+
+      await tester.tap(find.byTooltip('Show archived'));
+      await tester.pumpAndSettle();
+      await openDetail(tester, 'Meralco electricity');
+
+      expect(find.byTooltip('Restore'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Restore'));
+      await tester.pumpAndSettle();
+
+      expect(repository.restored, 'bill-1');
+      expect(find.text('ARCHIVED'), findsNothing);
+    });
+  });
+
+  group('when the write fails', () {
+    testWidgets('a refused delete says so instead of closing quietly', (
+      WidgetTester tester,
+    ) async {
+      // The controller had recorded these failures since it was written and
+      // nothing read them: the dialog closed, the sheet closed, and the row was
+      // still there with no explanation. Silence is the worst possible report on
+      // a destructive action.
+      await pumpList(tester, <BillWithStatus>[item()]);
+      repository.failure = const NetworkException();
+
+      await openDetail(tester, 'Meralco electricity');
+      await tester.tap(find.byTooltip('Delete'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('No internet connection. Check your network and try again.'),
+        findsOneWidget,
+      );
+      // And it did not claim to have worked.
+      expect(find.text('Meralco electricity deleted'), findsNothing);
+      expect(find.text('Meralco electricity'), findsWidgets);
+    });
+
+    testWidgets('a refused archive offers no undo for work not done', (
+      WidgetTester tester,
+    ) async {
+      await pumpList(tester, <BillWithStatus>[item()]);
+      repository.failure = const NetworkException();
+
+      await openDetail(tester, 'Meralco electricity');
+      await tester.tap(find.byTooltip('Archive'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('No internet connection. Check your network and try again.'),
+        findsOneWidget,
+      );
+      expect(find.text('Undo'), findsNothing);
     });
   });
 

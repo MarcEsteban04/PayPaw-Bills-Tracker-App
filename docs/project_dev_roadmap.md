@@ -313,12 +313,22 @@ Create:
 * Change category
 * Modify notes
 
-## Sprint 25 — Delete Bill
+## Sprint 25 — Delete Bill — done
 
-* Delete confirmation
-* Soft delete strategy
-* Error handling
-* Undo support where appropriate
+* Delete confirmation — an `AppConfirmDialog` that names what else goes with the
+  bill, rather than asking "Are you sure?" The payment history is the part the
+  user would actually miss.
+* Soft delete strategy — archive sets `archived_at`; the list hides those rows by
+  default and the app bar's switch brings them back. Without the switch the
+  drawer's Restore could not be reached and the undo snackbar was the only route
+  back, for four seconds — a soft delete nobody can undo is a hard delete wearing
+  a friendlier word.
+* Error handling — `BillActionState.errorMessage` reaches the screen. It had been
+  recorded and never read, so a refused delete looked exactly like one that
+  worked: dialog closed, sheet closed, row still there, no explanation.
+* Undo support where appropriate — on archive, which is one reversible column.
+  Deliberately not on delete: an Undo button on an operation that cannot be
+  undone is a lie, and the confirmation stands in for it.
 
 ## Sprint 26 — Bill Details
 

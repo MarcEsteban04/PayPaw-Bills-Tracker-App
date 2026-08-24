@@ -1,5 +1,6 @@
 import 'package:paypaw/core/error/app_exception.dart';
 import 'package:paypaw/features/bills/domain/entities/bill.dart';
+import 'package:paypaw/features/bills/domain/entities/bill_status.dart';
 import 'package:paypaw/features/bills/domain/entities/bill_with_status.dart';
 import 'package:paypaw/features/bills/domain/entities/new_bill.dart';
 import 'package:paypaw/features/bills/domain/repositories/bill_repository.dart';
@@ -19,6 +20,7 @@ class FakeBillRepository implements BillRepository {
   NewBill? created;
   Bill? updated;
   String? archived;
+  String? restored;
   String? deleted;
 
   int createCalls = 0;
@@ -72,19 +74,57 @@ class FakeBillRepository implements BillRepository {
     return bill;
   }
 
+  /// These three write to [_bills] rather than only recording the call.
+  ///
+  /// A double that says "archived" and then hands the list back unchanged makes
+  /// the archive round trip untestable — and the round trip is the whole point of
+  /// a soft delete. The status is recomputed the way the view computes it:
+  /// archived wins over everything, whatever the date says.
+
   @override
   Future<Bill> archiveBill(String id) async {
+    _throwIfFailing();
     archived = id;
 
-    return _requireStored(id).copyWith(archivedAt: DateTime(2026, 9, 2));
+    final Bill bill = _requireStored(id)
+        .copyWith(archivedAt: DateTime(2026, 9, 2));
+    _replace(bill, BillStatus.archived);
+
+    return bill;
   }
 
   @override
-  Future<Bill> unarchiveBill(String id) async =>
-      _requireStored(id).clearing(archived: true);
+  Future<Bill> unarchiveBill(String id) async {
+    _throwIfFailing();
+    restored = id;
+
+    final Bill bill = _requireStored(id).clearing(archived: true);
+    _replace(bill, BillStatus.upcoming);
+
+    return bill;
+  }
 
   @override
-  Future<void> deleteBill(String id) async => deleted = id;
+  Future<void> deleteBill(String id) async {
+    _throwIfFailing();
+    deleted = id;
+    _bills.removeWhere((BillWithStatus b) => b.bill.id == id);
+  }
+
+  void _replace(Bill bill, BillStatus status) {
+    final int index = _bills.indexWhere(
+      (BillWithStatus b) => b.bill.id == bill.id,
+    );
+    final BillWithStatus previous = _bills[index];
+
+    _bills[index] = BillWithStatus(
+      bill: bill,
+      status: status,
+      paid: previous.paid,
+      outstanding: previous.outstanding,
+      today: previous.today,
+    );
+  }
 
   void _throwIfFailing() {
     if (failure case final AppException exception) {

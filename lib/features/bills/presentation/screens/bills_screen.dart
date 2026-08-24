@@ -43,20 +43,60 @@ import '../widgets/bills_summary_card.dart';
 /// form needs something to tap, and a feature that cannot be reached cannot be
 /// tested.
 ///
-/// Archived bills are absent, because that is what archiving means. Sprint 25
-/// gives them a way back.
+/// Archived bills are hidden by default, because that is what archiving means —
+/// but the app bar can bring them back into the list, which is what keeps
+/// archiving reversible rather than a delete wearing a friendlier word.
 class BillsScreen extends ConsumerWidget {
   const BillsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<BillWithStatus>> bills = ref.watch(billsProvider);
+    final bool showArchived = ref.watch(showArchivedProvider);
+
+    // Failures from archive, restore and delete.
+    //
+    // The controller has recorded these since it was written and nothing ever
+    // read them, so a delete that the server refused looked exactly like a delete
+    // that worked: the dialog closed, the sheet closed, and the row was still
+    // there with no explanation. Silence is the worst possible report on a
+    // destructive action.
+    //
+    // Listened for here rather than in the sheet or the dialog, because both of
+    // those are gone by the time the request fails.
+    ref.listen<BillActionState>(billActionsControllerProvider, (
+      BillActionState? previous,
+      BillActionState next,
+    ) {
+      // Compared against the previous message rather than cleared afterwards.
+      // Clearing would mean writing to a provider from inside its own listener,
+      // and it is not needed: every action clears the error before it starts, so
+      // the same failure twice still arrives here as null then message.
+      if (next.errorMessage case final String message
+          when message != previous?.errorMessage) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(message)));
+      }
+    });
 
     return Scaffold(
       // Kept even though the reference gives each screen its own heading. The
       // shell's tabs do not label the screen they switched to, so without this
       // there is no confirmation of where a tap landed.
-      appBar: AppBar(title: const Text('Bills')),
+      appBar: AppBar(
+        title: const Text('Bills'),
+        actions: <Widget>[
+          IconButton(
+            onPressed: () => ref.read(showArchivedProvider.notifier).toggle(),
+            tooltip: showArchived ? 'Hide archived' : 'Show archived',
+            isSelected: showArchived,
+            icon: const Icon(Icons.inventory_2_outlined),
+            selectedIcon: const Icon(Icons.inventory_2_rounded),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+        ],
+      ),
       body: SafeArea(
         child: AppContentWidth(
           child: switch (bills) {
@@ -84,7 +124,11 @@ class BillsScreen extends ConsumerWidget {
             AsyncData<List<BillWithStatus>>(
               value: final List<BillWithStatus> list,
             ) =>
-              _BillList(bills: list, onRefresh: () => _refresh(ref)),
+              _BillList(
+                bills: list,
+                showArchived: showArchived,
+                onRefresh: () => _refresh(ref),
+              ),
           },
         ),
       ),
@@ -112,13 +156,24 @@ class _Group {
 }
 
 class _BillList extends ConsumerWidget {
-  const _BillList({required this.bills, required this.onRefresh});
+  const _BillList({
+    required this.bills,
+    required this.showArchived,
+    required this.onRefresh,
+  });
 
   final List<BillWithStatus> bills;
+
+  /// Only so the list can say so when the switch is on and there is nothing
+  /// archived. Without it the toggle looks broken on the common case.
+  final bool showArchived;
+
   final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final List<_Group> groups = _group(bills);
+
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView(
@@ -131,7 +186,7 @@ class _BillList extends ConsumerWidget {
         ),
         children: <Widget>[
           BillsSummaryCard(bills: bills),
-          for (final _Group group in _group(bills)) ...<Widget>[
+          for (final _Group group in groups) ...<Widget>[
             const SizedBox(height: AppSpacing.sectionGap),
             _SectionHeading(label: group.label, count: group.bills.length),
             const SizedBox(height: AppSpacing.md),
@@ -151,6 +206,14 @@ class _BillList extends ConsumerWidget {
               const SizedBox(height: AppSpacing.cardGap),
             ],
           ],
+          // The switch is on and nothing came back under it. Said out loud,
+          // because a control that appears to do nothing reads as broken.
+          if (showArchived &&
+              !groups.any((_Group group) => group.label == _archivedLabel))
+            const Padding(
+              padding: EdgeInsets.only(top: AppSpacing.sectionGap),
+              child: _Note('Nothing archived.'),
+            ),
         ],
       ),
     );
@@ -277,13 +340,27 @@ class _BillList extends ConsumerWidget {
   /// A status this build does not recognise — one the view starts emitting before
   /// the app is updated — falls in with Upcoming rather than being dropped. A bill
   /// missing from the list is worse than a bill under the wrong heading.
+  ///
+  /// Archived goes last and on its own. It used to fall in with Upcoming, which
+  /// was harmless only for as long as archived bills never reached this list — a
+  /// bill the user has put away announcing itself as upcoming is the opposite of
+  /// what archiving was for.
   static List<_Group> _group(List<BillWithStatus> bills) {
     final List<BillWithStatus> overdue = <BillWithStatus>[];
     final List<BillWithStatus> dueSoon = <BillWithStatus>[];
     final List<BillWithStatus> upcoming = <BillWithStatus>[];
     final List<BillWithStatus> settled = <BillWithStatus>[];
+    final List<BillWithStatus> archived = <BillWithStatus>[];
 
     for (final BillWithStatus bill in bills) {
+      // The column, not the status. A bill archived while it was overdue keeps
+      // reporting `overdue` from the view, and it belongs here regardless of what
+      // it was doing when it was put away.
+      if (bill.bill.archivedAt != null) {
+        archived.add(bill);
+        continue;
+      }
+
       switch (bill.status) {
         case BillStatus.overdue:
           overdue.add(bill);
@@ -304,7 +381,29 @@ class _BillList extends ConsumerWidget {
       if (dueSoon.isNotEmpty) _Group(label: 'Due soon', bills: dueSoon),
       if (upcoming.isNotEmpty) _Group(label: 'Upcoming', bills: upcoming),
       if (settled.isNotEmpty) _Group(label: 'Settled', bills: settled),
+      if (archived.isNotEmpty) _Group(label: _archivedLabel, bills: archived),
     ];
+  }
+}
+
+/// The heading archived bills sit under, and the marker the list checks for when
+/// deciding whether the switch found anything.
+const String _archivedLabel = 'Archived';
+
+/// A quiet line of prose in the list, for the things that are not bills.
+class _Note extends StatelessWidget {
+  const _Note(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      textAlign: TextAlign.center,
+      style: Theme.of(context).textTheme.bodySmall
+          ?.copyWith(color: context.colors.textTertiary),
+    );
   }
 }
 
