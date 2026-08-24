@@ -13,7 +13,12 @@ import 'app_destination.dart';
 ///
 /// A dark pill floating above the content, not a bar attached to the bottom
 /// edge. The selected destination is a lime pill carrying a black icon and
-/// label; the rest are recessed circular icon buttons.
+/// label; the rest are bare icons.
+///
+/// The unselected ones sat in recessed grey circles, from the reference bar.
+/// Four circles plus a pill made five shapes on a strip whose whole job is to
+/// say which one you are on — and once the bar went near-black they became the
+/// loudest thing on it.
 ///
 /// Because it floats *over* content, every scrollable screen must pad its
 /// bottom by [AppSpacing.bottomNavClearance] or its last item ends up
@@ -96,6 +101,15 @@ class PayPawBottomNav extends StatelessWidget {
         color: context.colors.navSurface,
         borderRadius: AppRadii.round,
         boxShadow: context.colors.floatingShadow,
+        // A hairline, not a lighter fill.
+        //
+        // The bar is near-black by design and lifting it again would undo that.
+        // But against a black canvas a near-black bar has no edge, and its
+        // shadow is a shade of black doing nothing — the same bind the cards
+        // were in. An outline gives it a shape without making it brighter.
+        //
+        // Null in light mode, where a dark bar on a light page needs no help.
+        border: context.colors.surfaceBorder,
       ),
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
@@ -119,10 +133,9 @@ class PayPawBottomNav extends StatelessWidget {
                 Flexible(
                   // The selected item only needs the extra share when it is
                   // carrying a label. Giving it double the width in icon-only
-                  // mode starves the other three, whose circles cannot shrink
-                  // below the 48dp tap target — which showed up as the bar
-                  // overflowing by five pixels once the add button took its cut
-                  // of the row.
+                  // mode starves the other three, which cannot shrink below the
+                  // 48dp tap target — that showed up as the bar overflowing by
+                  // five pixels back when an add button took its cut of the row.
                   flex: showLabels && destination.index == currentIndex ? 2 : 1,
                   child: Padding(
                     padding: EdgeInsets.symmetric(
@@ -145,7 +158,7 @@ class PayPawBottomNav extends StatelessWidget {
   }
 }
 
-/// One destination: a recessed circle, or the lime pill when selected.
+/// One destination: a bare icon, or the lime pill when selected.
 class _NavItem extends StatelessWidget {
   const _NavItem({
     required this.destination,
@@ -213,9 +226,17 @@ class _NavItem extends StatelessWidget {
             horizontal: _isLabelled ? AppSpacing.md : AppSpacing.md,
           ),
           decoration: BoxDecoration(
+            // Nothing behind an unselected destination.
+            //
+            // They used to sit in recessed grey circles, which came from the
+            // reference bar. Four circles plus a pill made five shapes on a
+            // strip whose whole job is to say which one of them you are on —
+            // and once the bar itself went near-black the circles were the
+            // loudest thing on it. The icons carry it alone now, and the lime
+            // pill is the only fill left.
             color: isSelected
                 ? context.colors.navActivePill
-                : context.colors.navItemSunken,
+                : Colors.transparent,
             borderRadius: AppRadii.round,
           ),
           child: Row(

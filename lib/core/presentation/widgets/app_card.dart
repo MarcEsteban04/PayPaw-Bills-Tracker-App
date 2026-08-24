@@ -72,8 +72,8 @@ class AppCard extends StatelessWidget {
       // other, never both.
       child: Material(
         color: color ?? palette.surface,
-        borderRadius: palette.cardBorder == null ? borderRadius : null,
-        shape: palette.cardBorder == null
+        borderRadius: palette.surfaceBorder == null ? borderRadius : null,
+        shape: palette.surfaceBorder == null
             ? null
             : RoundedRectangleBorder(
                 borderRadius: borderRadius,

@@ -115,6 +115,10 @@ class AppPalette extends ThemeExtension<AppPalette> {
   final Color navOnActivePill;
 
   /// Recessed circle behind an inactive navigation icon.
+  ///
+  /// The navigation bar no longer draws these — the unselected destinations are
+  /// bare icons. Still used by the bills summary card, whose inner chips sit on
+  /// a dark panel and need the same recess.
   final Color navItemSunken;
 
   /// Inactive navigation icons.
@@ -229,17 +233,20 @@ class AppPalette extends ThemeExtension<AppPalette> {
     BoxShadow(color: shadowCard, blurRadius: 20, offset: const Offset(0, 4)),
   ];
 
-  /// The hairline that gives a card its edge — in dark mode only.
+  /// The hairline that gives a raised surface its edge — in dark mode only.
   ///
-  /// Light mode has no use for one: a white card on grey already has an edge,
-  /// and [cardShadow] lifts it off the page. **On a true black canvas neither
-  /// works.** A shadow is a shade of black and does nothing against black, and
-  /// the fill difference alone leaves a card that fades out rather than ending.
+  /// Cards, panels, and the floating navigation bar.
   ///
-  /// So the two themes separate a card by opposite means, and this is the half
-  /// that only one of them needs. Null rather than a transparent border, so the
-  /// light-mode decoration is byte-for-byte what it was.
-  BoxBorder? get cardBorder =>
+  /// Light mode has no use for one: a white card on grey already has an edge and
+  /// [cardShadow] lifts it off the page, and the bar is near-black on a light
+  /// canvas. **On a true black canvas neither works.** A shadow is a shade of
+  /// black and does nothing against black, and the fill difference alone leaves
+  /// a surface that fades out rather than ending.
+  ///
+  /// So the two themes give a surface its edge by opposite means, and this is
+  /// the half only one of them needs. Null rather than a transparent border, so
+  /// the light-mode decoration is byte-for-byte what it was.
+  BoxBorder? get surfaceBorder =>
       brightness == Brightness.dark ? Border.all(color: border) : null;
 
   /// Elements floating above content: the navigation, sheets, menus.

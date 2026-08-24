@@ -104,8 +104,15 @@ now the brand colour, so `navActivePill` and `primary` are the same value and th
 "two accents with defined jobs" rule is gone with them.
 
 The bar is `navSurface` `#0A0B0D`: **very dark**, close to black.
-`navItemSunken` `#1C1F24` is *lighter* than the bar, because on a near-black
-surface a darker recess would be invisible.
+Unselected destinations are **bare icons**. They sat in recessed `navItemSunken`
+circles, from the reference bar — four circles plus a pill made five shapes on a
+strip whose whole job is to say which one you are on, and once the bar went
+near-black in both themes they were the loudest thing on it. The token remains
+for the bills summary card's inner chips.
+
+The bar takes a `surfaceBorder` hairline in dark mode for the same reason cards
+do: near-black on black has no edge, and lifting the fill to give it one is what
+made it a grey slab in the first place.
 
 The bar also **hugs its content and centres itself** rather than stretching edge
 to edge. Spread across the full width, four destinations sat too far apart; the
