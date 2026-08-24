@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:paypaw/app/router/app_routes.dart';
+import 'package:paypaw/core/presentation/app_assets.dart';
 import 'package:paypaw/core/theme/app_theme.dart';
 import 'package:paypaw/features/onboarding/presentation/controllers/onboarding_providers.dart';
 import 'package:paypaw/features/onboarding/presentation/screens/welcome_screen.dart';
@@ -164,14 +165,14 @@ void main() {
       expect(find.text('Get started'), findsOneWidget);
     });
 
-    testWidgets('the actions sit near the bottom, not floating mid-screen', (
+    testWidgets('logo, words and buttons are one centred group', (
       WidgetTester tester,
     ) async {
-      // The bug the layout was rebuilt for. Three versions of a measured reserve
-      // left a strip of dead space under the last control on a real phone: the
-      // composition sat high and the buttons floated. The reserve is gone —
-      // IntrinsicHeight plus a Spacer put the slack above the words instead — and
-      // this is what stops it coming back.
+      // Two earlier layouts split them and left a visible hole: first under the
+      // buttons, then between the mascot and the headline. Both were reported.
+      // The assertion is symmetry — whatever room is spare is shared equally
+      // above and below, which is what makes it read as one block rather than
+      // two things pushed to opposite ends.
       for (final Size size in <Size>[
         Size(360, 800),
         Size(392, 830),
@@ -179,31 +180,51 @@ void main() {
       ]) {
         await pumpWelcome(tester, size: size);
 
-        final double bottom = tester
-            .getRect(find.text('I already have an account'))
-            .bottom;
+        final double above = tester.getRect(find.byType(Image)).top;
+        final double below =
+            size.height -
+            tester.getRect(find.text('I already have an account')).bottom;
 
         expect(
-          size.height - bottom,
-          lessThan(48),
+          above,
+          closeTo(below, 24),
           reason:
-              'dead space below the last control at '
-              'x',
+              'the group is not centred at ${size.width}x${size.height}: '
+              '${above.toStringAsFixed(0)} above, '
+              '${below.toStringAsFixed(0)} below',
         );
       }
+    });
+
+    testWidgets('with nothing left floating in the middle of it', (
+      WidgetTester tester,
+    ) async {
+      // The gap the user circled. Measured between the logo's bottom edge and the
+      // wordmark under it, which is where it opened up.
+      await pumpWelcome(tester, size: const Size(400, 860));
+
+      final double logoBottom = tester.getRect(find.byType(Image)).bottom;
+      final double wordmarkTop = tester.getRect(find.text('PayPaw')).top;
+
+      expect(
+        wordmarkTop - logoBottom,
+        lessThan(40),
+        reason: 'the mascot and the words have drifted apart again',
+      );
     });
 
     testWidgets('the artwork gives up room when text is scaled up', (
       WidgetTester tester,
     ) async {
-      // Tall enough that the art survives both scales, so the comparison is
-      // between two real heights rather than against nothing.
-      const Size size = Size(400, 1000);
+      // 1.6 rather than 1.4, and a screen where the words-hint is what binds.
+      // At a taller size the fraction cap decides the height on its own and the
+      // art is identical at both scales — true, and not what this is checking.
+      const Size size = Size(400, 860);
 
       await pumpWelcome(tester, size: size);
       final double normalArt = tester.getSize(find.byType(Image)).height;
 
-      await pumpWelcome(tester, size: size, textScale: 1.4);
+      await pumpWelcome(tester, size: size, textScale: 1.6);
       final double scaledArt = tester.getSize(find.byType(Image)).height;
 
       expect(
@@ -227,14 +248,13 @@ void main() {
     });
   });
 
-  group('the hero card', () {
-    testWidgets('the art sits on its own black, not on a black screen', (
+  group('the logo, not an illustration on black', () {
+    testWidgets('no dark surface anywhere, in either theme', (
       WidgetTester tester,
     ) async {
-      // The fix for the app flipping theme on the first tap. The illustration
-      // still needs a black ground — it is drawn on one — but that ground is now
-      // a card on the light canvas, so the welcome screen and the sign-up screen
-      // it leads to belong to the same app.
+      // The app flipped theme on the first tap because this screen was black.
+      // What fixed it in the end was not a dark card but a different asset: the
+      // logo has a transparent background, so nothing has to sit behind it.
       for (final ThemeData theme in <ThemeData>[
         AppTheme.light,
         AppTheme.dark,
@@ -249,31 +269,62 @@ void main() {
         );
         await tester.pump();
 
-        final Scaffold scaffold = tester.widget<Scaffold>(
-          find.byType(Scaffold),
-        );
-
-        // Transparent, so the app's canvas gradient shows through — the same as
-        // every other screen. Previously this was hard-coded black.
-        expect(scaffold.backgroundColor, isNull);
-
-        // The black is on the card behind the image instead.
+        // Transparent, so the app canvas shows through as on every other screen.
         expect(
-          find.descendant(
-            of: find.byType(ClipRRect),
-            matching: find.byType(ColoredBox),
-          ),
-          findsOneWidget,
+          tester.widget<Scaffold>(find.byType(Scaffold)).backgroundColor,
+          isNull,
         );
+
+        // Nothing on the screen paints black. Checked by colour rather than by
+        // widget type, because Material puts `ColoredBox`es of its own in the
+        // tree and their presence says nothing either way.
+        for (final ColoredBox box in tester.widgetList<ColoredBox>(
+          find.byType(ColoredBox),
+        )) {
+          expect(
+            box.color,
+            isNot(const Color(0xFF000000)),
+            reason: 'a black surface is back on the welcome screen',
+          );
+        }
+
+        // The rounded clip existed only to hold that black panel.
+        expect(find.byType(ClipRRect), findsNothing);
       }
+    });
+
+    testWidgets('the hero is the app logo', (WidgetTester tester) async {
+      await pumpWelcome(tester);
+
+      final Image image = tester.widget<Image>(find.byType(Image));
+
+      // `cacheWidth` wraps the provider in a ResizeImage, so the asset name is
+      // one level down — and ResizeImage's toString does not include it.
+      final ImageProvider<Object> provider = switch (image.image) {
+        final ResizeImage resized => resized.imageProvider,
+        final ImageProvider<Object> plain => plain,
+      };
+
+      expect((provider as AssetImage).assetName, AppAssets.logo);
+    });
+
+    testWidgets('and it is centred', (WidgetTester tester) async {
+      const Size size = Size(400, 860);
+      await pumpWelcome(tester, size: size);
+
+      final Rect logo = tester.getRect(find.byType(Image));
+
+      // Within a pixel of the middle. It is square and transparent, so nothing
+      // else establishes where it belongs horizontally.
+      expect(logo.center.dx, closeTo(size.width / 2, 1));
     });
   });
 }
 
 /// A router with the welcome screen and stubs for the two places it can go.
 ///
-/// The real `routerProvider` would drag in the auth guard, the session stream
-/// and every screen in the app. What matters here is only that `goNamed` finds a
+/// The real `routerProvider` would drag in the auth guard, the session stream and
+/// every screen in the app. What matters here is only that `goNamed` finds a
 /// router and lands on the right route — so the destinations are labels.
 GoRouter _testRouter() => GoRouter(
   initialLocation: AppRoutes.welcome.path,

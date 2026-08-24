@@ -5,11 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
-import '../../../../core/presentation/app_assets.dart';
 import '../../../../core/presentation/layout/app_content_width.dart';
+import '../../../../core/presentation/widgets/app_brand_mark.dart';
 import '../../../../core/presentation/widgets/app_button.dart';
 import '../../../../core/theme/app_palette.dart';
-import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../controllers/onboarding_providers.dart';
 
@@ -17,34 +16,33 @@ import '../controllers/onboarding_providers.dart';
 ///
 /// ## The mistake this version fixes
 ///
-/// The first version made the whole screen black, because the illustration is
-/// drawn on black and letterboxing it against a black scaffold hides the fact
-/// that the image is never cropped. That worked, and it was still wrong: the rest
-/// of PayPaw is a light app, so the very first tap flipped the theme and the two
+/// The first version made the whole screen black, because the illustration it
+/// used is drawn on black. That worked, and it was still wrong: the rest of
+/// PayPaw is a light app, so the very first tap flipped the theme and the two
 /// screens read as different products.
 ///
-/// The art now sits in a **dark rounded card on the light canvas** — the
-/// reference design's own language of a grey ground with sheets lifted off it.
-/// The letterboxing still disappears, because it happens inside a surface that is
-/// meant to be dark. Nothing is cropped, nothing flips, and the card is the same
-/// shape as every card the user meets afterwards.
+/// The fix went through a dark card on the light canvas before arriving at the
+/// obvious answer: use the asset that does not need one. The logo is the same
+/// mascot with the same wallet, calendar and bell, and it has a genuinely
+/// transparent background — so it sits on the canvas with no surface behind it at
+/// all. The illustration is kept at
+/// `design/source/welcome_illustration_on_black.png` and no longer ships.
 ///
-/// ## Why the art is `contain`, not `cover`
-///
-/// The illustration is 2:3 and a phone is nearer 1:2. `cover` would crop roughly
-/// a third of the width — losing the calendar on one side and the wallet on the
-/// other, which are the details that say "bills" rather than "cute dog".
+/// Its background could not simply be removed: measuring the file showed only 31%
+/// of the frame is near-black and the glow reaches the edges, so it is a gradient
+/// rather than a key colour. Any threshold leaves a hard ring or a gold haze, and
+/// the mascot's own dark outlines make luminance keying worse still.
 class WelcomeScreen extends ConsumerWidget {
   const WelcomeScreen({super.key});
 
   /// Ceiling on the art's height, as a share of the viewport.
   ///
-  /// The art is otherwise as tall as the card is wide — a square, which is a
-  /// shape rather than a number and cannot be a few points wrong. This caps it on
-  /// a short screen so the words always get their half.
-  static const double _maxArtFraction = 0.45;
+  /// Deliberately modest. The logo is the mascot, not a hero image: at 45% it
+  /// dominated the screen and pushed the words away from it, which is half of why
+  /// the group looked split apart.
+  static const double _maxArtFraction = 0.34;
 
-  /// The hero card's inset from the sides and the top.
+  /// The logo's inset from the sides, which also bounds how wide it can be.
   static const double _heroInset = AppSpacing.lg;
 
   /// Roughly what the words and buttons occupy at normal text size.
@@ -91,24 +89,31 @@ class WelcomeScreen extends ConsumerWidget {
                 math.max(0, constraints.maxHeight - _wordsHint * textScale),
               );
 
-              // IntrinsicHeight is what makes `Spacer` work here. Inside a scroll
-              // view the column's height is unbounded, so a flexible child would
-              // throw; IntrinsicHeight gives it a definite height, and the
-              // ConstrainedBox raises that to the viewport when the content is
-              // shorter. Slack then lands between the art and the words, and the
-              // buttons sit at the bottom where they belong.
+              // The logo, the words and the buttons are **one group, centred**.
               //
-              // It costs an extra layout pass over a tree of six widgets.
+              // Two earlier attempts split them: art at the top and words pushed
+              // to the bottom, with the leftover space in between. Both left an
+              // obvious hole in the middle of the screen — first under the
+              // buttons, then above the headline. There is nothing between the
+              // mascot and the headline that wants separating; they are one piece
+              // of content and belong together.
+              //
+              // IntrinsicHeight is what allows the centring. Inside a scroll view
+              // the column's height is unbounded, so `mainAxisAlignment` would
+              // have nothing to distribute; IntrinsicHeight gives it a definite
+              // height, and the ConstrainedBox raises that to the viewport when
+              // the group is shorter. Taller — at large text sizes — and it
+              // simply scrolls.
+              //
+              // It costs one extra layout pass over a tree of five widgets.
               return SingleChildScrollView(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: IntrinsicHeight(
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: <Widget>[
                         _WelcomeHero(height: artHeight),
-                        // Collapses to nothing when the words need the room — at
-                        // large text sizes the whole column simply scrolls.
-                        const Spacer(),
                         _WelcomeContent(
                           onGetStarted: () =>
                               _leave(context, ref, AppRoutes.signUp),
@@ -140,57 +145,38 @@ class WelcomeScreen extends ConsumerWidget {
   }
 }
 
-/// The illustration, in a dark card on the light canvas.
+/// The logo, centred on the canvas.
+///
+/// No card and no dark surface. The previous version sat the mascot on a black
+/// panel because the illustration it used was *drawn* on black, and that panel
+/// was the only thing making it work on a light screen. The logo has a genuinely
+/// transparent background, so the mascot can sit on the canvas directly — which
+/// is what a welcome screen should look like, and one fewer surface to explain.
 class _WelcomeHero extends StatelessWidget {
   const _WelcomeHero({required this.height});
 
   final double height;
 
-  /// The card's own black. Taken from the artwork rather than from the palette,
-  /// because its only job is to match the image's background exactly — the moment
-  /// it does not, a rectangle appears around the mascot.
-  static const Color artBackground = Color(0xFF000000);
-
   @override
   Widget build(BuildContext context) {
-    // At large text on a small screen the reserve takes the whole viewport and
-    // there is no room left. Dropped rather than sized to zero: `Image` asserts
-    // on a `cacheHeight` of 0, and decoding an image nobody can see would be
-    // waste even if it did not.
+    // At large text on a small screen there is no room left. Dropped rather than
+    // sized to zero: `Image` asserts on a `cacheHeight` of 0, and decoding an
+    // image nobody can see would be waste even if it did not.
     if (height <= 0) {
       return const SizedBox.shrink();
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.lg,
-        AppSpacing.lg,
-        0,
-      ),
-      child: ClipRRect(
-        borderRadius: AppRadii.panel,
-        child: ColoredBox(
-          color: artBackground,
-          child: SizedBox(
-            height: height,
-            width: double.infinity,
-            child: Image.asset(
-              AppAssets.welcomeIllustration,
-              fit: BoxFit.contain,
-              // Bottom-aligned so the mascot sits on the card's lower edge rather
-              // than floating with a gap beneath it.
-              alignment: Alignment.bottomCenter,
-              // A 1.6 MB PNG decoded at full size is ~6 MB of RAM for something
-              // never drawn larger than the card.
-              cacheHeight: (height * MediaQuery.devicePixelRatioOf(context))
-                  .round(),
-              // Decoration, not information: the headline below says everything a
-              // screen reader needs, and announcing the image would add noise
-              // ahead of the two buttons that matter.
-              excludeFromSemantics: true,
-            ),
-          ),
+      // No top inset: the column centres the whole group, so spacing above the
+      // logo is not this widget's business.
+      padding: EdgeInsets.zero,
+      child: Center(
+        child: AppBrandMark(
+          size: height,
+          // The headline underneath says the app's name, and the logo is already
+          // the largest thing on the screen. Printing "PayPaw" over it as well
+          // would be saying it three times.
+          showName: false,
         ),
       ),
     );
@@ -209,17 +195,26 @@ class _WelcomeContent extends StatelessWidget {
     final TextTheme textTheme = Theme.of(context).textTheme;
 
     return Padding(
+      // Tight to the logo above it. These are one group, and 24dp of air between
+      // the mascot and the headline was enough to make them read as two.
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.xxl,
-        AppSpacing.xxl,
-        AppSpacing.xxl,
         AppSpacing.lg,
+        AppSpacing.xxl,
+        0,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const _BrandRow(),
-          const SizedBox(height: AppSpacing.md),
+          Text(
+            'PayPaw',
+            style: textTheme.labelLarge?.copyWith(
+              color: colors.primaryText,
+              letterSpacing: 0.8,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             'Stay ahead of\nwhat you owe.',
             style: textTheme.displaySmall?.copyWith(
@@ -261,45 +256,6 @@ class _WelcomeContent extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// The paw and the name, matching the mark on the auth screens so the flow reads
-/// as one product.
-class _BrandRow extends StatelessWidget {
-  const _BrandRow();
-
-  @override
-  Widget build(BuildContext context) {
-    final AppPalette colors = context.colors;
-
-    return Row(
-      children: <Widget>[
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: colors.primary,
-            borderRadius: const BorderRadius.all(Radius.circular(AppRadii.sm)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xs),
-            child: Icon(
-              Icons.pets_rounded,
-              size: 14,
-              color: colors.textOnPrimary,
-            ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Text(
-          'PayPaw',
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: colors.primaryText,
-            letterSpacing: 0.8,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
     );
   }
 }

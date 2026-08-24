@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/presentation/layout/app_content_width.dart';
+import '../../../../core/presentation/widgets/app_brand_mark.dart';
 import '../../../../core/presentation/widgets/app_card.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_radii.dart';
@@ -93,7 +94,7 @@ class AuthScreenScaffold extends StatelessWidget {
                 children: <Widget>[
                   _BackButton(fallback: backTo),
                   const SizedBox(width: AppSpacing.md),
-                  const _BrandMark(),
+                  const AppBrandMark(),
                 ],
               ),
               const SizedBox(height: AppSpacing.xxl),
@@ -177,45 +178,6 @@ class _BackButton extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// The paw and the name, so an auth screen is recognisably the same app as the
-/// welcome screen it came from.
-class _BrandMark extends StatelessWidget {
-  const _BrandMark();
-
-  @override
-  Widget build(BuildContext context) {
-    final AppPalette colors = context.colors;
-
-    return Row(
-      children: <Widget>[
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: colors.primary,
-            borderRadius: const BorderRadius.all(Radius.circular(AppRadii.sm)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            child: Icon(
-              Icons.pets_rounded,
-              size: 18,
-              color: colors.textOnPrimary,
-            ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        Text(
-          'PayPaw',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: colors.textPrimary,
-            letterSpacing: 0.2,
-          ),
-        ),
-      ],
     );
   }
 }
