@@ -30,6 +30,10 @@ dependencies:
   # correct local time across DST and travel.
   flutter_local_notifications: ^22.3.0
   timezone: ^0.11.1
+  # Names the device's IANA zone so the timezone package can be pointed at it.
+  # Without this its local zone stays UTC, and every reminder in Manila would
+  # fire eight hours off.
+  flutter_timezone: ^5.1.0
 
   # Receipt attachments: image_picker for camera/gallery, file_picker for PDFs.
   image_picker: ^1.2.3

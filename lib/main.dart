@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app/paypaw_app.dart';
 import 'core/config/app_config.dart';
 import 'core/providers/storage_providers.dart';
+import 'features/notifications/presentation/controllers/notification_providers.dart';
 
 /// Application entry point.
 ///
@@ -19,12 +20,35 @@ Future<void> main() async {
   final SharedPreferences preferences = await SharedPreferences.getInstance();
   await _initialiseSupabase();
 
-  runApp(
-    ProviderScope(
-      overrides: [sharedPreferencesProvider.overrideWithValue(preferences)],
-      child: const PayPawApp(),
-    ),
+  final ProviderContainer container = ProviderContainer(
+    overrides: [sharedPreferencesProvider.overrideWithValue(preferences)],
   );
+
+  // Before the first frame, and awaited.
+  //
+  // It has to be awaited because the timezone database is what every scheduled
+  // reminder is computed against, and a schedule written before it loads is
+  // written in UTC. It is cheap — a database load and two platform calls — and
+  // it does *not* ask for permission: a permission dialog on first launch,
+  // before the user has seen what the app is for, is the one most reliably
+  // refused. Asking belongs with the screen that explains why.
+  //
+  // A failure here is not fatal. PayPaw without reminders is still a bills
+  // tracker; PayPaw that will not start is not.
+  await _initialiseNotifications(container);
+
+  runApp(
+    UncontrolledProviderScope(container: container, child: const PayPawApp()),
+  );
+}
+
+/// Brings up the notification machinery: timezones, the plugin, the channels.
+Future<void> _initialiseNotifications(ProviderContainer container) async {
+  try {
+    await container.read(notificationServiceProvider).initialize();
+  } on Object catch (error, stackTrace) {
+    debugPrint('PayPaw: notifications unavailable ($error)\n$stackTrace');
+  }
 }
 
 /// Brings up the Supabase client, if it has been configured.

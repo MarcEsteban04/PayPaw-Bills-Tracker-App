@@ -880,11 +880,93 @@ shipped in the first place.
 
 # 🔔 Phase 8 — Notifications
 
-## Sprint 39 — Notification Infrastructure
+## Sprint 39 — Notification Infrastructure — done
 
-* Configure local notifications
-* Android notification channels
-* Notification permissions
+The machinery, and nothing that uses it. `NotificationService` initialises the
+plugin, loads the timezone database, registers the channels and can report
+whether PayPaw is allowed to post. **It cannot post or schedule anything** —
+those methods arrive in Sprint 40 with the reminders that need them, rather than
+sitting here untested.
+
+### No exact alarms, deliberately
+
+Google Play restricts `SCHEDULE_EXACT_ALARM` and `USE_EXACT_ALARM` to apps whose
+*core* function is alarms or calendars. A bills tracker is neither, and declaring
+one risks the listing. So reminders will be scheduled inexactly and may drift by
+minutes in Doze.
+
+That is the right trade here: a reminder that a bill is due today arriving at
+9:14 instead of 9:00 loses nothing, and an alarm clock doing the same would be
+broken — which is exactly the distinction the policy draws. If a user ever
+reports a reminder arriving hours late, this is the decision to revisit.
+
+### Timezones are not optional
+
+`package:timezone` defaults its local zone to **UTC**. A reminder scheduled for
+"9am on the due date" would arrive at 5pm in Manila — after the working day it
+was meant to precede. `flutter_timezone` names the device's IANA zone and the
+service points the package at it during startup, before the first frame, because
+a schedule written before the database loads is a schedule written in UTC.
+
+A zone *name*, not an offset: an offset cannot survive DST or a flight. If the
+lookup fails the app logs and carries on in UTC — reminders hours out is bad,
+an app that will not start is worse.
+
+### Two channels, not one per reminder offset
+
+An Android channel is a row in the user's system settings with its own toggle and
+its own importance, and its importance can never be raised again from code. So
+the set is decided rather than accumulated.
+
+"7 days before" and "1 day before" are the same *kind* of interruption; four
+toggles would make turning reminders off a four-tap job. Which offsets fire is
+PayPaw's setting (Sprint 42), not Android's. **Overdue is separate** because it
+is a different kind of message: a reminder is a courtesy someone might want none
+of, while "this is late" is the one thing a bills app exists to say, and
+silencing the first is not a request to silence the second.
+
+The ids are pinned by a test. Android keys a channel's settings — the user's own
+choices about sound and whether it is on at all — to that string; changing one
+silently discards what they chose and leaves a dead row behind.
+
+Both are registered at startup even though nothing posts to them yet: a channel
+must exist before its first notification, and a user who wants to silence a
+category should be able to find it *before* being interrupted rather than after.
+
+### It does not ask on launch
+
+`initialize()` deliberately does not request permission. A permission dialog on
+first launch, before the user has seen what the app is for, is the one most
+reliably refused — and on Android 13 a refusal is final: the system swallows
+every later request without showing anything. Asking belongs with the screen that
+explains why, in Sprint 42.
+
+That finality is why `NotificationPermission` has three states and not a bool.
+"Never asked" and "asked and refused" both read as *not enabled* from the
+platform, and they need opposite handling — only the first can still be prompted;
+the second needs a route into system settings. Android will not tell the two
+apart, so the app remembers having asked. `resolve(enabled:hasAsked:)` is a pure
+function for exactly that reason: the decision is the substance and it is tested
+without a method channel anywhere near it.
+
+`notApplicable` is the fourth, and not a failure: below Android 13 there is no
+runtime permission at all, and reporting that as "granted" would be a claim this
+app is not in a position to make.
+
+### Found by the tests
+
+`resolvePlatformSpecificImplementation` **throws** a `LateInitializationError`
+rather than returning null when no platform implementation is registered. Every
+method in the service was written against null and every one of them died on the
+first call off-device. Caught by the first host-run test and turned into null in
+one place.
+
+### Verified on the device
+
+`dumpsys notification` shows both channels registered at importance 4 with their
+names and descriptions, and the app itself at `importance=NONE userSet=false` —
+which is precisely the designed state: the channels exist, nothing has been
+asked, and no dialog appeared on launch.
 
 ## Sprint 40 — Bill Reminders
 
