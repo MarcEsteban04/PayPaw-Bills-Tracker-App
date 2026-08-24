@@ -54,8 +54,11 @@ abstract final class CategoryIcons {
   }
 }
 
-/// A category's icon in its own tinted circle, as the reference draws its
-/// quick-action row.
+/// A category's icon on its own tinted surface.
+///
+/// A rounded square rather than a circle. Circles read as avatars — a person, an
+/// account, something with an identity — and these are labels for a kind of thing.
+/// The squircle also sits better beside the card corners it lives inside.
 class CategoryIcon extends StatelessWidget {
   const CategoryIcon({required this.category, this.size = 40, super.key});
 
@@ -80,12 +83,12 @@ class CategoryIcon extends StatelessWidget {
         // A wash of the category's colour rather than the colour itself: a solid
         // fill at thirteen different hues turns a list into a paint chart.
         color: tint.withValues(alpha: 0.14),
-        borderRadius: const BorderRadius.all(Radius.circular(AppRadii.pill)),
+        borderRadius: const BorderRadius.all(Radius.circular(AppRadii.sm)),
       ),
       child: Center(
         child: Icon(
           CategoryIcons.forName(category.iconName),
-          size: size * 0.5,
+          size: size * 0.52,
           color: tint,
         ),
       ),

@@ -60,7 +60,7 @@ void main() {
       ]);
 
       expect(find.text('₱1,500.00'), findsOneWidget);
-      expect(find.text('across 2 bills'), findsOneWidget);
+      expect(find.text('2 bills'), findsOneWidget);
     });
 
     testWidgets('a settled bill counts for nothing', (
@@ -72,7 +72,7 @@ void main() {
       ]);
 
       expect(find.text('₱1,000.00'), findsOneWidget);
-      expect(find.text('across 1 bill'), findsOneWidget);
+      expect(find.text('1 bill'), findsOneWidget);
     });
 
     testWidgets('nor does an archived one', (WidgetTester tester) async {
@@ -124,11 +124,11 @@ void main() {
       expect(find.text('₱4,800.00'), findsWidgets);
     });
 
-    testWidgets('a figure with nothing in it is not tinted like an alarm', (
+    testWidgets('a figure with nothing in it is not coloured like an alarm', (
       WidgetTester tester,
     ) async {
-      // A red panel reading ₱0.00 is an alarm about nothing, and it teaches the
-      // reader to ignore the colour on the day it means something.
+      // A red ₱0.00 is an alarm about nothing, and it teaches the reader to
+      // ignore the colour on the day it means something.
       final AppPalette palette = AppTheme.light.extension<AppPalette>()!;
 
       await pumpCard(tester, <BillWithStatus>[
@@ -136,41 +136,88 @@ void main() {
       ]);
 
       expect(
-        _tintColours(tester),
-        isNot(contains(palette.statusTint(AppStatusTone.overdue))),
-        reason: 'nothing is overdue, so nothing should be wearing the red tint',
+        _colourOf(tester, '₱0.00'),
+        isNot(palette.overdue),
+        reason: 'nothing is overdue, so the figure should be muted',
       );
     });
 
-    testWidgets('and is tinted the moment there is something to report', (
+    testWidgets('and is coloured the moment there is something to report', (
       WidgetTester tester,
     ) async {
-      // The other half of the pair: without this, a card that never tints would
-      // pass the test above.
+      // The other half of the pair: without it, a card that never colours
+      // anything would pass the test above.
       final AppPalette palette = AppTheme.light.extension<AppPalette>()!;
 
       await pumpCard(tester, <BillWithStatus>[
         item(status: BillStatus.overdue, outstanding: 100000),
       ]);
 
-      expect(
-        _tintColours(tester),
-        contains(palette.statusTint(AppStatusTone.overdue)),
-      );
+      // The overdue figure and the headline both read ₱1,000.00; the figure is
+      // the one inside the tinted sub-panel, so it is found by colour.
+      expect(_colours(tester, '₱1,000.00'), contains(palette.overdue));
+    });
+  });
+
+  group('progress', () {
+    testWidgets('shows what has been settled against what was billed', (
+      WidgetTester tester,
+    ) async {
+      // A number with no denominator cannot be read as good or bad. ₱1,000
+      // outstanding means one thing when nothing has been paid and another when
+      // it is the last tenth of the month.
+      await pumpCard(tester, <BillWithStatus>[
+        // ₱5,000 billed, ₱4,000 paid.
+        item(status: BillStatus.partiallyPaid, outstanding: 100000),
+      ]);
+
+      expect(find.text('₱4,000.00 of ₱5,000.00 settled'), findsOneWidget);
+    });
+
+    testWidgets('counts a settled bill as progress', (
+      WidgetTester tester,
+    ) async {
+      // Unlike every other figure on the card, which ignores paid bills.
+      // Clearing one *is* the progress.
+      await pumpCard(tester, <BillWithStatus>[
+        item(status: BillStatus.paid, outstanding: 0),
+      ]);
+
+      expect(find.text('₱5,000.00 of ₱5,000.00 settled'), findsOneWidget);
+    });
+
+    testWidgets('leaves an archived bill out of the denominator', (
+      WidgetTester tester,
+    ) async {
+      // Counting it would make the total include work nobody intends to do.
+      await pumpCard(tester, <BillWithStatus>[
+        item(status: BillStatus.archived, outstanding: 500000),
+      ]);
+
+      expect(find.textContaining('settled'), findsNothing);
+      expect(find.text('Nothing outstanding'), findsOneWidget);
+    });
+
+    testWidgets('is announced for a screen reader', (
+      WidgetTester tester,
+    ) async {
+      // A bar is invisible without sight, and the sentence beneath it is the only
+      // other place the figure appears.
+      await pumpCard(tester, <BillWithStatus>[
+        item(status: BillStatus.partiallyPaid, outstanding: 250000),
+      ]);
+
+      expect(find.bySemanticsLabel('Settled'), findsOneWidget);
     });
   });
 }
 
-/// Every background colour the card is currently painting.
-///
-/// Read off the widget tree rather than compared against a golden image: the
-/// question is which *palette* colour a figure is wearing, and a screenshot
-/// answers that only indirectly and breaks on every unrelated pixel.
-Set<Color?> _tintColours(WidgetTester tester) => tester
-    .widgetList<DecoratedBox>(find.byType(DecoratedBox))
-    .map((DecoratedBox box) {
-      final Decoration decoration = box.decoration;
+/// The colour of the first `Text` with this content.
+Color? _colourOf(WidgetTester tester, String text) =>
+    tester.widget<Text>(find.text(text).first).style?.color;
 
-      return decoration is BoxDecoration ? decoration.color : null;
-    })
+/// Every colour used by `Text` widgets with this content.
+Set<Color?> _colours(WidgetTester tester, String text) => tester
+    .widgetList<Text>(find.text(text))
+    .map((Text widget) => widget.style?.color)
     .toSet();

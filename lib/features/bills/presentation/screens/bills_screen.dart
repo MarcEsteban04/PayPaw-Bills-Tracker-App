@@ -8,6 +8,7 @@ import '../../../../core/presentation/widgets/app_empty_state.dart';
 import '../../../../core/presentation/widgets/app_error_state.dart';
 import '../../../../core/presentation/widgets/app_loading_indicator.dart';
 import '../../../../core/theme/app_palette.dart';
+import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/bill_status.dart';
 import '../../domain/entities/bill_with_status.dart';
@@ -201,21 +202,44 @@ class _SectionHeading extends StatelessWidget {
     final AppPalette colors = context.colors;
     final TextTheme textTheme = Theme.of(context).textTheme;
 
-    return Row(
-      children: <Widget>[
-        Text(
-          label,
-          style: textTheme.titleSmall?.copyWith(
-            color: colors.textPrimary,
-            fontWeight: FontWeight.w700,
+    return Padding(
+      padding: const EdgeInsets.only(left: AppSpacing.xs),
+      child: Row(
+        children: <Widget>[
+          Text(
+            // Small caps and letter-spaced, matching the summary card's label. A
+            // heading that looks like body text is not a heading — and this reads
+            // as more deliberate than a bold sentence while being quieter on the
+            // page.
+            label.toUpperCase(),
+            style: textTheme.labelSmall?.copyWith(
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.1,
+            ),
           ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Text(
-          '$count',
-          style: textTheme.bodySmall?.copyWith(color: colors.textTertiary),
-        ),
-      ],
+          const SizedBox(width: AppSpacing.sm),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.surfaceMuted,
+              borderRadius: AppRadii.round,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: 1,
+              ),
+              child: Text(
+                '$count',
+                style: textTheme.labelSmall?.copyWith(
+                  color: colors.textTertiary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

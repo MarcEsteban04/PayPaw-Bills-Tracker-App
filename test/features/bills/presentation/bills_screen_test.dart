@@ -144,7 +144,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byType(BillListTile),
-          matching: find.text('Due soon'),
+          matching: find.text('DUE SOON'),
         ),
         findsOneWidget,
       );
@@ -193,7 +193,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byType(BillListTile),
-          matching: find.text('Overdue'),
+          matching: find.text('OVERDUE'),
         ),
         findsOneWidget,
       );
