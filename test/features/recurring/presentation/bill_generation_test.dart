@@ -18,6 +18,7 @@ import 'package:paypaw/features/categories/presentation/controllers/category_pro
 import 'package:paypaw/features/payments/presentation/controllers/payment_providers.dart';
 import 'package:paypaw/features/recurring/domain/entities/recurrence.dart';
 import 'package:paypaw/features/recurring/domain/entities/recurrence_frequency.dart';
+import 'package:paypaw/features/recurring/domain/entities/recurring_bill.dart';
 import 'package:paypaw/features/recurring/presentation/controllers/recurring_bill_providers.dart';
 
 import '../../bills/helpers/fake_bill_repository.dart';
@@ -54,6 +55,42 @@ void main() {
       dueOn: DateTime(2026, 9, 20),
       createdAt: DateTime(2026, 8, 2),
       updatedAt: DateTime(2026, 8, 2),
+    ),
+    status: BillStatus.upcoming,
+    paid: const Money.php(0),
+    outstanding: const Money.php(150000),
+    today: DateTime(2026, 8, 25),
+  );
+
+  /// The template the generated bill below came from.
+  RecurringBill template() => RecurringBill(
+    id: 'rec-1',
+    userId: 'user-1',
+    kind: RecurringBillKind.bill,
+    name: 'Converge',
+    amount: const Money.php(150000),
+    recurrence: Recurrence(
+      frequency: RecurrenceFrequency.monthly,
+      dayOfMonth: 15,
+      startsOn: DateTime(2026, 8, 2),
+    ),
+    nextDueOn: DateTime(2026, 10, 15),
+    isActive: true,
+    createdAt: DateTime(2026, 8, 2),
+    updatedAt: DateTime(2026, 8, 2),
+  );
+
+  /// A bill the generator made, which is to say one carrying a template id.
+  BillWithStatus generated() => BillWithStatus(
+    bill: Bill(
+      id: 'bill-2',
+      userId: 'user-1',
+      recurringBillId: 'rec-1',
+      name: 'Converge',
+      amount: const Money.php(150000),
+      dueOn: DateTime(2026, 9, 15),
+      createdAt: DateTime(2026, 8, 25),
+      updatedAt: DateTime(2026, 8, 25),
     ),
     status: BillStatus.upcoming,
     paid: const Money.php(0),
@@ -149,6 +186,45 @@ void main() {
 
       expect(recurring.generateCalls, 1);
       expect(bills.fetchCalls, 1);
+    });
+  });
+
+  group('a generated bill', () {
+    testWidgets('is marked as repeating in the list', (
+      WidgetTester tester,
+    ) async {
+      // `recurring_bill_id` was set by the generator from the day it existed and
+      // rendered nowhere, so a bill that reappears every month looked exactly
+      // like one somebody had entered twice.
+      bills = FakeBillRepository(bills: <BillWithStatus>[generated(), item()]);
+
+      await pumpBillsScreen(tester);
+
+      expect(find.byTooltip('Repeats'), findsOneWidget);
+    });
+
+    testWidgets('and the drawer says what the schedule is', (
+      WidgetTester tester,
+    ) async {
+      // Not just "this repeats" — the rule itself, which is the thing a reader
+      // wants to check when a bill turns up they were not expecting.
+      bills = FakeBillRepository(bills: <BillWithStatus>[generated()]);
+      recurring = FakeRecurringBillRepository(
+        templates: <RecurringBill>[template()],
+      );
+
+      await pumpBillsScreen(tester);
+      await tester.tap(find.text('Converge'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Repeats'), findsOneWidget);
+      expect(find.text('Every month on the 15th'), findsOneWidget);
+    });
+
+    testWidgets('a plain bill is not marked', (WidgetTester tester) async {
+      await pumpBillsScreen(tester);
+
+      expect(find.byTooltip('Repeats'), findsNothing);
     });
   });
 

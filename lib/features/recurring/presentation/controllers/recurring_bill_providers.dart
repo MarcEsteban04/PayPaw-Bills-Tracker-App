@@ -43,3 +43,14 @@ final FutureProvider<int?> billGenerationProvider = FutureProvider<int?>((
     return null;
   }
 });
+
+/// The template one bill was generated from, by template id.
+///
+/// A family fetched only when a drawer opens on a generated bill, rather than
+/// loading every template with the bills list. Most bills are not generated, and
+/// the ones that are share a handful of templates — a second query on every list
+/// load would be paying for a rule that no row shows.
+final recurringBillProvider = FutureProvider.family<RecurringBill?, String>(
+  (Ref ref, String id) =>
+      ref.watch(recurringBillRepositoryProvider).fetchRecurringBill(id),
+);

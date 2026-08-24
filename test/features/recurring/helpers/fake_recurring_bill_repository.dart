@@ -39,6 +39,10 @@ class FakeRecurringBillRepository implements RecurringBillRepository {
       : _templates.where((RecurringBill t) => t.isActive).toList();
 
   @override
+  Future<RecurringBill?> fetchRecurringBill(String id) async =>
+      _templates.where((RecurringBill t) => t.id == id).firstOrNull;
+
+  @override
   Future<RecurringBill> createRecurringBill(NewRecurringBill draft) async {
     _throwIfFailing();
     created = draft;

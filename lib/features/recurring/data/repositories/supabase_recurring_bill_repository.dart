@@ -49,6 +49,20 @@ class SupabaseRecurringBillRepository implements RecurringBillRepository {
   }
 
   @override
+  Future<RecurringBill?> fetchRecurringBill(String id) async {
+    return _guard(() async {
+      final Map<String, dynamic>? row = await _client
+          .from(_table)
+          .select(RecurringBillDto.selectColumns)
+          .eq(RecurringBillDto.columnId, id)
+          // maybeSingle, not single: a missing row is a null, not an exception.
+          .maybeSingle();
+
+      return row == null ? null : RecurringBillDto.toEntity(row);
+    });
+  }
+
+  @override
   Future<RecurringBill> createRecurringBill(NewRecurringBill draft) async {
     final String userId = _requireUserId('createRecurringBill');
 

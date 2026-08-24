@@ -11,6 +11,8 @@ import '../../../categories/domain/entities/category.dart';
 import '../../../categories/presentation/controllers/category_providers.dart';
 import '../../../categories/presentation/widgets/category_icon.dart';
 import '../../../payments/presentation/widgets/bill_payment_history.dart';
+import '../../../recurring/domain/entities/recurring_bill.dart';
+import '../../../recurring/presentation/controllers/recurring_bill_providers.dart';
 import '../../domain/entities/bill_status.dart';
 import '../../domain/entities/bill_with_status.dart';
 import 'bill_status_display.dart';
@@ -153,6 +155,28 @@ class _BillDetail extends ConsumerWidget {
               icon: Icons.storefront_outlined,
               label: 'Paid to',
               value: payee,
+            ),
+          ],
+          // Where a generated bill came from.
+          //
+          // Fetched only for bills that have a template, which is what keeps the
+          // common case — a bill somebody typed — free of a second round trip.
+          if (item.bill.recurringBillId
+              case final String templateId) ...<Widget>[
+            const SizedBox(height: AppSpacing.md),
+            _Fact(
+              icon: Icons.repeat_rounded,
+              label: 'Repeats',
+              // The rule if it has arrived, and the plain fact if it has not.
+              // "Repeats" alone is still true and still more than the drawer said
+              // before, so a slow query degrades rather than showing a spinner in
+              // the middle of a list of facts.
+              value: switch (ref.watch(recurringBillProvider(templateId))) {
+                AsyncData<RecurringBill?>(value: final RecurringBill? template)
+                    when template != null =>
+                  template.recurrence.describe(),
+                _ => 'On a schedule',
+              },
             ),
           ],
           if (item.bill.notes case final String notes) ...<Widget>[

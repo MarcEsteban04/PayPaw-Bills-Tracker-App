@@ -25,6 +25,12 @@ abstract interface class RecurringBillRepository {
     bool includeInactive = true,
   });
 
+  /// One template, or null when there is no such template visible to this user.
+  ///
+  /// Null rather than an exception for a missing row: through RLS "deleted" and
+  /// "belongs to someone else" are the same answer and have to stay that way.
+  Future<RecurringBill?> fetchRecurringBill(String id);
+
   /// Stores a new template and returns it as saved.
   Future<RecurringBill> createRecurringBill(NewRecurringBill draft);
 
