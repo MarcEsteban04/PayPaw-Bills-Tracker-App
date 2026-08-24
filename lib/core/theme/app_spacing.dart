@@ -48,7 +48,15 @@ abstract final class AppSpacing {
   /// Vertical gap between one section and the next.
   static const double sectionGap = xxl;
 
-  /// Extra bottom padding so a scroll view clears the floating bottom
-  /// navigation instead of ending underneath it.
-  static const double bottomNavClearance = 96;
+  /// Extra bottom padding at the foot of a scrolling screen.
+  ///
+  /// It was 96 — enough for a scroll view's last item to clear a navigation bar
+  /// that floated *over* the page. The shell stops the body extending under the
+  /// bar now, so the bar reserves its own space and this no longer has to. What
+  /// is left is breathing room, so the last card does not sit flush against the
+  /// navigation.
+  ///
+  /// Kept under its old name because that is still what it is for; only the
+  /// mechanism changed.
+  static const double bottomNavClearance = xl;
 }

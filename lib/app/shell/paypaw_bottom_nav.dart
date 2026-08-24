@@ -49,14 +49,7 @@ class PayPawBottomNav extends StatelessWidget {
   final ValueChanged<int> onDestinationSelected;
 
   /// Height of the bar itself, excluding the floating margin.
-  ///
-  /// Public because the shell's bottom fade has to know where the top of the bar
-  /// is: the fade must be fully opaque by then, or content shows either side of
-  /// the pill. Guessing at it left the fade 8 points short.
-  static const double barHeight = 64;
-
-  /// Gap between the bar and the bottom of the safe area.
-  static const double floatingMargin = AppSpacing.lg;
+  static const double _barHeight = 64;
 
   /// Space between one destination and the next.
   ///
@@ -73,7 +66,7 @@ class PayPawBottomNav extends StatelessWidget {
     return SafeArea(
       // The bar supplies its own bottom gap, so the safe area only needs to keep
       // it clear of the system gesture inset.
-      minimum: const EdgeInsets.only(bottom: floatingMargin),
+      minimum: const EdgeInsets.only(bottom: AppSpacing.lg),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
         // Centred and hugging its content, rather than stretched edge to edge.
@@ -99,7 +92,7 @@ class PayPawBottomNav extends StatelessWidget {
 
   Widget _navPill(BuildContext context, double textScale) {
     return Container(
-      height: barHeight,
+      height: _barHeight,
       // xs, not sm. This dates from when an add button beside the bar took a
       // fixed cut of the row; the button is gone but the tighter padding is
       // still what keeps the selected label on a 320dp screen.
