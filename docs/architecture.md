@@ -30,6 +30,7 @@ lib/
     error/     app_exception.dart   the one error hierarchy
     data/      supabase_error_mapper.dart   Supabase errors -> AppException
     providers/                  shared providers (Supabase client, storage)
+    domain/    money.dart       value objects more than one feature needs
     presentation/widgets/       widgets more than one feature uses
     theme/                      design tokens and both themes
                                 see docs/design_system.md
@@ -232,7 +233,7 @@ and no parallel `Failure` hierarchy: a second error channel alongside
 | --- | --- |
 | No use-case / interactor layer | The roadmap's Sprint 3 lists presentation, domain, data, services, models and repositories — not use cases. For an app this size they would mostly be one-line pass-throughs to a repository. |
 | No `Result<T>` wrapper | `AsyncValue` is already the error channel. See above. |
-| Generated code is committed | A fresh clone builds without running `build_runner` first. Generated files are excluded from analysis instead. |
+| No code generation, yet | `freezed` and `json_serializable` are in dev_dependencies but unused. Models are hand-written, and DTOs map columns explicitly — a column name has to match a migration exactly, and a mismatch is a runtime failure rather than a compile error, so having the names spelled out where a reviewer can compare the two files is worth the boilerplate. A build step must earn its place the same way a layer does. Revisit at roughly a dozen DTOs. If it is ever adopted, generated files get committed so a fresh clone builds without running `build_runner`. |
 | Relative imports inside `lib/` | Enforced by `prefer_relative_imports`. Mixing `package:paypaw/...` and relative paths for the same file makes imports unreadable. |
 | Config via `--dart-define` | Keeps credentials out of the repository with no extra dependency and no `.env` file to leak. |
 | `flutter analyze` must be clean | An objective gate. "Readable" is a judgement call; zero warnings is not. |

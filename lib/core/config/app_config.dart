@@ -93,7 +93,8 @@ abstract final class AppConfig {
       );
       final Object? decoded = jsonDecode(payload);
 
-      return decoded is Map<String, dynamic> && decoded['role'] == 'service_role';
+      return decoded is Map<String, dynamic> &&
+          decoded['role'] == 'service_role';
     } on Object {
       // Not decodable as a JWT payload. Treat as opaque rather than as secret.
       return false;

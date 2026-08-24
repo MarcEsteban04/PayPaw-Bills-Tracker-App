@@ -46,6 +46,10 @@ dependencies:
   # Currency and date formatting (PHP amounts, due dates).
   intl: ^0.20.3
 
+  # Annotations only, and pure Dart. Lets the domain layer use @immutable without
+  # importing package:flutter, which it must not do.
+  meta: ^1.19.0
+
   # Model code generation annotations; generators live in dev_dependencies.
   freezed_annotation: ^3.1.0
   json_annotation: ^4.12.0

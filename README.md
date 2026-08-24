@@ -51,6 +51,7 @@ Progress is tracked sprint-by-sprint in [`docs/project_dev_roadmap.md`](docs/pro
 | 18 | Bill tables | ✅ Migrations written — you apply them |
 | 19 | Payment tables | ✅ Migrations written — you apply them |
 | 20 | Supabase security | ✅ Phase 4 done — checks written, run them after applying |
+| 21 | Bill model | ✅ Complete |
 
 ---
 
