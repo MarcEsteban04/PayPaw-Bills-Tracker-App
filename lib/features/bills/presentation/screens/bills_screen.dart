@@ -120,37 +120,7 @@ class BillsScreen extends ConsumerWidget {
         ],
       ),
       body: SafeArea(
-        child: AppContentWidth(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              // A fixed header, above the results rather than scrolling with
-              // them.
-              //
-              // It has to outlive the list it filters. Inside the scroll view it
-              // vanished the moment a query matched nothing — so the box the user
-              // was typing into disappeared on the keystroke that narrowed too
-              // far, and there was no way back except an empty-state button.
-              //
-              // `today` comes from the *unfiltered* rows, which are still there
-              // when the filtered ones are not. Absent entirely only when the
-              // user has no bills at all, and then there is nothing to filter.
-              if (_today(ref) case final DateTime today) ...<Widget>[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screenInset,
-                    AppSpacing.md,
-                    AppSpacing.screenInset,
-                    AppSpacing.md,
-                  ),
-                  child: BillFilterBar(today: today),
-                ),
-                Divider(height: 1, color: context.colors.border),
-              ],
-              Expanded(child: _results(context, ref, bills, filter)),
-            ],
-          ),
-        ),
+        child: AppContentWidth(child: _results(context, ref, bills, filter)),
       ),
       // No floating button. Adding a bill moved into the shell, beside the
       // navigation bar, so it works from every tab rather than only this one.
@@ -181,9 +151,9 @@ class BillsScreen extends ConsumerWidget {
 
   /// Today in the user's zone, from any row the server returned.
   ///
-  /// Null when there are no bills — including while the first fetch is still in
-  /// flight, which is why the header is absent rather than showing a date the
-  /// device guessed.
+  /// Read from the *unfiltered* rows, which are still there when the filtered
+  /// ones are not — so the date pickers keep working on a filter that matches
+  /// nothing. Null only when the user has no bills at all.
   static DateTime? _today(WidgetRef ref) =>
       ref.watch(billsProvider).value?.firstOrNull?.today;
 
@@ -193,6 +163,8 @@ class BillsScreen extends ConsumerWidget {
     AsyncValue<List<BillWithStatus>> bills,
     BillFilter filter,
   ) {
+    final DateTime? today = _today(ref);
+
     return switch (bills) {
       AsyncLoading<List<BillWithStatus>>() => const Center(
         child: AppLoadingIndicator(),
@@ -202,35 +174,28 @@ class BillsScreen extends ConsumerWidget {
           error: error,
           onRetry: () => ref.invalidate(billsProvider),
         ),
-      // Nothing matched, but there are bills. A different situation from
-      // an empty account and it has to read differently: the way out is to
-      // widen the filter, not to add a bill.
-      AsyncData<List<BillWithStatus>>(value: final List<BillWithStatus> list)
-          when list.isEmpty && filter.isNarrowed =>
-        AppEmptyState(
-          icon: Icons.filter_alt_off_rounded,
-          title: 'No bills match',
-          message:
-              'Nothing here fits what you are looking for. Widen the '
-              'filters or clear them to see everything again.',
-          actionLabel: 'Clear filters',
-          onAction: () => ref.read(billFilterProvider.notifier).clear(),
-        ),
-      AsyncData<List<BillWithStatus>>(value: final List<BillWithStatus> list)
-          when list.isEmpty =>
-        AppEmptyState(
-          icon: Icons.receipt_long_rounded,
-          title: 'No bills yet',
-          message:
-              'Add the first one and PayPaw will remind you before it is '
-              'due.',
-          actionLabel: 'Add bill',
-          onAction: () => context.pushNamed(AppRoutes.addBill.routeName),
-        ),
+      // No bills at all. The whole screen is the empty state: there is no total
+      // worth showing and nothing to search, so a summary card reading ₱0.00
+      // above an empty search box would be furniture around an apology.
+      //
+      // Keyed off `today` rather than the filtered list, because that comes from
+      // the unfiltered rows — a filter matching nothing is the *other* case.
+      AsyncData<List<BillWithStatus>>() when today == null => AppEmptyState(
+        icon: Icons.receipt_long_rounded,
+        title: 'No bills yet',
+        message:
+            'Add the first one and PayPaw will remind you before it is due.',
+        actionLabel: 'Add bill',
+        onAction: () => context.pushNamed(AppRoutes.addBill.routeName),
+      ),
       AsyncData<List<BillWithStatus>>(value: final List<BillWithStatus> list) =>
         _BillList(
           bills: list,
           sort: filter.sort,
+          // Non-null: the arm above catches the only case where it is not.
+          today: today!,
+          isNarrowed: filter.isNarrowed,
+          onClearFilters: () => ref.read(billFilterProvider.notifier).clear(),
           onRefresh: () => _refresh(ref),
         ),
     };
@@ -258,6 +223,9 @@ class _BillList extends ConsumerWidget {
   const _BillList({
     required this.bills,
     required this.sort,
+    required this.today,
+    required this.isNarrowed,
+    required this.onClearFilters,
     required this.onRefresh,
   });
 
@@ -268,6 +236,14 @@ class _BillList extends ConsumerWidget {
   /// a different one.
   final BillSort sort;
 
+  /// Today in the user's zone, for the filter bar's pickers and preview.
+  final DateTime today;
+
+  /// Whether anything is narrowing [bills], which is what tells an empty result
+  /// apart from an empty account.
+  final bool isNarrowed;
+
+  final VoidCallback onClearFilters;
   final Future<void> Function() onRefresh;
 
   @override
@@ -281,6 +257,9 @@ class _BillList extends ConsumerWidget {
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView(
+        // Always scrollable, so pull-to-refresh still works when a filter has
+        // left the list too short to scroll.
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.screenInset,
           AppSpacing.lg,
@@ -290,6 +269,31 @@ class _BillList extends ConsumerWidget {
         ),
         children: <Widget>[
           BillsSummaryCard(bills: bills),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Under the card, where the answer is: the total says how much is
+          // owed, and the controls under it are for narrowing that down.
+          //
+          // Inside the list rather than pinned above it, which means it scrolls
+          // away — and means the list has to render even when nothing matches,
+          // or the box being typed into would disappear on the keystroke that
+          // narrowed too far. That is why the no-results state below is a row in
+          // this list rather than a screen replacing it.
+          BillFilterBar(today: today),
+
+          if (groups.isEmpty) ...<Widget>[
+            const SizedBox(height: AppSpacing.sectionGap),
+            AppEmptyState(
+              icon: Icons.filter_alt_off_rounded,
+              title: 'No bills match',
+              message:
+                  'Nothing here fits what you are looking for. Widen the '
+                  'filters or clear them to see everything again.',
+              actionLabel: isNarrowed ? 'Clear filters' : null,
+              onAction: isNarrowed ? onClearFilters : null,
+            ),
+          ],
+
           for (final _Group group in groups) ...<Widget>[
             const SizedBox(height: AppSpacing.sectionGap),
             _SectionHeading(label: group.label, count: group.bills.length),
