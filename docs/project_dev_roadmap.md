@@ -428,16 +428,45 @@ outline now, the same contrast every card on these screens uses.
 
 # 🔁 Phase 6 — Recurring Bills
 
-## Sprint 29 — Recurrence Model
+## Sprint 29 — Recurrence Model — done
 
-Support:
+Model, serialization, validation and database mapping, matching Sprint 21's scope
+for `Bill`. No repository — nothing reads or writes these rows until Sprint 31.
 
-* Weekly
-* Bi-weekly
-* Monthly
-* Quarterly
-* Yearly
-* Custom
+The `recurring_bills` table has existed since migration 0005 and nothing in Dart
+had ever touched it. **No migration was needed**: the six frequencies below map
+onto the four the `frequency` check constraint already allows.
+
+* Weekly — `weekly`.
+* Bi-weekly — `weekly` with `interval_count` 2. **Not a wire value of its own**,
+  because it is an interval, not a frequency. Adding one would be a second way to
+  say what the interval already says, and a second branch in every switch that has
+  to agree with the others.
+* Monthly — `monthly`.
+* Quarterly — `quarterly`. Overlaps `monthly` with interval 3, kept because "every
+  quarter" is a thing people say and the alternative is a UI offering "Monthly,
+  every 3 months".
+* Yearly — `yearly`, with a `month_of_year`.
+* Custom — any frequency with `interval_count` above 1. The table's own comment
+  anticipated this and left room for an `rrule` column if a genuinely arbitrary
+  rule is ever needed.
+
+**Occurrences come from the pattern, never from the previous occurrence.** This is
+the whole design. A bill due on the 31st gives 31 Jan, 28 Feb, 31 Mar, because each
+month asks `day_of_month` afresh and clamps to that month's length. Stepping from
+the last occurrence would give 31 Jan, 28 Feb, 28 Mar — and every February would
+ratchet the schedule earlier until it stuck on the 28th permanently. Invisible for
+a year, then irreversible.
+
+`next_due_on` is a **bookmark, not a derived value**: generation reads it, creates
+that one bill, then advances it. Recomputing it from the rule would generate the
+same bill twice whenever a run was interrupted. It can therefore disagree with the
+rule after an edit, which `RecurringBill.isBookmarkConsistent` reports and Sprint
+32 decides what to do about.
+
+Sprint 33 is the dedicated recurrence-testing sprint, but the month-boundary cases
+are not something to write this arithmetic without — leap years, century non-leap
+years, the last-day sentinel and year rollover are covered here (42 tests).
 
 ## Sprint 30 — Recurring Bill UI
 
