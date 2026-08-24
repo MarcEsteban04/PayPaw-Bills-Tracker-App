@@ -34,7 +34,6 @@ class PayPawBottomNav extends StatelessWidget {
   const PayPawBottomNav({
     required this.currentIndex,
     required this.onDestinationSelected,
-    required this.onAddPressed,
     super.key,
   });
 
@@ -43,18 +42,6 @@ class PayPawBottomNav extends StatelessWidget {
 
   /// Called with the tapped destination's index.
   final ValueChanged<int> onDestinationSelected;
-
-  /// Records a new bill.
-  ///
-  /// Lives beside the destinations rather than inside the pill, because it is not
-  /// a destination — tapping it does not change which tab you are on, and putting
-  /// an action in a row of places is how a navigation bar starts lying about what
-  /// its items do.
-  ///
-  /// It is here rather than on a screen so it works from all four tabs. Adding a
-  /// bill is the app's primary action, and having it only on the Bills tab meant
-  /// finding the right tab first.
-  final VoidCallback onAddPressed;
 
   /// Height of the bar itself, excluding the floating margin.
   static const double _barHeight = 64;
@@ -85,21 +72,15 @@ class PayPawBottomNav extends StatelessWidget {
         // height it is offered, and this slot is measured with the whole screen
         // as its maximum — the same trap that once put the bar at the top of the
         // display. There is a test for it.
-        child: Align(
-          heightFactor: 1,
-          // The pill and the add button, side by side and centred as a pair. Two
-          // surfaces rather than one: the dark pill is where you are, the green
-          // circle is what you can do, and they should not look like the same
-          // kind of thing.
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Flexible(child: _navPill(context, textScale)),
-              const SizedBox(width: AppSpacing.sm),
-              _AddButton(onPressed: onAddPressed),
-            ],
-          ),
-        ),
+        //
+        // One surface, and only destinations on it.
+        //
+        // An add button used to float beside the pill so that adding a bill
+        // worked from all four tabs. It is gone: the bar is navigation, and the
+        // action moved to the Bills screen's own header, where it sits above the
+        // list it adds to. The dashboard's "Add bill" shortcut covers the other
+        // way in.
+        child: Align(heightFactor: 1, child: _navPill(context, textScale)),
       ),
     );
   }
@@ -107,9 +88,9 @@ class PayPawBottomNav extends StatelessWidget {
   Widget _navPill(BuildContext context, double textScale) {
     return Container(
       height: _barHeight,
-      // xs, not sm. The add button beside the bar took a fixed cut of the row,
-      // and these eight points are the difference between the selected label
-      // fitting on a 412dp phone and being dropped on every phone.
+      // xs, not sm. This dates from when an add button beside the bar took a
+      // fixed cut of the row; the button is gone but the tighter padding is
+      // still what keeps the selected label on a 320dp screen.
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       decoration: BoxDecoration(
         color: context.colors.navSurface,
@@ -159,65 +140,6 @@ class PayPawBottomNav extends StatelessWidget {
             ],
           );
         },
-      ),
-    );
-  }
-}
-
-/// Records a bill, from any tab.
-///
-/// A circle rather than the extended pill the Bills screen used to carry: beside
-/// a bar that is already a pill, a second pill reads as a fifth destination. The
-/// icon alone is unambiguous here because the button is the only action on the
-/// screen's furniture, and it keeps its tooltip and semantics label for anyone
-/// who needs the word.
-class _AddButton extends StatelessWidget {
-  const _AddButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  /// Smaller than the bar, so the bar stays the anchor of the pair — and so it
-  /// takes as little width as possible from it. Every point this button occupies
-  /// is a point the four destinations do not have.
-  static const double _size = 48;
-
-  @override
-  Widget build(BuildContext context) {
-    final AppPalette colors = context.colors;
-
-    return Semantics(
-      button: true,
-      label: 'Add bill',
-      child: Tooltip(
-        message: 'Add bill',
-        // The shadow is painted by the container, not by Material's elevation:
-        // the bar beside it uses the palette's own `floatingShadow`, and the two
-        // have to match or one appears to hover above the other.
-        child: Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: colors.floatingShadow,
-          ),
-          child: Material(
-            color: colors.primary,
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: onPressed,
-              child: SizedBox(
-                width: _size,
-                height: _size,
-                child: Center(
-                  child: Icon(
-                    Icons.add_rounded,
-                    size: 28,
-                    color: colors.textOnPrimary,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

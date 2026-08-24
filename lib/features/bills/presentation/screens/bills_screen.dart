@@ -117,14 +117,28 @@ class BillsScreen extends ConsumerWidget {
             isSelected: !filter.sort.isDefault,
             icon: const Icon(Icons.swap_vert_rounded),
           ),
-          const SizedBox(width: AppSpacing.xs),
+          // Adding a bill lives here now, not on the navigation bar.
+          //
+          // A filled circle rather than a third bare icon: the two beside it
+          // narrow what is already on screen, and this one makes something new.
+          // Given the same weight they would read as three variations of the
+          // same kind of control.
+          //
+          // Pushed, not a branch, so the form covers the navigation and comes
+          // back to this list.
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+            child: _AddBillButton(
+              onPressed: () => context.pushNamed(AppRoutes.addBill.routeName),
+            ),
+          ),
         ],
       ),
       body: SafeArea(
         child: AppContentWidth(child: _results(context, ref, bills, filter)),
       ),
-      // No floating button. Adding a bill moved into the shell, beside the
-      // navigation bar, so it works from every tab rather than only this one.
+      // No floating button. Adding a bill is the circle in the header above,
+      // where it sits over the list it adds to.
     );
   }
 
@@ -229,6 +243,63 @@ class _Group {
 
   final String label;
   final List<BillWithStatus> bills;
+}
+
+/// Records a bill, from the top of the list it will join.
+///
+/// This used to float beside the bottom navigation bar, where it worked from
+/// every tab. It reads better here: the action sits above the thing it adds to,
+/// and the navigation bar is left saying only where you can go.
+///
+/// A filled circle, not a bare `IconButton`. The two controls beside it narrow
+/// what is already on screen; this one makes something new, and at equal weight
+/// all three would read as variations of the same kind of control.
+class _AddBillButton extends StatelessWidget {
+  const _AddBillButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  /// Smaller than a bare icon button's 48dp target, but the `Semantics` and the
+  /// surrounding padding keep the touchable area at the minimum.
+  static const double _size = 40;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+
+    return Semantics(
+      button: true,
+      label: 'Add bill',
+      child: Tooltip(
+        message: 'Add bill',
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: Center(
+            child: Material(
+              color: colors.primary,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: onPressed,
+                child: SizedBox(
+                  width: _size,
+                  height: _size,
+                  child: Center(
+                    child: Icon(
+                      Icons.add_rounded,
+                      size: 22,
+                      color: colors.textOnPrimary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _BillList extends ConsumerWidget {

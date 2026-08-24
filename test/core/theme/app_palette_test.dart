@@ -126,14 +126,19 @@ void main() {
         );
       });
 
-      test('white on primary clears the large-text threshold', () {
-        // Documented and deliberate: the brand orange is not adjusted to reach
-        // 4.5:1, so button labels stay semibold at 15pt and no smaller.
+      test('and text on the brand fill clears full 4.5:1', () {
+        // It used to be a documented exception. White on the old brand green
+        // reached only about 3.3:1, so button labels were held at semibold 15pt
+        // to stay inside the large-text allowance.
+        //
+        // The lime brand removed the exception rather than inheriting it:
+        // `textOnPrimary` is near-black, which clears 4.5:1 with room to spare.
+        // White on lime would be about 1.4:1 — this is the assertion that would
+        // catch anyone putting it back.
         expectContrast(
           'textOnPrimary on primary',
           palette.textOnPrimary,
           palette.primary,
-          minimum: aaLarge,
         );
       });
     });

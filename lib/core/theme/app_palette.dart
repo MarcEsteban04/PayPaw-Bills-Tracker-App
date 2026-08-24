@@ -86,11 +86,15 @@ class AppPalette extends ThemeExtension<AppPalette> {
   /// Pressed state of [primary].
   final Color primaryPressed;
 
-  /// The brand green as *text or an icon on a surface*, darkened (or lightened,
-  /// in dark mode) to clear 4.5:1 where [primary] would not.
+  /// The brand lime as *text or an icon on a surface*, darkened (or, in dark
+  /// mode, kept as-is) to clear 4.5:1 where [primary] would not.
+  ///
+  /// The gap between this and [primary] is much wider than it was under the
+  /// green brand: lime on white is about 1.4:1, so the light-mode value is a
+  /// dark olive rather than a slightly deeper version of the fill.
   final Color primaryText;
 
-  /// Soft green wash. Behind tinted icons, and behind the reference design.s
+  /// Soft lime wash. Behind tinted icons, and behind the reference design's
   /// promotional and referral cards.
   final Color primarySoft;
 
@@ -194,7 +198,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
   /// Colour of the shadow under floating elements.
   final Color shadowFloating;
 
-  /// Glow under the primary CTA. Tinted with the brand green rather than black,
+  /// Glow under the primary CTA. Tinted with the brand lime rather than black,
   /// which is what stops the button looking pasted onto the page.
   final Color glow;
 
@@ -265,23 +269,30 @@ class AppPalette extends ThemeExtension<AppPalette> {
     canvasStart: Color(0xFFF3F4F6),
     canvasMid: Color(0xFFF0F1F3),
     canvasEnd: Color(0xFFECEEF1),
-    primary: Color(0xFF16A34A),
-    primaryPressed: Color(0xFF12833B),
-    primaryText: Color(0xFF0F7A38),
-    primarySoft: Color(0xFFE8F8EE),
+    primary: Color(0xFFD9F94A),
+    primaryPressed: Color(0xFFC2E035),
+    // **Not the lime.** As a fill on white, lime is fine with black on top of
+    // it; as text or an icon *on* white it is around 1.4:1 and unreadable. This
+    // is the same hue taken down to a dark olive that clears 4.5:1, which is
+    // exactly the job `primaryText` has always had — the green version of this
+    // was darker than `primary` for the same reason.
+    primaryText: Color(0xFF4A5A00),
+    primarySoft: Color(0xFFF6FCDC),
     navSurface: Color(0xFF0A0B0D),
     navActivePill: Color(0xFFD9F94A),
     navOnActivePill: Color(0xFF0F1011),
     navItemSunken: Color(0xFF1C1F24),
     navInactiveIcon: Color(0xFFA8AEB8),
+    // Green survives here and nowhere else — it means settled, not "press me".
     paid: Color(0xFF16A34A),
-    dueSoon: Color(0xFFF59E0B),
+    // Pushed towards orange, away from the lime brand. See the dark palette.
+    dueSoon: Color(0xFFEA7317),
     overdue: Color(0xFFEF4444),
     info: Color(0xFF3B82F6),
     paidTint: Color(0xFFE8F8EE),
     paidText: Color(0xFF0F7A38),
-    dueSoonTint: Color(0xFFFEF3E2),
-    dueSoonText: Color(0xFF8A5200),
+    dueSoonTint: Color(0xFFFDEEE0),
+    dueSoonText: Color(0xFF8A4300),
     overdueTint: Color(0xFFFDECEC),
     overdueText: Color(0xFFB3262A),
     infoTint: Color(0xFFE8F0FE),
@@ -289,7 +300,9 @@ class AppPalette extends ThemeExtension<AppPalette> {
     textPrimary: Color(0xFF14161A),
     textSecondary: Color(0xFF5C6167),
     textTertiary: Color(0xFF666A72),
-    textOnPrimary: Color(0xFFFFFFFF),
+    // Near-black on the lime fill, like the navigation pill. White would be
+    // about 1.4:1 and unreadable.
+    textOnPrimary: Color(0xFF0F1011),
     textOnDark: Color(0xFFF5F5F7),
     surface: Color(0xFFFFFFFF),
     surfaceMuted: Color(0xFFF1F2F4),
@@ -300,7 +313,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
     shadowSubtle: Color(0x0A000000),
     shadowCard: Color(0x0D000000),
     shadowFloating: Color(0x1F000000),
-    glow: Color(0x3316A34A),
+    glow: Color(0x33D9F94A),
   );
 
   /// Derived from [light], since the reference design has no dark mode.
@@ -315,26 +328,37 @@ class AppPalette extends ThemeExtension<AppPalette> {
   ///   so the alpha rises to keep cards reading as lifted.
   static const AppPalette dark = AppPalette(
     brightness: Brightness.dark,
-    canvasStart: Color(0xFF121316),
-    canvasMid: Color(0xFF0F1012),
-    canvasEnd: Color(0xFF0D0E10),
-    primary: Color(0xFF16A34A),
-    primaryPressed: Color(0xFF12833B),
-    primaryText: Color(0xFF4ADE80),
-    primarySoft: Color(0xFF15321F),
+    // True black, all three stops. Not a gradient any more — a gradient from
+    // black to black is three identical stops, and the honest thing is to say
+    // so rather than leave two shades nobody can tell apart.
+    //
+    // The cards carry the depth instead: on #000000 the surface below is
+    // unmistakably a raised panel, which it was not against the old #121316.
+    canvasStart: Color(0xFF000000),
+    canvasMid: Color(0xFF000000),
+    canvasEnd: Color(0xFF000000),
+    primary: Color(0xFFD9F94A),
+    primaryPressed: Color(0xFFC2E035),
+    primaryText: Color(0xFFD9F94A),
+    primarySoft: Color(0xFF2A3007),
     navSurface: Color(0xFF22252A),
     navActivePill: Color(0xFFD9F94A),
     navOnActivePill: Color(0xFF0F1011),
     navItemSunken: Color(0xFF15171A),
     navInactiveIcon: Color(0xFFA8AEB8),
+    // Green survives here and nowhere else. It is no longer the brand, so it no
+    // longer means "press me" — it means settled, and only that.
     paid: Color(0xFF16A34A),
-    dueSoon: Color(0xFFF59E0B),
+    // Pushed from amber towards orange. Beside a lime brand colour the old
+    // #F59E0B read as a dimmer version of the same thing, and a status has to be
+    // distinguishable from a button at a glance.
+    dueSoon: Color(0xFFFB8B24),
     overdue: Color(0xFFFF5A5F),
     info: Color(0xFF5B9BFF),
     paidTint: Color(0xFF14301E),
     paidText: Color(0xFF7BE8A0),
-    dueSoonTint: Color(0xFF33260A),
-    dueSoonText: Color(0xFFF6C765),
+    dueSoonTint: Color(0xFF3A2109),
+    dueSoonText: Color(0xFFFFB166),
     overdueTint: Color(0xFF3A1618),
     overdueText: Color(0xFFFF9A9D),
     infoTint: Color(0xFF132A45),
@@ -342,18 +366,24 @@ class AppPalette extends ThemeExtension<AppPalette> {
     textPrimary: Color(0xFFF2F3F5),
     textSecondary: Color(0xFFB3B8C0),
     textTertiary: Color(0xFF969CA6),
-    textOnPrimary: Color(0xFFFFFFFF),
+    // Near-black, not white. White on lime is about 1.4:1 — illegible. This is
+    // the same pairing the navigation pill has always used, and it is why that
+    // pill reads cleanly while a white-on-lime button would not.
+    textOnPrimary: Color(0xFF0F1011),
     textOnDark: Color(0xFFF5F5F7),
-    surface: Color(0xFF1A1C1F),
-    surfaceMuted: Color(0xFF23262A),
-    surfaceInput: Color(0xFF1F2226),
-    border: Color(0xFF2C2F34),
-    disabled: Color(0xFF2A2D32),
+    surface: Color(0xFF141518),
+    surfaceMuted: Color(0xFF1E2024),
+    surfaceInput: Color(0xFF1A1C20),
+    border: Color(0xFF292C31),
+    disabled: Color(0xFF24272B),
     onDisabled: Color(0xFF9DA3AC),
-    shadowSubtle: Color(0x33000000),
-    shadowCard: Color(0x4D000000),
-    shadowFloating: Color(0x66000000),
-    glow: Color(0x3316A34A),
+    // Heavier than before. A shadow is a shade of black, and against a black
+    // canvas the old ones did nothing at all — the cards separate by being
+    // lighter than their background now, which is the opposite of light mode.
+    shadowSubtle: Color(0x00000000),
+    shadowCard: Color(0x00000000),
+    shadowFloating: Color(0x59000000),
+    glow: Color(0x33D9F94A),
   );
 
   /// Returns `this`.

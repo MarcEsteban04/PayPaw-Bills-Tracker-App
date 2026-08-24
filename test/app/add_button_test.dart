@@ -16,11 +16,12 @@ import '../features/auth/helpers/fake_auth_repository.dart';
 import '../features/bills/helpers/fake_bill_repository.dart';
 import '../helpers/fake_onboarding_progress.dart';
 
-/// The add button beside the navigation bar.
+/// The add button, in the Bills header.
 ///
-/// It sits in the shell rather than on a screen, so recording a bill does not
-/// start with finding the right tab first. These tests are about that: it is
-/// present and it works from every destination.
+/// It used to float beside the navigation bar, where it worked from every tab.
+/// It sits over the list it adds to now, and the bar is navigation only. These
+/// tests are about that move: where it is, that it works, and that the other
+/// route to the form did not disappear with it.
 void main() {
   const AuthenticatedUser marc = AuthenticatedUser(
     id: 'user-1',
@@ -60,29 +61,38 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// The add button, wherever it is. Scoped to the app bar so it cannot match
+  /// the dashboard's "Add bill" shortcut, which uses the same icon.
   Finder addButton() => find.descendant(
-    of: find.byType(PayPawBottomNav),
+    of: find.byType(AppBar),
     matching: find.byIcon(Icons.add_rounded),
   );
 
   group('where it lives', () {
-    testWidgets('beside the navigation bar, not inside it', (
+    testWidgets('in the Bills header, over the list it adds to', (
       WidgetTester tester,
     ) async {
-      // Not a fifth destination. Tapping it does not change which tab you are
-      // on, and an action in a row of places is a navigation bar that lies about
-      // what its items do.
       await pumpApp(tester);
+      await tester.tap(find.bySemanticsLabel(AppDestination.bills.label));
+      await tester.pumpAndSettle();
 
       expect(addButton(), findsOneWidget);
+    });
 
-      final Rect button = tester.getRect(addButton());
-      final Rect profile = tester.getRect(
-        find.bySemanticsLabel(AppDestination.profile.label),
+    testWidgets('and no longer on the navigation bar', (
+      WidgetTester tester,
+    ) async {
+      // It floated beside the pill so it worked from every tab. The bar is
+      // navigation now and says only where you can go.
+      await pumpApp(tester);
+
+      expect(
+        find.descendant(
+          of: find.byType(PayPawBottomNav),
+          matching: find.byIcon(Icons.add_rounded),
+        ),
+        findsNothing,
       );
-
-      // To the right of the last destination, which is Profile.
-      expect(button.left, greaterThan(profile.right));
     });
 
     testWidgets('it is labelled for a screen reader', (
@@ -90,6 +100,8 @@ void main() {
     ) async {
       // The icon alone carries no word, so the semantics have to.
       await pumpApp(tester);
+      await tester.tap(find.bySemanticsLabel(AppDestination.bills.label));
+      await tester.pumpAndSettle();
 
       expect(find.bySemanticsLabel('Add bill'), findsWidgets);
     });
@@ -98,6 +110,8 @@ void main() {
   group('what it does', () {
     testWidgets('opens the form', (WidgetTester tester) async {
       await pumpApp(tester);
+      await tester.tap(find.bySemanticsLabel(AppDestination.bills.label));
+      await tester.pumpAndSettle();
 
       await tester.tap(addButton());
       await tester.pumpAndSettle();
@@ -105,35 +119,13 @@ void main() {
       expect(find.widgetWithText(AppBar, 'Add bill'), findsOneWidget);
     });
 
-    // One test per destination rather than a loop inside one. Re-pumping the app
-    // in a loop left the pushed form in the tree, and the second iteration failed
-    // looking for a navigation bar that was covered — a test failing for a reason
-    // that has nothing to do with what it is checking.
-    //
-    // Four tests because "works on each screen" is the requirement, and checking
-    // one and assuming the rest is how the Bills-only version passed review.
-    for (final AppDestination destination in AppDestination.values) {
-      testWidgets('from the ${destination.label} tab', (
-        WidgetTester tester,
-      ) async {
-        await pumpApp(tester);
-
-        await tester.tap(find.bySemanticsLabel(destination.label));
-        await tester.pumpAndSettle();
-
-        await tester.tap(addButton());
-        await tester.pumpAndSettle();
-
-        expect(find.widgetWithText(AppBar, 'Add bill'), findsOneWidget);
-      });
-    }
-
     testWidgets('and the form covers the navigation while it is open', (
       WidgetTester tester,
     ) async {
-      // Pushed above the shell, so the bar — and this button — are not sitting
-      // under a form.
+      // Pushed above the shell, so the bar is not sitting under a form.
       await pumpApp(tester);
+      await tester.tap(find.bySemanticsLabel(AppDestination.bills.label));
+      await tester.pumpAndSettle();
 
       await tester.tap(addButton());
       await tester.pumpAndSettle();
@@ -142,14 +134,29 @@ void main() {
     });
   });
 
+  group('the other way in', () {
+    testWidgets('the dashboard still offers Add bill', (
+      WidgetTester tester,
+    ) async {
+      // Moving the button off the bar cost three tabs their route to the form.
+      // This is the one that matters: the dashboard is where the app opens, and
+      // its shortcut row is what keeps adding a bill from starting with "find
+      // the right tab first".
+      await pumpApp(tester);
+
+      expect(find.text('Add bill'), findsWidgets);
+    });
+  });
+
   group('on a small screen', () {
     testWidgets('it is still there, and nothing overflows', (
       WidgetTester tester,
     ) async {
-      // The button takes a fixed cut of the row, which is what forced the bar to
-      // give up its label earlier and tighten its padding. The action is the part
-      // that must survive; the label is decoration.
+      // Three controls now share the Bills app bar, and one of them widens with
+      // the filter count.
       await pumpApp(tester, size: const Size(320, 640));
+      await tester.tap(find.bySemanticsLabel(AppDestination.bills.label));
+      await tester.pumpAndSettle();
 
       expect(addButton(), findsOneWidget);
       expect(tester.takeException(), isNull);

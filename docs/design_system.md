@@ -43,7 +43,7 @@ it. One rule: use `context.colors`.
 This design system was originally derived from a different reference — a warm
 peach canvas with an orange accent. That reference was replaced, and the tokens
 were re-derived from the current one: **a cool light-grey canvas carrying white
-content sheets, with a green accent.**
+content sheets, with a lime accent.**
 
 The mechanism is why that was an afternoon's work rather than a week's. Nothing
 outside `app_palette.dart` names a colour, so replacing the palette replaced the
@@ -71,33 +71,37 @@ It stays a gradient rather than becoming a single colour because dark mode uses
 the same mechanism, and because a flat token would have to become a gradient
 again the first time a screen wants one.
 
-### Brand green, and why there are two of them
+### Brand lime, and why there are two of them
 
 | Token | Use |
 | --- | --- |
-| `primary` `#16A34A` | Button and indicator **fills** |
-| `primaryPressed` `#12833B` | Pressed state |
-| `primaryText` `#0F7A38` | Green as **text or an icon on a surface** |
-| `primarySoft` `#E8F8EE` | Tinted wash — icons, and the reference's referral cards |
+| `primary` `#D9F94A` | Button and indicator **fills** |
+| `primaryPressed` `#C2E035` | Pressed state |
+| `primaryText` `#4A5A00` | Lime as **text or an icon on a surface** |
+| `primarySoft` `#F6FCDC` | Tinted wash — icons, and the reference's referral cards |
 
-White text on `primary` reaches about **3.3:1**, which satisfies WCAG AA for
-large text. That is why button labels are semibold at 15pt and no smaller.
+The brand was green until the lime took over. The bottom navigation had used
+lime as its active pill from the start, and running two accents meant every new
+control needed a ruling on which one it was. There is one now.
 
-The reference's green is brighter than `#16A34A`. It was darkened to reach even
-the large-text threshold — a brighter green put white-on-green near 2.2:1, which
-fails everything. This is the one place the design was adjusted for legibility
-rather than reproduced exactly, and it stays clearly the same green.
+**`textOnPrimary` is near-black, not white.** White on lime is about **1.4:1** —
+illegible at any size. This is the pairing the navigation pill has always used,
+and it is why that pill reads cleanly. A lime button with white text would not.
 
-Green *as small text* on a light surface fails at `primary`, so `primaryText` is
-the darker sibling that clears 4.5:1. They read as the same colour in place.
+**The gap between `primary` and `primaryText` is much wider than it was.** Under
+the green brand, `primaryText` was a slightly deeper green. Lime as a foreground
+on white sits near 1.4:1, so the light-mode text token is a dark **olive** — the
+same hue taken far enough down to clear 4.5:1. They no longer read as the same
+colour in place, and that is the cost of a brand colour this bright.
 
-### Bottom navigation: the second accent
+In dark mode `primaryText` *is* the lime: on a near-black surface it clears 4.5:1
+comfortably, and darkening it would only make it harder to read.
 
-The nav reference is its own palette — a dark floating pill with a **lime** active
-pill. Both accents are kept, with defined jobs:
+### Bottom navigation: no longer a second accent
 
-- `primary` — CTAs and content accents
-- `navActivePill` `#D9F94A` — the bottom navigation's active state only
+The nav reference is a dark floating pill with a lime active pill. That lime is
+now the brand colour, so `navActivePill` and `primary` are the same value and the
+"two accents with defined jobs" rule is gone with them.
 
 The bar is `navSurface` `#0A0B0D`: **very dark**, close to black.
 `navItemSunken` `#1C1F24` is *lighter* than the bar, because on a near-black
@@ -107,20 +111,25 @@ The bar also **hugs its content and centres itself** rather than stretching edge
 to edge. Spread across the full width, four destinations sat too far apart; the
 reference bar is a compact pill.
 
-Lime is legible here specifically because it is a **background** carrying
-near-black content (about 16:1). Never use it as a foreground on a light surface,
-where it sits near 1.1:1.
+It carries destinations only. An add button floated beside it until Sprint 40's
+follow-up, so that recording a bill worked from every tab; it moved to the Bills
+screen's own header, above the list it adds to. The dashboard's "Add bill"
+shortcut is the other way in.
 
-> Worth knowing: lime and the brand green are now neighbours on the colour wheel
-> in a way they were not when the brand was orange. It still reads as a distinct
-> accent because it only ever appears on the near-black bar, never beside a green
-> button. If the two ever do end up adjacent, that is the moment to revisit it.
+Lime is legible as a **background** carrying near-black content (about 16:1).
+Never use it as a foreground on a light surface, where it sits near 1.1:1 — that
+is what `primaryText` is for.
 
 ### Bill status
 
-The reference shows positive figures in green and negative in red, and PayPaw
-follows it. Note that `paid` and `primary` are now the same green — the reference
-makes that choice too, and status is always spelled out in words as well.
+`paid` is the one place green survives, and that is the whole point of keeping
+it: green no longer means "press me", so it can mean *settled* and nothing else.
+Under the old palette `paid` and `primary` were the same green and a settled chip
+and a button were the same colour.
+
+`dueSoon` moved from amber `#F59E0B` to orange (`#EA7317` light, `#FB8B24` dark).
+Beside a lime brand the old amber read as a dimmer version of the same thing, and
+a status has to be distinguishable from a button at a glance.
 
 `paid` · `dueSoon` · `overdue` · `info`
 
@@ -216,9 +225,9 @@ darker, so **component elevation is zero everywhere** and PayPaw paints these:
 | `subtleShadow` | Chips, inline controls |
 | `cardShadow` | The default card |
 | `floatingShadow` | Bottom navigation, sheets, menus |
-| `primaryGlow` | The soft green glow under the primary CTA |
+| `primaryGlow` | The soft lime glow under the primary CTA |
 
-`primaryGlow` is tinted green rather than black on purpose. It is what stops the
+`primaryGlow` is tinted lime rather than black on purpose. It is what stops the
 CTA looking pasted onto the page.
 
 ---
@@ -233,8 +242,12 @@ The reference is light-only, so the dark palette is derived from it:
   light page; in dark mode a darker bar would sink into it, so the bar becomes
   *lighter* than the canvas. A test asserts that relationship in both themes.
 - **Shadows get much stronger.** A 5%-black shadow is invisible on charcoal.
-- `primary` is the **same green in both themes**; `primaryText` lightens to
-  `#4ADE80`, since in dark mode it sits on a dark surface.
+- `primary` is the **same lime in both themes**; `primaryText` is that lime in
+  dark mode and a dark olive in light, since one has to survive white behind it
+  and the other does not.
+- **The dark canvas is true black** — all three gradient stops are `#000000`.
+  The cards carry the depth instead, and are *lighter* than the ground they sit
+  on, which is the reverse of light mode.
 
 ### Theme preference
 
@@ -249,7 +262,7 @@ Switch it under **Profile > Appearance**.
 [`test/core/theme/app_palette_test.dart`](../test/core/theme/app_palette_test.dart)
 computes the real WCAG ratio for every text-on-background pair in **both**
 palettes and fails below 4.5:1 — 3:1 for icons and for the documented
-white-on-green exception.
+documented near-black-on-lime pairing.
 
 It has earned its place twice: on its first run it caught three failures that
 hand-checking had passed, and when the whole palette was replaced it re-verified
@@ -262,14 +275,14 @@ every pair in seconds instead of by eye.
 Themed centrally in `app_theme.dart`, so a plain widget already looks right and
 no call site passes a style:
 
-- **Buttons** — `FilledButton` and `ElevatedButton` share one style: a green
+- **Buttons** — `FilledButton` and `ElevatedButton` share one style: a lime
   pill, 48dp tall, flat. `OutlinedButton` matches its geometry with a hairline
   border. `TextButton` uses `primaryText`.
-- **Inputs** — filled, borderless, `surfaceInput` fill, green 1.5dp border on
+- **Inputs** — filled, borderless, `surfaceInput` fill, lime 1.5dp border on
   focus only.
-- **Cards** — white, `AppRadii.card`, zero elevation, surface tint off.
+- **Cards** — `surface`, `AppRadii.card`, zero elevation, surface tint off.
 - **Chips** — `surfaceMuted` fill, `AppRadii.chip`, `labelMedium`, no border.
-- **Tabs** — a 2.5dp green underline under the active label.
+- **Tabs** — a 2.5dp lime underline under the active label.
 
 `ColorScheme` is built member by member rather than with `ColorScheme.fromSeed`,
 because a seed generates its own tonal palette and would override the sampled

@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/presentation/layout/app_breakpoints.dart';
 import '../../core/presentation/layout/app_content_width.dart';
-import '../router/app_routes.dart';
 import 'paypaw_bottom_nav.dart';
 
 /// The frame around PayPaw's four primary destinations.
@@ -39,9 +38,6 @@ class AppShell extends StatelessWidget {
         child: PayPawBottomNav(
           currentIndex: navigationShell.currentIndex,
           onDestinationSelected: _onDestinationSelected,
-          // Pushed, not a branch: the form covers the navigation and returns to
-          // whichever tab it was opened from.
-          onAddPressed: () => context.pushNamed(AppRoutes.addBill.routeName),
         ),
       ),
     );
