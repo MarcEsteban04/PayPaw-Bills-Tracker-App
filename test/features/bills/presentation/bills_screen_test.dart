@@ -138,7 +138,9 @@ void main() {
       await pumpList(tester, bills: <BillWithStatus>[item()]);
 
       expect(find.text('Meralco electricity'), findsOneWidget);
-      expect(find.text('Due in 2 days'), findsOneWidget);
+      // The category is part of the line now: the icon's colour alone was a
+      // guessing game for anyone who has not memorised thirteen hues.
+      expect(find.text('Electricity · Due in 2 days'), findsOneWidget);
       // Scoped to the row: 'Due soon' is now also a section heading and a figure
       // on the summary card, so a bare finder matches three things.
       expect(
@@ -189,7 +191,7 @@ void main() {
         ],
       );
 
-      expect(find.text('4 days overdue'), findsOneWidget);
+      expect(find.text('Electricity · 4 days overdue'), findsOneWidget);
       expect(
         find.descendant(
           of: find.byType(BillListTile),
@@ -209,17 +211,14 @@ void main() {
         ],
       );
 
-      // Scoped to the row: 'Settled' is also the section heading it sits under.
-      expect(
-        find.descendant(
-          of: find.byType(BillListTile),
-          matching: find.text('Settled'),
-        ),
-        findsOneWidget,
-      );
+      expect(find.text('Electricity · Settled'), findsOneWidget);
     });
 
-    testWidgets('tapping a row opens that bill', (WidgetTester tester) async {
+    testWidgets('tapping a row opens its details, not the editor', (
+      WidgetTester tester,
+    ) async {
+      // Looking at a bill and changing it used to be the same gesture, and most
+      // taps are looks.
       await pumpList(
         tester,
         bills: <BillWithStatus>[
@@ -231,7 +230,9 @@ void main() {
       await tester.tap(find.text('Globe fibre'));
       await tester.pumpAndSettle();
 
-      expect(find.text('edit bill-2'), findsOneWidget);
+      expect(find.text('edit bill-2'), findsNothing);
+      expect(find.text('Edit bill'), findsOneWidget);
+      expect(find.text('Outstanding'), findsOneWidget);
     });
 
     testWidgets('a bill with no category still renders', (

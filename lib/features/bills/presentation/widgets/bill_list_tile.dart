@@ -108,7 +108,13 @@ class BillListTile extends ConsumerWidget {
                         ),
                         const SizedBox(height: AppSpacing.xxs),
                         Text(
-                          _due(item),
+                          // The category, then how soon. The category was
+                          // previously only implied by the icon's colour, which
+                          // is a guessing game for anyone who has not memorised
+                          // thirteen hues — and it costs nothing to say.
+                          _subtitle(item, category),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: textTheme.bodySmall?.copyWith(
                             color: switch (item.status) {
                               BillStatus.overdue => colors.overdueText,
@@ -120,6 +126,13 @@ class BillListTile extends ConsumerWidget {
                                 : FontWeight.w400,
                           ),
                         ),
+                        // Only for a bill that is part paid. On any other row
+                        // the bar would be either empty or full, which is two
+                        // ways of saying what the words already said.
+                        if (item.isPartiallyPaid) ...<Widget>[
+                          const SizedBox(height: AppSpacing.sm),
+                          _PaidBar(fraction: _paidFraction(item)),
+                        ],
                       ],
                     ),
                   ),
@@ -164,6 +177,20 @@ class BillListTile extends ConsumerWidget {
     );
   }
 
+  /// The category and how soon, or just how soon when there is no category.
+  static String _subtitle(BillWithStatus item, Category? category) {
+    final String due = _due(item);
+
+    return category == null ? due : '${category.name} · $due';
+  }
+
+  /// How much of the bill has been paid, as a fraction.
+  static double _paidFraction(BillWithStatus item) {
+    final int total = item.bill.amount.minorUnits;
+
+    return total <= 0 ? 0 : item.paid.minorUnits / total;
+  }
+
   /// How soon, in words, counted against the row's own `today` — never the device
   /// clock. See [BillWithStatus.today].
   static String _due(BillWithStatus item) {
@@ -189,4 +216,44 @@ class BillListTile extends ConsumerWidget {
     BillStatus.partiallyPaid => 'PART PAID',
     _ => null,
   };
+}
+
+/// How much of a part-paid bill has been cleared.
+///
+/// Thin and unlabelled: the figures are already on the row, and this only has to
+/// answer "roughly how far along" at a glance. A percentage in text here would be
+/// a fourth number competing with three that matter more.
+class _PaidBar extends StatelessWidget {
+  const _PaidBar({required this.fraction});
+
+  final double fraction;
+
+  static const double _height = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+
+    return Semantics(
+      label: 'Paid',
+      value: '${(fraction * 100).round()} percent',
+      child: ClipRRect(
+        borderRadius: AppRadii.round,
+        child: SizedBox(
+          height: _height,
+          child: Stack(
+            children: <Widget>[
+              ColoredBox(color: colors.surfaceMuted),
+              FractionallySizedBox(
+                widthFactor: fraction.clamp(0.0, 1.0),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(color: colors.primary),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

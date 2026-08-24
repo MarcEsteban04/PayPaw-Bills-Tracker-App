@@ -28,6 +28,16 @@ Future<T?> showAppBottomSheet<T>({
     isDismissible: isDismissible,
     enableDrag: isDismissible,
     useSafeArea: useSafeArea,
+    // The root navigator, not the tab's.
+    //
+    // A screen inside the shell sits under a nested navigator, and a sheet shown
+    // there is only modal over that branch — the floating navigation bar and the
+    // add button beside it keep drawing on top of it. On the bill detail sheet
+    // that put the pill squarely over the Delete button, which was simply
+    // unreachable.
+    //
+    // A modal sheet is modal over the app or it is not modal.
+    useRootNavigator: true,
     builder: (BuildContext context) => _SheetBody(title: title, child: child),
   );
 }

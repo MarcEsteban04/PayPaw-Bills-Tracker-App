@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/presentation/layout/app_content_width.dart';
+import '../../../../core/presentation/widgets/app_dialog.dart';
 import '../../../../core/presentation/widgets/app_empty_state.dart';
 import '../../../../core/presentation/widgets/app_error_state.dart';
 import '../../../../core/presentation/widgets/app_loading_indicator.dart';
@@ -12,8 +13,11 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/bill_status.dart';
 import '../../domain/entities/bill_with_status.dart';
+import '../controllers/bill_actions_controller.dart';
 import '../controllers/bill_detail_provider.dart';
+import '../widgets/bill_detail_sheet.dart';
 import '../widgets/bill_list_tile.dart';
+import '../widgets/bill_swipe_actions.dart';
 import '../widgets/bills_summary_card.dart';
 
 /// The list of bills.
@@ -107,14 +111,14 @@ class _Group {
   final List<BillWithStatus> bills;
 }
 
-class _BillList extends StatelessWidget {
+class _BillList extends ConsumerWidget {
   const _BillList({required this.bills, required this.onRefresh});
 
   final List<BillWithStatus> bills;
   final Future<void> Function() onRefresh;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView(
@@ -132,14 +136,16 @@ class _BillList extends StatelessWidget {
             _SectionHeading(label: group.label, count: group.bills.length),
             const SizedBox(height: AppSpacing.md),
             for (final BillWithStatus item in group.bills) ...<Widget>[
-              BillListTile(
-                item: item,
-                // Straight to edit, for now. Sprint 26 puts a detail screen in
-                // between, which is where a tap should land once there is more
-                // to show than the six fields the form already holds.
-                onTap: () => context.pushNamed(
-                  AppRoutes.editBill.routeName,
-                  pathParameters: <String, String>{'id': item.bill.id},
+              BillSwipeActions(
+                billKey: item.bill.id,
+                onEdit: () => _openEditor(context, item),
+                confirmDelete: () => _confirmDelete(context, ref, item),
+                child: BillListTile(
+                  item: item,
+                  // A tap opens the detail drawer, not the editor. Looking at a
+                  // bill and changing it were the same gesture before, and most
+                  // taps are looks.
+                  onTap: () => _openDetail(context, ref, item),
                 ),
               ),
               const SizedBox(height: AppSpacing.cardGap),
@@ -148,6 +154,119 @@ class _BillList extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Opens the edit form for one bill.
+  static void _openEditor(BuildContext context, BillWithStatus item) =>
+      context.pushNamed(
+        AppRoutes.editBill.routeName,
+        pathParameters: <String, String>{'id': item.bill.id},
+      );
+
+  /// Opens the detail drawer and acts on whatever the user chose there.
+  ///
+  /// The sheet returns an intent rather than doing the work itself: navigation and
+  /// dialogs need a context that outlives the sheet, and a widget that pops itself
+  /// and then keeps working is a widget that eventually uses a dead context.
+  static Future<void> _openDetail(
+    BuildContext context,
+    WidgetRef ref,
+    BillWithStatus item,
+  ) async {
+    final BillDetailAction? action = await showBillDetailSheet(
+      context: context,
+      item: item,
+    );
+
+    if (!context.mounted || action == null) {
+      return;
+    }
+
+    switch (action) {
+      case BillDetailAction.edit:
+        _openEditor(context, item);
+      case BillDetailAction.archive:
+        await _archive(context, ref, item);
+      case BillDetailAction.restore:
+        await ref
+            .read(billActionsControllerProvider.notifier)
+            .restore(item.bill.id);
+      case BillDetailAction.delete:
+        await _confirmDelete(context, ref, item);
+    }
+  }
+
+  /// Archives, and offers the way back.
+  ///
+  /// Undo is honest here because archiving is reversible — it is one column. The
+  /// delete path deliberately has no undo, and confirms instead.
+  static Future<void> _archive(
+    BuildContext context,
+    WidgetRef ref,
+    BillWithStatus item,
+  ) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final BillActionsController controller = ref.read(
+      billActionsControllerProvider.notifier,
+    );
+
+    if (!await controller.archive(item.bill.id)) {
+      return;
+    }
+
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('${item.bill.name} archived'),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () => controller.restore(item.bill.id),
+          ),
+        ),
+      );
+  }
+
+  /// Asks before deleting, and reports what it did.
+  ///
+  /// Returns whether the bill is gone, which is also what tells the swipe whether
+  /// to let the row leave the list.
+  static Future<bool> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    BillWithStatus item,
+  ) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+
+    final bool confirmed = await showAppConfirmDialog(
+      context: context,
+      title: 'Delete ${item.bill.name}?',
+      // Says what is actually lost. "Are you sure?" tells the reader nothing they
+      // did not already know, and the payment history is the part they would
+      // miss — it is the record of what they paid and when.
+      message: item.paid.minorUnits > 0
+          ? 'This also deletes the ${item.paid.format()} of payments recorded '
+                'against it. Archive instead to keep the history.'
+          : 'This cannot be undone. Archive instead if you might want it back.',
+      confirmLabel: 'Delete',
+      isDestructive: true,
+    );
+
+    if (!confirmed) {
+      return false;
+    }
+
+    final bool deleted = await ref
+        .read(billActionsControllerProvider.notifier)
+        .delete(item.bill.id);
+
+    if (deleted) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text('${item.bill.name} deleted')));
+    }
+
+    return deleted;
   }
 
   /// Buckets the bills by how much attention they need.
