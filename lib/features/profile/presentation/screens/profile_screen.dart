@@ -9,6 +9,7 @@ import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_mode_controller.dart';
+import '../../../auth/presentation/widgets/account_summary.dart';
 
 /// Account, settings, and the feature areas used occasionally rather than daily.
 ///
@@ -30,6 +31,8 @@ class ProfileScreen extends StatelessWidget {
       footer: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
+          AccountSummary(),
+          SizedBox(height: AppSpacing.sectionGap),
           _AppearanceSection(),
           SizedBox(height: AppSpacing.sectionGap),
           _DeveloperTools(),
@@ -92,13 +95,6 @@ class _DeveloperTools extends StatelessWidget {
       children: <Widget>[
         Text('Developer', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: AppSpacing.md),
-        const _DeveloperTile(
-          icon: Icons.person_add_alt_1_outlined,
-          title: 'Create account',
-          subtitle: 'Registration screen — no auth gate until Sprint 15',
-          route: AppRoutes.signUp,
-        ),
-        const SizedBox(height: AppSpacing.sm),
         const _DeveloperTile(
           icon: Icons.palette_outlined,
           title: 'Design system',

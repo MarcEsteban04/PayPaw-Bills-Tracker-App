@@ -23,8 +23,11 @@ enum AppRoutes {
 
   // --- Authentication -------------------------------------------------------
 
-  /// Registration. Above the shell, because an auth screen should not show the
-  /// app's navigation behind it.
+  /// Sign in. Above the shell, because an auth screen should not show the app's
+  /// navigation behind it.
+  signIn(path: '/sign-in', routeName: 'sign-in'),
+
+  /// Registration.
   signUp(path: '/sign-up', routeName: 'sign-up'),
 
   // --- Developer tools ------------------------------------------------------

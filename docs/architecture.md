@@ -106,6 +106,7 @@ StatefulShellRoute.indexedStack     each branch keeps its own stack
   /bills       bills
   /calendar    calendar
   /profile     profile
+/sign-in                            above the shell, covers the nav bar
 /sign-up                            above the shell, covers the nav bar
 /design-system                      developer gallery
 /components                         developer gallery

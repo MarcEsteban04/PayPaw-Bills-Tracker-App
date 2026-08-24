@@ -23,6 +23,52 @@ class SupabaseAuthRepository implements AuthRepository {
   final SupabaseClient _client;
 
   @override
+  AuthenticatedUser? get currentUser {
+    final User? user = _client.auth.currentUser;
+
+    return user == null ? null : _toEntity(user);
+  }
+
+  @override
+  Stream<AuthenticatedUser?> authStateChanges() {
+    return _client.auth.onAuthStateChange.map((AuthState state) {
+      final User? user = state.session?.user;
+
+      return user == null ? null : _toEntity(user);
+    });
+  }
+
+  @override
+  Future<AuthenticatedUser> signIn({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final AuthResponse response = await _client.auth.signInWithPassword(
+        email: email.trim(),
+        password: password,
+      );
+
+      final User? user = response.user;
+      if (user == null) {
+        // Supabase returns a 400 for bad credentials rather than a null user, so
+        // reaching here means something unexpected. Better a clear message than
+        // a null-check crash.
+        throw const AuthenticationException(
+          message: 'Could not sign in. Please try again.',
+          debugMessage: 'signInWithPassword returned no user',
+        );
+      }
+
+      return _toEntity(user);
+    } on AuthException catch (error) {
+      throw _mapAuthError(error);
+    } catch (error) {
+      throw mapSupabaseError(error);
+    }
+  }
+
+  @override
   Future<SignUpOutcome> signUp({
     required String email,
     required String password,
@@ -69,10 +115,13 @@ class SupabaseAuthRepository implements AuthRepository {
     return SignUpNeedsConfirmation(email: email);
   }
 
-  AuthenticatedUser _toEntity(User user, String fallbackEmail) =>
+  /// [fallbackEmail] covers sign-up, where the address typed into the form is
+  /// known even in the rare case Supabase returns a user without one. Reading a
+  /// session back has no form to fall back to.
+  AuthenticatedUser _toEntity(User user, [String? fallbackEmail]) =>
       AuthenticatedUser(
         id: user.id,
-        email: user.email ?? fallbackEmail,
+        email: user.email ?? fallbackEmail ?? '',
         hasConfirmedEmail: user.emailConfirmedAt != null,
       );
 
@@ -85,6 +134,26 @@ class SupabaseAuthRepository implements AuthRepository {
     final String debug = '${error.code}: ${error.message}';
 
     return switch (error.code) {
+      // Deliberately vague, and deliberately identical whether the address
+      // exists or not. "No account with that email" tells anyone who asks which
+      // addresses are registered here.
+      'invalid_credentials' || 'invalid_grant' => AuthenticationException(
+        message: 'That email and password do not match an account.',
+        debugMessage: debug,
+        cause: error,
+      ),
+
+      // Worth its own message. The account exists and the password is right, so
+      // "wrong credentials" would send the user hunting for a mistake they did
+      // not make.
+      'email_not_confirmed' => AuthenticationException(
+        message:
+            'Confirm your email address first — check your inbox for the link '
+            'we sent when you signed up.',
+        debugMessage: debug,
+        cause: error,
+      ),
+
       'user_already_exists' || 'email_exists' => ValidationException(
         message:
             'That email is already registered. Try signing in instead, or '

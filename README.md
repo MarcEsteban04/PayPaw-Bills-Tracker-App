@@ -38,6 +38,7 @@ Progress is tracked sprint-by-sprint in [`docs/project_dev_roadmap.md`](docs/pro
 | 10 | Dark mode | ✅ Complete |
 | 11 | Supabase project | ⚙️ App side done — dashboard steps are yours |
 | 12 | Registration | ✅ Complete — needs your project to run end to end |
+| 13 | Login | ✅ Complete — needs your project to run end to end |
 
 ---
 
