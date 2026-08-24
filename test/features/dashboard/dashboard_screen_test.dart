@@ -34,6 +34,7 @@ void main() {
     int amount = 100000,
     int paid = 0,
     bool archived = false,
+    String? categoryId,
   }) => BillWithStatus(
     bill: Bill(
       id: id,
@@ -41,6 +42,7 @@ void main() {
       name: name,
       amount: Money.php(amount),
       dueOn: dueOn,
+      categoryId: categoryId,
       archivedAt: archived ? DateTime(2026, 8, 12) : null,
       createdAt: DateTime(2026, 8, 2),
       updatedAt: DateTime(2026, 8, 2),
@@ -114,12 +116,16 @@ void main() {
           dueOn: DateTime(2026, 9, 20),
           amount: 500000,
           paid: 200000,
+          categoryId: 'cat-rent',
         ),
         item(
           id: 'b',
           name: 'Water',
           status: BillStatus.upcoming,
-          dueOn: DateTime(2026, 9, 25),
+          // Next month, so the total differs from the "this month" stat card
+          // as well as from every row.
+          dueOn: DateTime(2026, 10, 25),
+          categoryId: 'cat-water',
         ),
       ]);
 

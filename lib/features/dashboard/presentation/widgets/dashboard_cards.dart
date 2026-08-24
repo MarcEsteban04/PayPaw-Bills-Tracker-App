@@ -1,0 +1,524 @@
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+
+import '../../../../core/theme/app_palette.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/theme/app_spacing.dart';
+
+/// The dashboard's own surface.
+///
+/// Not `AppCard`: that one is the list-row card — tighter radius, tighter
+/// padding, built to repeat down a page. These are panels, and a dashboard made
+/// of list rows reads as a list.
+class DashboardCard extends StatelessWidget {
+  const DashboardCard({
+    required this.child,
+    this.padding = const EdgeInsets.all(AppSpacing.xl),
+    super.key,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: AppRadii.panel,
+        boxShadow: colors.cardShadow,
+      ),
+      child: Padding(padding: padding, child: child),
+    );
+  }
+}
+
+/// A heading above a panel's contents.
+class DashboardCardTitle extends StatelessWidget {
+  const DashboardCardTitle({required this.title, this.subtitle, super.key});
+
+  final String title;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          title,
+          style: textTheme.titleSmall?.copyWith(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        if (subtitle case final String line) ...<Widget>[
+          const SizedBox(height: AppSpacing.xxs),
+          Text(
+            line,
+            style: textTheme.bodySmall?.copyWith(color: colors.textTertiary),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// One figure with a label and an icon.
+///
+/// Two of these sit side by side under the hero. They answer "when", which the
+/// headline cannot: ₱5,500 outstanding is a different month depending on whether
+/// it all lands in three weeks or spreads over six.
+class DashboardStat extends StatelessWidget {
+  const DashboardStat({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.tint,
+    this.caption,
+    super.key,
+  });
+
+  final String label;
+  final String value;
+  final String? caption;
+  final IconData icon;
+  final Color tint;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
+    return DashboardCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: tint.withValues(alpha: 0.14),
+              borderRadius: const BorderRadius.all(
+                Radius.circular(AppRadii.xs),
+              ),
+            ),
+            child: Icon(icon, size: 18, color: tint),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            label.toUpperCase(),
+            style: textTheme.labelSmall?.copyWith(
+              color: colors.textTertiary,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xxs),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: textTheme.titleLarge?.copyWith(
+                color: colors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          if (caption case final String line) ...<Widget>[
+            const SizedBox(height: AppSpacing.xxs),
+            Text(
+              line,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: textTheme.bodySmall?.copyWith(color: colors.textSecondary),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// A ring showing how much of what was billed has been settled.
+///
+/// The reference design's donut, applied to the question this app answers. Drawn
+/// rather than pulled from a package: it is two arcs and a label, and a chart
+/// dependency would bring its own colours, its own text styles and its own
+/// opinions about animation.
+class ProgressRing extends StatelessWidget {
+  const ProgressRing({
+    required this.fraction,
+    required this.caption,
+    this.size = 96,
+    super.key,
+  });
+
+  /// 0 to 1. Clamped, because an overpaid bill can push a total past its own
+  /// denominator and a ring that wraps twice reads as zero.
+  final double fraction;
+
+  /// The number in the middle. Short — this is a hole in a ring, not a card.
+  final String caption;
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+    final TextTheme textTheme = Theme.of(context).textTheme;
+    final double value = fraction.clamp(0.0, 1.0);
+
+    return Semantics(
+      label: 'Settled',
+      value: '${(value * 100).round()} percent',
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: CustomPaint(
+          painter: _RingPainter(
+            fraction: value,
+            // `border`, not `surfaceMuted`: this ring sits on a white card, and
+            // the muted token is close enough to white that the track read as a
+            // faint smudge rather than as the other half of the figure.
+            track: colors.border,
+            // The brand green, at full strength. This is the one place on the
+            // dashboard where green means "done" rather than "press me", and the
+            // ring is unmistakably not a button.
+            fill: colors.primary,
+          ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  '${(value * 100).round()}%',
+                  style: textTheme.titleMedium?.copyWith(
+                    color: colors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  caption,
+                  style: textTheme.labelSmall?.copyWith(
+                    color: colors.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RingPainter extends CustomPainter {
+  const _RingPainter({
+    required this.fraction,
+    required this.track,
+    required this.fill,
+  });
+
+  final double fraction;
+  final Color track;
+  final Color fill;
+
+  static const double _stroke = 10;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Rect bounds = Offset.zero & size;
+    final Rect arc = bounds.deflate(_stroke / 2);
+
+    final Paint trackPaint = Paint()
+      ..color = track
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _stroke
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(arc, 0, math.pi * 2, false, trackPaint);
+
+    if (fraction <= 0) {
+      return;
+    }
+
+    canvas.drawArc(
+      arc,
+      // From the top, clockwise, the way every progress dial does.
+      -math.pi / 2,
+      math.pi * 2 * fraction,
+      false,
+      Paint()
+        ..color = fill
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _stroke
+        ..strokeCap = StrokeCap.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) =>
+      old.fraction != fraction || old.fill != fill || old.track != track;
+}
+
+/// One band of a stacked horizontal bar.
+@immutable
+class BandSlice {
+  const BandSlice({
+    required this.share,
+    required this.color,
+    required this.label,
+  });
+
+  final double share;
+  final Color color;
+  final String label;
+}
+
+/// A stacked bar, for a breakdown that is a set of parts of one whole.
+///
+/// A bar rather than a pie. At a glance a reader compares lengths far better than
+/// angles, and a bar keeps working when one slice is two per cent — which a pie
+/// turns into an unlabelled sliver. It also fits the width a card already has,
+/// where a pie needs a square.
+class StackedBar extends StatelessWidget {
+  const StackedBar({required this.slices, this.height = 14, super.key});
+
+  final List<BandSlice> slices;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+
+    if (slices.isEmpty) {
+      return SizedBox(
+        height: height,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: colors.surfaceMuted,
+            borderRadius: AppRadii.round,
+          ),
+          child: const SizedBox(width: double.infinity),
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: AppRadii.round,
+      child: SizedBox(
+        height: height,
+        child: Row(
+          // Stretch, not the default centre. `Row` gives its children a *loose*
+          // cross-axis constraint, and a `ColoredBox` with no child takes the
+          // smallest size it is allowed — which is zero height. The bar drew
+          // nothing at all, and the card showed a band of empty white where the
+          // chart should have been.
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            for (final BandSlice slice in slices)
+              Expanded(
+                // Flex takes an int, so the share is scaled up before rounding.
+                // A slice below a thousandth would round to zero and vanish; one
+                // is the floor, which keeps it a hairline rather than nothing.
+                flex: math.max(1, (slice.share * 1000).round()),
+                child: Semantics(
+                  label: slice.label,
+                  child: ColoredBox(color: slice.color),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The key beneath a breakdown: a dot, a name, and what it is worth.
+class BreakdownLegend extends StatelessWidget {
+  const BreakdownLegend({required this.rows, super.key});
+
+  final List<LegendRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
+    return Column(
+      children: <Widget>[
+        for (final LegendRow row in rows) ...<Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: row.color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  row.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: colors.textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                row.percent,
+                style: textTheme.bodySmall?.copyWith(
+                  color: colors.textTertiary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Text(
+                row.amount,
+                style: textTheme.bodyMedium?.copyWith(
+                  color: colors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          if (row != rows.last) const SizedBox(height: AppSpacing.md),
+        ],
+      ],
+    );
+  }
+}
+
+@immutable
+class LegendRow {
+  const LegendRow({
+    required this.color,
+    required this.label,
+    required this.percent,
+    required this.amount,
+  });
+
+  final Color color;
+  final String label;
+  final String percent;
+  final String amount;
+}
+
+/// One column of the months chart.
+@immutable
+class MonthBar {
+  const MonthBar({
+    required this.label,
+    required this.amount,
+    required this.fraction,
+    required this.isCurrent,
+  });
+
+  final String label;
+  final String amount;
+
+  /// Height as a share of the tallest bar, 0 to 1.
+  final double fraction;
+
+  /// The month being lived through, which gets the accent.
+  final bool isCurrent;
+}
+
+/// What falls due over the next few months.
+///
+/// Columns rather than a line: these are discrete buckets, and a line between
+/// them would draw a trend through months that have no relationship to each
+/// other. A month with nothing due still gets a column so the axis keeps its
+/// shape — an empty slot is information.
+class MonthlyDueChart extends StatelessWidget {
+  const MonthlyDueChart({required this.bars, this.height = 132, super.key});
+
+  final List<MonthBar> bars;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
+    return SizedBox(
+      height: height,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: <Widget>[
+          for (final MonthBar bar in bars)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
+                child: Semantics(
+                  label: '${bar.label}: ${bar.amount}',
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: <Widget>[
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder:
+                              (BuildContext context, BoxConstraints limits) {
+                                // A visible floor, so an empty month reads as a
+                                // month with nothing in it rather than as a gap
+                                // where a bar failed to draw.
+                                final double tall = math.max(
+                                  4,
+                                  limits.maxHeight * bar.fraction,
+                                );
+
+                                return Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: Container(
+                                    height: tall,
+                                    decoration: BoxDecoration(
+                                      color: bar.isCurrent
+                                          ? colors.primary
+                                          : colors.primary.withValues(
+                                              alpha: 0.22,
+                                            ),
+                                      borderRadius: AppRadii.round,
+                                    ),
+                                  ),
+                                );
+                              },
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        bar.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.labelSmall?.copyWith(
+                          color: bar.isCurrent
+                              ? colors.textPrimary
+                              : colors.textTertiary,
+                          fontWeight: bar.isCurrent
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

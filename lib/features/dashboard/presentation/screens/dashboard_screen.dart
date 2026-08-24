@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../app/router/app_routes.dart';
+import '../../../../core/domain/money.dart';
 import '../../../../core/presentation/layout/app_content_width.dart';
 import '../../../../core/presentation/widgets/app_empty_state.dart';
 import '../../../../core/presentation/widgets/app_error_state.dart';
@@ -12,12 +15,17 @@ import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../auth/presentation/controllers/current_user_provider.dart';
+import '../../../bills/domain/entities/bill_outlook.dart';
 import '../../../bills/domain/entities/bill_status.dart';
 import '../../../bills/domain/entities/bill_totals.dart';
 import '../../../bills/domain/entities/bill_with_status.dart';
 import '../../../bills/presentation/controllers/bill_detail_provider.dart';
 import '../../../bills/presentation/widgets/bill_detail_sheet.dart';
 import '../../../bills/presentation/widgets/bill_list_tile.dart';
+import '../../../categories/domain/entities/category.dart';
+import '../../../categories/presentation/controllers/category_providers.dart';
+import '../../../categories/presentation/widgets/category_icon.dart';
+import '../widgets/dashboard_cards.dart';
 import '../widgets/dashboard_header.dart';
 import '../widgets/dashboard_quick_actions.dart';
 
@@ -106,11 +114,22 @@ class DashboardScreen extends ConsumerWidget {
     final List<BillWithStatus> pending = _pending(bills);
     final List<BillWithStatus> upcoming = pending.take(_upcomingLimit).toList();
 
+    // `today` from a bill row rather than the device clock — the same date the
+    // statuses on this screen were computed against. Falls back only when there
+    // are no bills, and then nothing below depends on it.
+    final DateTime today = bills.firstOrNull?.today ?? DateTime.now();
+    final BillOutlook outlook = BillOutlook.of(bills, today: today);
+
     return <Widget>[
       _Hero(totals: totals),
       const SizedBox(height: AppSpacing.sectionGap),
 
       DashboardQuickActions(actions: _actions(context)),
+
+      if (outlook.hasAnything) ...<Widget>[
+        const SizedBox(height: AppSpacing.sectionGap),
+        _StatRow(outlook: outlook, today: today),
+      ],
 
       if (overdue.isNotEmpty) ...<Widget>[
         const SizedBox(height: AppSpacing.sectionGap),
@@ -152,6 +171,18 @@ class DashboardScreen extends ConsumerWidget {
               ? () => context.goNamed(AppRoutes.bills.routeName)
               : null,
         ),
+
+      // The charts sit last on purpose. Everything above is actionable — a bill
+      // to open, a button to press; these are context, and context that pushes
+      // the actionable part below the fold has the screen the wrong way round.
+      if (outlook.byCategory.isNotEmpty) ...<Widget>[
+        const SizedBox(height: AppSpacing.sectionGap),
+        _CategoryBreakdown(outlook: outlook),
+      ],
+      if (outlook.hasAnything) ...<Widget>[
+        const SizedBox(height: AppSpacing.sectionGap),
+        _MonthsAhead(outlook: outlook),
+      ],
     ];
   }
 
@@ -279,6 +310,53 @@ class _Hero extends StatelessWidget {
     final AppPalette colors = context.colors;
     final TextTheme textTheme = Theme.of(context).textTheme;
 
+    return DashboardCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            // Centre is the default and is what this needs: the ring is taller
+            // than the label and figure beside it, and top-aligning left a band
+            // of empty card under the text that read as something missing.
+            children: <Widget>[
+              Expanded(child: _Figures(totals: totals)),
+              // Only once there is a denominator. A ring at 0% of nothing is a
+              // grey circle that invites the reader to work out what it means.
+              if (totals.hasProgress) ...<Widget>[
+                const SizedBox(width: AppSpacing.lg),
+                ProgressRing(
+                  fraction: totals.settledFraction,
+                  caption: 'settled',
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          _HeroChips(totals: totals),
+          if (totals.hasProgress) ...<Widget>[
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              '${totals.settled.format()} of ${totals.billed.format()} paid off',
+              style: textTheme.bodySmall?.copyWith(color: colors.textSecondary),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The label, the number, and the chips — the left half of the hero card.
+class _Figures extends StatelessWidget {
+  const _Figures({required this.totals});
+
+  final BillTotals totals;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -291,45 +369,254 @@ class _Hero extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.xs),
-        Text(
-          totals.outstanding.format(),
-          style: textTheme.displayMedium?.copyWith(
-            color: colors.textPrimary,
-            fontWeight: FontWeight.w700,
-            height: 1.05,
+        // Scaled down rather than wrapped or clipped. The ring takes 96 of the
+        // card's ~320, so a seven-figure total at display size does not fit —
+        // and a headline that wraps mid-number is unreadable.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            totals.outstanding.format(),
+            maxLines: 1,
+            style: textTheme.displaySmall?.copyWith(
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w700,
+              height: 1.05,
+            ),
           ),
         ),
-        const SizedBox(height: AppSpacing.md),
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          children: <Widget>[
-            if (totals.overdueCount > 0)
-              _Stat(
-                label: '${totals.overdueCount} overdue',
-                amount: totals.overdue.format(),
-                foreground: colors.overdueText,
-                background: colors.overdueTint,
-              ),
-            if (totals.dueSoonCount > 0)
-              _Stat(
-                label: '${totals.dueSoonCount} due soon',
-                amount: totals.dueSoon.format(),
-                foreground: colors.dueSoonText,
-                background: colors.dueSoonTint,
-              ),
-            // Neither chip is worth drawing when nothing is pressing, and an
-            // empty row under the figure would read as something failing to load.
-            if (!totals.needsAttention)
-              _Stat(
-                label: totals.unpaidCount > 0 ? 'Nothing due yet' : 'All clear',
-                amount: null,
-                foreground: colors.primaryText,
-                background: colors.primarySoft,
-              ),
-          ],
-        ),
       ],
+    );
+  }
+}
+
+/// The chips under the hero's figure.
+///
+/// Their own row, full width, rather than in the left column beside the ring: a
+/// chip reading "₱4,000.00 1 overdue" is wider than the column the figure leaves,
+/// and `Wrap` cannot break a chip that does not fit.
+class _HeroChips extends StatelessWidget {
+  const _HeroChips({required this.totals});
+
+  final BillTotals totals;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+
+    return Wrap(
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
+      children: <Widget>[
+        if (totals.overdueCount > 0)
+          _Stat(
+            label: '${totals.overdueCount} overdue',
+            amount: totals.overdue.format(),
+            foreground: colors.overdueText,
+            background: colors.overdueTint,
+          ),
+        if (totals.dueSoonCount > 0)
+          _Stat(
+            label: '${totals.dueSoonCount} due soon',
+            amount: totals.dueSoon.format(),
+            foreground: colors.dueSoonText,
+            background: colors.dueSoonTint,
+          ),
+        // Neither chip is worth drawing when nothing is pressing, and an
+        // empty row under the figure would read as something failing to load.
+        if (!totals.needsAttention)
+          _Stat(
+            label: totals.unpaidCount > 0 ? 'Nothing due yet' : 'All clear',
+            amount: null,
+            foreground: colors.primaryText,
+            background: colors.primarySoft,
+          ),
+      ],
+    );
+  }
+}
+
+/// Two figures that answer "when", which the headline cannot.
+///
+/// ₱5,500 outstanding is a different month depending on whether it all lands in
+/// three weeks or spreads over six.
+class _StatRow extends StatelessWidget {
+  const _StatRow({required this.outlook, required this.today});
+
+  final BillOutlook outlook;
+  final DateTime today;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Expanded(
+            child: DashboardStat(
+              label: 'This month',
+              value: outlook.dueThisMonth.format(),
+              caption: DateFormat.MMMM().format(today),
+              icon: Icons.today_rounded,
+              tint: colors.dueSoon,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.cardGap),
+          Expanded(
+            child: DashboardStat(
+              label: 'Next month',
+              value: outlook.dueNextMonth.format(),
+              caption: DateFormat.MMMM().format(
+                DateTime(today.year, today.month + 1),
+              ),
+              icon: Icons.event_repeat_rounded,
+              tint: colors.primary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Where the outstanding money is going.
+class _CategoryBreakdown extends ConsumerWidget {
+  const _CategoryBreakdown({required this.outlook});
+
+  final BillOutlook outlook;
+
+  /// The palette a slice falls back to when its category has no colour, and what
+  /// "Other" and "Uncategorised" always use.
+  ///
+  /// Taken from the categories themselves wherever possible: a breakdown whose
+  /// colours do not match the icons on the rows above it is a second colour
+  /// language for the same things.
+  static const List<int> _fallback = <int>[
+    0xFF6366F1,
+    0xFF0EA5E9,
+    0xFFF59E0B,
+    0xFFEC4899,
+    0xFF14B8A6,
+  ];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AppPalette colors = context.colors;
+    final List<Category> categories =
+        ref.watch(categoriesProvider).value ?? const <Category>[];
+
+    Category? lookup(String? id) =>
+        categories.where((Category c) => c.id == id).firstOrNull;
+
+    String nameOf(CategorySlice slice) {
+      if (slice.isOther) {
+        return 'Everything else';
+      }
+
+      return lookup(slice.categoryId)?.name ?? 'Uncategorised';
+    }
+
+    Color colorOf(CategorySlice slice, int index) {
+      if (!slice.isOther) {
+        final Color? own = CategoryIcons.parseColor(
+          lookup(slice.categoryId)?.colorHex,
+        );
+        if (own != null) {
+          return own;
+        }
+      }
+
+      return Color(_fallback[index % _fallback.length]);
+    }
+
+    final List<CategorySlice> slices = outlook.byCategory;
+
+    return DashboardCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          const DashboardCardTitle(
+            title: 'Where it goes',
+            subtitle: 'Outstanding by category',
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          StackedBar(
+            slices: <BandSlice>[
+              for (int i = 0; i < slices.length; i++)
+                BandSlice(
+                  share: slices[i].share,
+                  color: colorOf(slices[i], i),
+                  label: nameOf(slices[i]),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          BreakdownLegend(
+            rows: <LegendRow>[
+              for (int i = 0; i < slices.length; i++)
+                LegendRow(
+                  color: colorOf(slices[i], i),
+                  label: nameOf(slices[i]),
+                  // Rounded, and never to zero: a slice that exists is at least
+                  // "1%", because "0%" beside a real figure reads as a bug.
+                  percent: '${math.max(1, (slices[i].share * 100).round())}%',
+                  amount: slices[i].outstanding.format(),
+                ),
+            ],
+          ),
+          if (slices.length == 1) ...<Widget>[
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              // One slice is a bar at full width, which says nothing. Naming that
+              // is better than drawing a chart that looks broken.
+              'Everything outstanding is in one category.',
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: colors.textTertiary),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// What falls due over the next six months.
+class _MonthsAhead extends StatelessWidget {
+  const _MonthsAhead({required this.outlook});
+
+  final BillOutlook outlook;
+
+  @override
+  Widget build(BuildContext context) {
+    final Money busiest = outlook.busiestMonth;
+    final DateTime thisMonth = outlook.byMonth.first.month;
+
+    return DashboardCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          DashboardCardTitle(
+            title: 'The months ahead',
+            subtitle: 'Busiest is ${busiest.format()}',
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          MonthlyDueChart(
+            bars: <MonthBar>[
+              for (final MonthlyDue month in outlook.byMonth)
+                MonthBar(
+                  label: DateFormat.MMM().format(month.month),
+                  amount: month.outstanding.format(),
+                  fraction: busiest.minorUnits <= 0
+                      ? 0
+                      : month.outstanding.minorUnits / busiest.minorUnits,
+                  isCurrent: month.month == thisMonth,
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
