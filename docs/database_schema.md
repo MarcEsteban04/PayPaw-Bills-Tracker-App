@@ -528,6 +528,6 @@ time a file is applied by accident should be uneventful.
 | Sprint | Tables |
 | --- | --- |
 | 17 | `profiles` (+ the auth trigger), `reminder_preferences` |
-| 18 | `categories` (+ seed rows), `bills`, `recurring_bills`, `subscriptions`, the `bill_status` view |
-| 19 | `payments`, `debts`, `attachments`, `bill_reminders` |
+| 18 | `categories` (+ seed rows), `bills`, `recurring_bills`, `subscriptions` |
+| 19 | `payments`, `debts`, `attachments`, `bill_reminders`, **and the `bill_status` view** — it reads `payments`, so it cannot exist before them |
 | 20 | RLS on all of it, plus a cross-account isolation test |
