@@ -18,6 +18,7 @@ schema looks like this.
 | `0010_attachments.sql` | 19 | Storage metadata, owner-scoped path CHECK, RLS |
 | `0011_bill_reminders.sql` | 19 | Per-bill overrides, RLS |
 | `0012_bill_status.sql` | 19 | The derived-status view, `security_invoker` |
+| `0013_storage_attachments.sql` | 20 | Private receipts bucket, owner-scoped policies |
 
 ## Verifying an apply
 
@@ -117,3 +118,20 @@ order by due_on;
 Twelve files, covering every table in
 [`docs/database_schema.md`](../../docs/database_schema.md) except `bill_shares`,
 which is deliberately deferred to Sprint 75 — see that document for why.
+
+## Sprint 20: checks, not migrations
+
+Every migration already enables RLS in the file that creates its table, so Sprint
+20 adds no policies — it adds proof. Two re-runnable scripts in
+[`../checks/`](../checks/):
+
+| Script | What it does |
+| --- | --- |
+| `rls_audit.sql` | **Raises** if any public table lacks RLS, has RLS but no policies, or any view lacks `security_invoker=true` |
+| `user_isolation.sql` | Impersonates two accounts and proves neither can read or write the other's rows |
+
+Run `rls_audit.sql` after every migration. Run `user_isolation.sql` after any
+change to a policy, and after adding any table.
+
+The reasoning behind all of it, including the three ways to bypass RLS by
+accident, is in [`../../docs/security.md`](../../docs/security.md).

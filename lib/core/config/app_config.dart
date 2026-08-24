@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// Compile-time configuration for PayPaw.
 ///
 /// Values arrive through `--dart-define`, so no credential is ever committed.
@@ -48,18 +50,83 @@ abstract final class AppConfig {
     if (supabasePublishableKey.isEmpty) 'SUPABASE_PUBLISHABLE_KEY',
   ];
 
-  /// Whether every required Supabase value was supplied at build time.
-  static bool get hasSupabaseCredentials => missingKeys.isEmpty;
+  /// Whether the configured key is a **secret** key that must never ship.
+  ///
+  /// A service-role or secret key bypasses row level security entirely: with one,
+  /// every account can read and write every other account's data, and no policy
+  /// in the database can stop it. It belongs in an Edge Function or a server,
+  /// never in a build that reaches a device.
+  ///
+  /// This is not a hypothetical mix-up. Both keys sit side by side in the
+  /// dashboard, and in a `.env` file they are two lines apart.
+  static bool get hasSecretKeyMistake => keyLooksSecret(supabasePublishableKey);
+
+  /// Whether [key] is a Supabase **secret** key rather than a publishable one.
+  ///
+  /// Covers both formats:
+  ///
+  /// * the current one, which is prefixed `sb_secret_`;
+  /// * the legacy one, a JWT whose payload claims `role: service_role`.
+  ///
+  /// Conservative by design: anything it cannot decode is treated as *not*
+  /// secret, because refusing to start on an unrecognised-but-valid key would be
+  /// its own outage. It is a guard against the obvious mistake, not a substitute
+  /// for care.
+  static bool keyLooksSecret(String key) {
+    if (key.isEmpty) {
+      return false;
+    }
+    if (key.startsWith('sb_secret_')) {
+      return true;
+    }
+
+    // Legacy keys are JWTs: header.payload.signature. Only the payload matters,
+    // and it is base64url without padding.
+    final List<String> segments = key.split('.');
+    if (segments.length != 3) {
+      return false;
+    }
+
+    try {
+      final String payload = utf8.decode(
+        base64Url.decode(base64Url.normalize(segments[1])),
+      );
+      final Object? decoded = jsonDecode(payload);
+
+      return decoded is Map<String, dynamic> && decoded['role'] == 'service_role';
+    } on Object {
+      // Not decodable as a JWT payload. Treat as opaque rather than as secret.
+      return false;
+    }
+  }
+
+  /// Whether every required Supabase value was supplied, and none of them is a
+  /// key that must not be here.
+  ///
+  /// A secret key counts as *not configured* rather than as configured-and-wrong,
+  /// so the app falls back to the no-backend path the rest of the code already
+  /// handles instead of connecting with credentials that defeat every policy.
+  static bool get hasSupabaseCredentials =>
+      missingKeys.isEmpty && !hasSecretKeyMistake;
 
   /// A message worth printing at startup when configuration is incomplete.
   ///
   /// Spelled out rather than terse, because the failure it explains — an app that
   /// launches, looks fine, and then throws the moment anything touches the
   /// backend — is otherwise a confusing half hour.
-  static String get missingConfigMessage =>
-      'PayPaw started without Supabase configuration. '
-      'Missing: ${missingKeys.join(', ')}. '
-      'The app will run, but anything that reads the Supabase client will throw. '
-      'Pass --dart-define-from-file=config/dev.json; '
-      'see docs/supabase_setup.md.';
+  static String get missingConfigMessage {
+    if (hasSecretKeyMistake) {
+      return 'PayPaw refused to start Supabase: SUPABASE_PUBLISHABLE_KEY is a '
+          'SECRET key. A secret or service-role key bypasses row level security '
+          'entirely and must never ship in a client build. Use the publishable '
+          'key (sb_publishable_...) from Project Settings > API keys. See '
+          'docs/security.md.';
+    }
+
+    return 'PayPaw started without Supabase configuration. '
+        'Missing: ${missingKeys.join(', ')}. '
+        'The app will run, but anything that reads the Supabase client will throw. '
+        'Pass --dart-define-from-file=config/dev.json; '
+        'see docs/supabase_setup.md.';
+  }
 }

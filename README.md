@@ -50,6 +50,7 @@ Progress is tracked sprint-by-sprint in [`docs/project_dev_roadmap.md`](docs/pro
 | 17 | User tables | ✅ Migrations written — you apply them |
 | 18 | Bill tables | ✅ Migrations written — you apply them |
 | 19 | Payment tables | ✅ Migrations written — you apply them |
+| 20 | Supabase security | ✅ Phase 4 done — checks written, run them after applying |
 
 ---
 
@@ -72,6 +73,8 @@ Screen sizes, font scaling and accessibility: [`docs/responsive.md`](docs/respon
 Connecting the backend, and what to configure by hand: [`docs/supabase_setup.md`](docs/supabase_setup.md).
 
 The database schema, and why it is shaped that way: [`docs/database_schema.md`](docs/database_schema.md).
+
+How one account is kept out of another's data, and how to prove it: [`docs/security.md`](docs/security.md).
 
 ---
 
