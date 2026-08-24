@@ -11,6 +11,8 @@ import '../../../../core/presentation/widgets/app_text_field.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../recurring/domain/entities/recurrence.dart';
+import '../../../recurring/presentation/widgets/recurrence_field.dart';
 import '../../domain/entities/bill.dart';
 import '../../domain/validation/bill_validators.dart';
 import 'category_picker_field.dart';
@@ -30,6 +32,7 @@ class BillFormValues {
     this.categoryId,
     this.payee,
     this.notes,
+    this.recurrence,
   });
 
   /// The values a form starts from when editing an existing bill.
@@ -51,6 +54,14 @@ class BillFormValues {
   final String? categoryId;
   final String? payee;
   final String? notes;
+
+  /// The schedule, when this is a repeating obligation rather than one bill.
+  ///
+  /// **Setting it changes what saving does.** A bill with a recurrence is stored
+  /// as a template in `recurring_bills`, and the occurrences are generated from
+  /// it — including the first one. Saving does not create a bill directly, which
+  /// is why the form says so before it is submitted.
+  final Recurrence? recurrence;
 
   /// The parsed amount, or null when the string is not one.
   Money? get money => Money.tryParse(amount);
@@ -110,6 +121,7 @@ class _BillFormState extends ConsumerState<BillForm> {
 
   DateTime? _dueOn;
   String? _categoryId;
+  Recurrence? _recurrence;
 
   /// Set once the user has tried to save.
   ///
@@ -131,6 +143,7 @@ class _BillFormState extends ConsumerState<BillForm> {
     _notes = TextEditingController(text: initial?.notes ?? '');
     _dueOn = initial?.dueOn;
     _categoryId = initial?.categoryId;
+    _recurrence = initial?.recurrence;
   }
 
   @override
@@ -246,6 +259,29 @@ class _BillFormState extends ConsumerState<BillForm> {
                   ),
                   const SizedBox(height: AppSpacing.lg),
 
+                  RecurrenceField(
+                    value: _recurrence,
+                    today: today,
+                    enabled: !isBusy,
+                    onChanged: (Recurrence? value) =>
+                        setState(() => _recurrence = value),
+                  ),
+                  // Saving a repeating bill creates a schedule, not the bill in
+                  // front of you — the occurrences come from the generator. Said
+                  // here rather than discovered afterwards, when the list shows a
+                  // bill dated differently from the due date that was typed.
+                  if (_recurrence != null) ...<Widget>[
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      'Saved as a repeating bill. PayPaw will add each one as it '
+                      'comes due.',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colors.textTertiary,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.lg),
+
                   AppTextField(
                     controller: _payee,
                     label: 'Paid to',
@@ -305,6 +341,7 @@ class _BillFormState extends ConsumerState<BillForm> {
         categoryId: _categoryId,
         payee: _payee.text,
         notes: _notes.text,
+        recurrence: _recurrence,
       ),
     );
   }

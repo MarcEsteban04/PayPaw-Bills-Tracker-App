@@ -40,7 +40,7 @@ class EditBillScreen extends ConsumerWidget {
       BillWriteState? previous,
       BillWriteState next,
     ) {
-      if (previous?.saved == null && next.saved != null) {
+      if (previous?.savedName == null && next.savedName != null) {
         _onSaved(context, ref, next);
       }
     });
@@ -101,7 +101,7 @@ class EditBillScreen extends ConsumerWidget {
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('${state.saved!.name} updated')));
+      ..showSnackBar(SnackBar(content: Text('${state.savedName!} updated')));
 
     closeBillForm(context);
   }

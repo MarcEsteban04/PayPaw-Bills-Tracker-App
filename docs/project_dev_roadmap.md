@@ -494,12 +494,45 @@ The editor returns a sealed `RecurrenceEditorResult`, not a nullable `Recurrence
 dismissing the sheet must leave an existing rule alone and tapping "Does not
 repeat" must remove it, and one nullable value cannot say both.
 
-## Sprint 31 — Automatic Bill Generation
+## Sprint 31 — Automatic Bill Generation — done
 
-* Generate future bills
-* Calculate next due date
-* Handle recurring status
-* Prevent duplicates
+Migration `0016_generate_recurring_bills.sql`. **Apply it, and enable `pg_cron`**
+(Supabase → Database → Extensions). Without pg_cron the migration still applies and
+generation still works — but only when someone opens the app, which is the thing
+this sprint exists to avoid.
+
+* Generate future bills — a Postgres function materialises every occurrence
+  falling within a **45-day lead window**, not just overdue ones. A monthly
+  template created today has its first occurrence weeks away; a generator that only
+  caught up on the past would create nothing and look broken.
+* Calculate next due date — `next_recurrence_date` steps whole months from the
+  *month* of the current occurrence and re-resolves `day_of_month` against it,
+  which is the same rule `Recurrence.occurrenceAfter` follows in Dart. The two are
+  duplicated and nothing enforces that they agree; the rule is written out in both
+  files.
+* Handle recurring status — `is_active` gates the loop, and a bookmark past
+  `ends_on` is how a finished template records that it is finished.
+* Prevent duplicates — **the unique index, not careful code.** `bills_occurrence_key`
+  has existed since migration 0007, so `on conflict do nothing` makes the cron job,
+  the client call and any retry all safe to run twice.
+
+**Generation runs in the database, not the app.** The point of a bills tracker is
+being reminded before something is due, and a generator that only runs on app open
+cannot do that — the user who has not opened PayPaw in three weeks is exactly the
+one who needed reminding. It also makes the writer single, so two devices cannot
+race.
+
+The client still calls `generate_my_recurring_bills` when the bills list first
+loads. Not as the mechanism — as a safety net for an installation whose pg_cron was
+never enabled, and so a template saved a moment ago produces its bills now. Cached
+for the session, and a failure is swallowed: "no new bills yet" is not "the bills
+list is broken".
+
+The Add Bill form now has a **Repeat** field. Saving with one set writes a template
+to `recurring_bills` and lets the generator produce the occurrences — writing a
+bill as well would be a duplicate the generator then tries to create again. The
+form's due date becomes the schedule's *start*, not an occurrence: "due on the 5th,
+monthly on the 15th" is two answers to one question.
 
 ## Sprint 32 — Recurring Bill Management
 

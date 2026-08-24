@@ -11,7 +11,9 @@ import 'package:paypaw/features/bills/presentation/controllers/bill_repository_p
 import 'package:paypaw/features/bills/presentation/screens/add_bill_screen.dart';
 import 'package:paypaw/features/categories/domain/entities/category.dart';
 import 'package:paypaw/features/categories/presentation/controllers/category_providers.dart';
+import 'package:paypaw/features/recurring/presentation/controllers/recurring_bill_providers.dart';
 
+import '../../recurring/helpers/fake_recurring_bill_repository.dart';
 import '../helpers/fake_bill_repository.dart';
 
 void main() {
@@ -33,8 +35,12 @@ void main() {
   ];
 
   late FakeBillRepository repository;
+  late FakeRecurringBillRepository recurring;
 
-  setUp(() => repository = FakeBillRepository());
+  setUp(() {
+    repository = FakeBillRepository();
+    recurring = FakeRecurringBillRepository();
+  });
 
   Future<void> pumpForm(
     WidgetTester tester, {
@@ -54,6 +60,7 @@ void main() {
       ProviderScope(
         overrides: [
           billRepositoryProvider.overrideWithValue(repository),
+          recurringBillRepositoryProvider.overrideWithValue(recurring),
           categoriesProvider.overrideWith(
             (Ref ref) => Future<List<Category>>.value(available),
           ),
@@ -315,6 +322,78 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Electricity'), findsNothing);
+    });
+  });
+
+  group('repeating', () {
+    /// Turns the Repeats field on with its default rule.
+    Future<void> setRepeat(WidgetTester tester) async {
+      await tester.tap(find.text('Does not repeat'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the form offers it, off by default', (
+      WidgetTester tester,
+    ) async {
+      // Null is the common answer — most bills do not repeat — so it is the
+      // starting state rather than something to be turned off.
+      await pumpForm(tester);
+
+      expect(find.text('Does not repeat'), findsOneWidget);
+    });
+
+    testWidgets('saving writes a template instead of a bill', (
+      WidgetTester tester,
+    ) async {
+      // Writing a bill as well would be a duplicate the generator then tries to
+      // create again, and only the unique index would stop it.
+      await pumpForm(tester);
+      await fillRequired(tester);
+      await setRepeat(tester);
+      await save(tester);
+
+      expect(recurring.created, isNotNull);
+      expect(recurring.created!.name, 'Meralco electricity');
+      expect(repository.created, isNull);
+    });
+
+    testWidgets('and asks for its occurrences straight away', (
+      WidgetTester tester,
+    ) async {
+      // So the first bill appears now rather than after tonight's scheduled run.
+      await pumpForm(tester);
+      await fillRequired(tester);
+      await setRepeat(tester);
+      await save(tester);
+
+      expect(recurring.generateCalls, 1);
+    });
+
+    testWidgets('the screen still leaves on success', (
+      WidgetTester tester,
+    ) async {
+      // The recurring path has no saved `Bill` to report, which is why the write
+      // state carries a name. Without that the screen would sit there looking
+      // like the save had failed.
+      await pumpForm(tester);
+      await fillRequired(tester);
+      await setRepeat(tester);
+      await save(tester);
+
+      expect(find.text('bills stub'), findsOneWidget);
+      expect(find.text('Meralco electricity saved'), findsOneWidget);
+    });
+
+    testWidgets('a plain bill is unaffected', (WidgetTester tester) async {
+      await pumpForm(tester);
+      await fillRequired(tester);
+      await save(tester);
+
+      expect(repository.created, isNotNull);
+      expect(recurring.created, isNull);
+      expect(recurring.generateCalls, 0);
     });
   });
 

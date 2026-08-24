@@ -1,9 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/app_exception.dart';
+import '../../../recurring/domain/entities/new_recurring_bill.dart';
+import '../../../recurring/domain/repositories/recurring_bill_repository.dart';
+import '../../../recurring/presentation/controllers/recurring_bill_providers.dart';
 import '../../domain/entities/bill.dart';
 import '../../domain/entities/new_bill.dart';
 import '../widgets/bill_form.dart';
+import 'bill_detail_provider.dart';
 import 'bill_repository_provider.dart';
 
 /// Whether a write is in flight, and what it said if it failed.
@@ -11,25 +15,34 @@ import 'bill_repository_provider.dart';
 /// Deliberately small. The form owns the fields — see [BillForm] — so what is
 /// left here is only what has to outlive a rebuild of them.
 class BillWriteState {
-  const BillWriteState({this.isSaving = false, this.errorMessage, this.saved});
+  const BillWriteState({
+    this.isSaving = false,
+    this.errorMessage,
+    this.savedName,
+  });
 
   final bool isSaving;
 
   /// A failure, in words safe to show.
   final String? errorMessage;
 
-  /// Set once the write succeeded. The screen watches for it and leaves.
-  final Bill? saved;
+  /// The name of what was just written, set once the write succeeded. The screen
+  /// watches for it and leaves.
+  ///
+  /// A name rather than the saved `Bill`, because the two write paths do not
+  /// produce the same kind of row — a recurring save creates a template, not a
+  /// bill — and the name is the only part either screen ever used.
+  final String? savedName;
 
   BillWriteState copyWith({
     bool? isSaving,
     String? errorMessage,
-    Bill? saved,
+    String? savedName,
     bool clearError = false,
   }) => BillWriteState(
     isSaving: isSaving ?? this.isSaving,
     errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-    saved: saved ?? this.saved,
+    savedName: savedName ?? this.savedName,
   );
 }
 
@@ -46,9 +59,94 @@ class BillWriteController extends Notifier<BillWriteState> {
 
   void clearError() => state = state.copyWith(clearError: true);
 
-  /// Stores a new bill.
-  Future<bool> create(BillFormValues values) =>
-      _write(() => ref.read(billRepositoryProvider).createBill(_draft(values)));
+  /// Stores a new bill, or the schedule that will produce them.
+  ///
+  /// **A recurrence changes what gets written.** With one, the row goes to
+  /// `recurring_bills` and the occurrences — including the first — come from the
+  /// generator. Writing a bill *as well* would be a duplicate the generator then
+  /// tries to create again, and only the unique index would stop it.
+  Future<bool> create(BillFormValues values) {
+    if (values.recurrence != null) {
+      return _createRecurring(values);
+    }
+
+    return _write(
+      () => ref.read(billRepositoryProvider).createBill(_draft(values)),
+    );
+  }
+
+  /// Stores a template, then asks for its occurrences straight away.
+  ///
+  /// The generation call is what makes the bill appear now rather than after
+  /// tonight's scheduled run. It is deliberately not part of the success
+  /// condition: the template is saved either way, tonight's job will produce the
+  /// same occurrences, and failing the save because a follow-up call timed out
+  /// would lose work the user has already done.
+  Future<bool> _createRecurring(BillFormValues values) async {
+    if (state.isSaving) {
+      return false;
+    }
+
+    final NewRecurringBill draft = _recurringDraft(values);
+
+    if (draft.validate() case final String problem) {
+      state = state.copyWith(isSaving: false, errorMessage: problem);
+
+      return false;
+    }
+
+    state = state.copyWith(isSaving: true, clearError: true);
+
+    try {
+      final RecurringBillRepository repository = ref.read(
+        recurringBillRepositoryProvider,
+      );
+      await repository.createRecurringBill(draft);
+
+      try {
+        await repository.generateDueBills();
+      } on Object {
+        // Saved, just not materialised yet. The scheduled run will catch it.
+      }
+
+      // Both lists change: the template is new, and its occurrences are too.
+      ref
+        ..invalidate(recurringBillsProvider)
+        ..invalidate(billGenerationProvider)
+        ..invalidate(billsProvider);
+
+      state = state.copyWith(isSaving: false, savedName: draft.name);
+
+      return true;
+    } on AppException catch (exception) {
+      state = state.copyWith(
+        isSaving: false,
+        errorMessage: exception.userMessage,
+      );
+
+      return false;
+    } on Object {
+      state = state.copyWith(
+        isSaving: false,
+        errorMessage: 'Something went wrong. Please try again.',
+      );
+
+      return false;
+    }
+  }
+
+  /// Builds the template insert.
+  ///
+  /// The form's due date becomes the schedule's start, not an occurrence of its
+  /// own: "due on the 5th, monthly on the 15th" is two answers to one question,
+  /// and the rule is the one that has to win.
+  NewRecurringBill _recurringDraft(BillFormValues values) => NewRecurringBill(
+    name: values.name.trim(),
+    amount: values.money!,
+    categoryId: values.categoryId,
+    payee: _orNull(values.payee),
+    recurrence: values.recurrence!,
+  );
 
   /// Saves changes to one that exists.
   ///
@@ -108,7 +206,7 @@ class BillWriteController extends Notifier<BillWriteState> {
     state = state.copyWith(isSaving: true, clearError: true);
 
     try {
-      state = state.copyWith(isSaving: false, saved: await action());
+      state = state.copyWith(isSaving: false, savedName: (await action()).name);
       return true;
     } on AppException catch (exception) {
       state = state.copyWith(

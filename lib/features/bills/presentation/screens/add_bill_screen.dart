@@ -30,7 +30,7 @@ class AddBillScreen extends ConsumerWidget {
       BillWriteState next,
     ) {
       // Navigating during a build is an error, so leaving happens here.
-      if (previous?.saved == null && next.saved != null) {
+      if (previous?.savedName == null && next.savedName != null) {
         _onSaved(context, ref, next);
       }
     });
@@ -64,7 +64,7 @@ class AddBillScreen extends ConsumerWidget {
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('${state.saved!.name} saved')));
+      ..showSnackBar(SnackBar(content: Text('${state.savedName!} saved')));
 
     closeBillForm(context);
   }

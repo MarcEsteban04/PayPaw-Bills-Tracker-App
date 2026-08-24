@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../recurring/presentation/controllers/recurring_bill_providers.dart';
 import '../../domain/entities/bill_filter.dart';
 import '../../domain/entities/bill_with_status.dart';
 import 'bill_filter_controller.dart';
@@ -23,11 +24,19 @@ import 'bill_repository_provider.dart';
 /// way to ask: the screen was in a state it could not get out of. Fetching them
 /// always costs a handful of rows on one person's list, and there is one rule
 /// instead of a rule and a fetch flag that have to agree.
-final FutureProvider<List<BillWithStatus>> billsProvider =
-    FutureProvider<List<BillWithStatus>>(
-      (Ref ref) =>
-          ref.watch(billRepositoryProvider).fetchBills(includeArchived: true),
-    );
+final FutureProvider<List<BillWithStatus>>
+billsProvider = FutureProvider<List<BillWithStatus>>((Ref ref) async {
+  // Generation first, so a template saved a moment ago has its occurrences in
+  // this very list rather than appearing after the next restart.
+  //
+  // Awaited, not fired and forgotten: fetching before it finishes would show
+  // a list that is correct and then silently grows. The call is cached for
+  // the session, so a pull-to-refresh does not pay for it again, and it
+  // cannot fail the screen — see [billGenerationProvider].
+  await ref.watch(billGenerationProvider.future);
+
+  return ref.watch(billRepositoryProvider).fetchBills(includeArchived: true);
+});
 
 /// The bills the current filter admits, in the order it asks for.
 ///
