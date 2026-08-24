@@ -236,7 +236,9 @@ void main() {
       final double needsPaying = tester
           .getTopLeft(find.text('NEEDS PAYING NOW'))
           .dy;
-      final double comingUp = tester.getTopLeft(find.text('COMING UP')).dy;
+      final double comingUp = tester
+          .getTopLeft(find.text('LATER THIS WEEK'))
+          .dy;
 
       expect(needsPaying, lessThan(comingUp));
     });
@@ -259,59 +261,126 @@ void main() {
   });
 
   group('coming up', () {
-    testWidgets('shows only the next few, and offers the rest', (
+    // The fixture's today is Thursday 3 September 2026, so this week runs to
+    // Sunday the 6th and next week is the 7th to the 13th.
+    testWidgets('is grouped by how soon, not listed flat', (
       WidgetTester tester,
     ) async {
-      // This screen answers "what needs me today". The bills list already answers
-      // "show me everything", and two tabs showing the same rows are one tab and
-      // a wasted tap.
+      // "Due in 6 days" is a subtraction the reader has to do before they know
+      // whether it matters. "Next week" is the answer.
       await pumpDashboard(tester, <BillWithStatus>[
-        for (int day = 5; day <= 12; day++)
+        item(
+          id: 'a',
+          name: 'Due now',
+          status: BillStatus.dueToday,
+          dueOn: DateTime(2026, 9, 3),
+        ),
+        item(
+          id: 'b',
+          name: 'Due next',
+          status: BillStatus.dueSoon,
+          dueOn: DateTime(2026, 9, 4),
+        ),
+        item(
+          id: 'c',
+          name: 'Due Saturday',
+          status: BillStatus.dueSoon,
+          dueOn: DateTime(2026, 9, 5),
+        ),
+        item(
+          id: 'd',
+          name: 'Due Tuesday',
+          status: BillStatus.upcoming,
+          dueOn: DateTime(2026, 9, 8),
+        ),
+      ]);
+
+      expect(find.text('TODAY'), findsOneWidget);
+      expect(find.text('TOMORROW'), findsOneWidget);
+      expect(find.text('LATER THIS WEEK'), findsOneWidget);
+      expect(find.text('NEXT WEEK'), findsOneWidget);
+      expect(find.text('Due Tuesday'), findsOneWidget);
+    });
+
+    testWidgets('windows with nothing in them do not appear', (
+      WidgetTester tester,
+    ) async {
+      // An empty heading is a question the reader has to answer for themselves.
+      await pumpDashboard(tester, <BillWithStatus>[
+        item(
+          id: 'a',
+          name: 'Due Saturday',
+          status: BillStatus.dueSoon,
+          dueOn: DateTime(2026, 9, 5),
+        ),
+      ]);
+
+      expect(find.text('LATER THIS WEEK'), findsOneWidget);
+      expect(find.text('TODAY'), findsNothing);
+      expect(find.text('TOMORROW'), findsNothing);
+      expect(find.text('NEXT WEEK'), findsNothing);
+    });
+
+    testWidgets('says how many rows are under each heading', (
+      WidgetTester tester,
+    ) async {
+      await pumpDashboard(tester, <BillWithStatus>[
+        for (int day = 4; day <= 6; day++)
           item(
             id: 'bill-$day',
             name: 'Bill $day',
-            status: BillStatus.upcoming,
+            status: BillStatus.dueSoon,
             dueOn: DateTime(2026, 9, day),
           ),
       ]);
 
-      expect(find.text('Bill 5'), findsOneWidget);
-      expect(find.text('Bill 7'), findsOneWidget);
-      // The fourth onwards is behind "See all".
-      expect(find.text('Bill 8'), findsNothing);
-      expect(find.text('See all'), findsOneWidget);
+      // One under "tomorrow", two under "later this week".
+      expect(find.text('1'), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
     });
 
-    testWidgets('and does not offer "See all" when nothing is held back', (
+    testWidgets('counts what is past next week instead of listing it', (
       WidgetTester tester,
     ) async {
-      // A link to the screen you are already looking at.
+      // A row per bill six weeks out turns the dashboard into the bills list.
       await pumpDashboard(tester, <BillWithStatus>[
         item(
           id: 'a',
-          name: 'Water',
+          name: 'Far off',
           status: BillStatus.upcoming,
-          dueOn: DateTime(2026, 9, 6),
+          dueOn: DateTime(2026, 9, 20),
+          amount: 150000,
+        ),
+        item(
+          id: 'b',
+          name: 'Further off',
+          status: BillStatus.upcoming,
+          dueOn: DateTime(2026, 10, 25),
+          amount: 250000,
         ),
       ]);
 
-      expect(find.text('COMING UP'), findsOneWidget);
-      expect(find.text('See all'), findsNothing);
+      expect(find.text('Far off'), findsNothing);
+      expect(find.text('2 more bills later'), findsOneWidget);
+      // The date matters most here: when everything falls past next week this
+      // row is all the user has, and a count with no anchor says nothing about
+      // whether later means Tuesday or March.
+      expect(find.text('₱4,000.00 · from Sep 20'), findsOneWidget);
     });
 
-    testWidgets('soonest first', (WidgetTester tester) async {
+    testWidgets('soonest first inside a window', (WidgetTester tester) async {
       await pumpDashboard(tester, <BillWithStatus>[
         item(
           id: 'b',
           name: 'Later',
-          status: BillStatus.upcoming,
-          dueOn: DateTime(2026, 9, 25),
+          status: BillStatus.dueSoon,
+          dueOn: DateTime(2026, 9, 6),
         ),
         item(
           id: 'a',
           name: 'Sooner',
-          status: BillStatus.upcoming,
-          dueOn: DateTime(2026, 9, 6),
+          status: BillStatus.dueSoon,
+          dueOn: DateTime(2026, 9, 5),
         ),
       ]);
 

@@ -630,8 +630,8 @@ because it is the order the questions arrive in — "how much do I owe" before
 * Financial summary — total outstanding, with chips for what is overdue and what
   is due soon. Sprint 35 adds total paid and monthly obligations.
 * Upcoming bills — the next three, soonest first, with "See all" only when
-  something is actually being held back. Sprint 36 groups them by Today /
-  Tomorrow / This week.
+  something is actually being held back. Sprint 36 replaced this with windows —
+  Today / Tomorrow / Later this week / Next week — and a counted tail.
 * Overdue section — in full, and always **above** upcoming. Something already late
   outranks something that has not happened yet.
 * Quick actions — Add bill, All bills, Calendar. Sprint 37's list also has Mark
@@ -645,7 +645,7 @@ what they switched to — but here the greeting is that label, and a bar reading
 
 **Not the bills list with a different header.** Bills answers "show me everything,
 let me search it". This answers "what needs me today", which is why upcoming is
-capped and the summary card is not reused — two tabs opening on the same card
+windowed and the summary card is not reused — two tabs opening on the same card
 would be one tab and a wasted tap.
 
 `BillTotals` came out of the bills summary card on the way, because the dashboard
@@ -688,13 +688,41 @@ The hero's chips went with this: they carried overdue and due-soon as counts, an
 the summary card carries the same thing as amounts one block below. The hero is
 now one figure and one ring.
 
-## Sprint 36 — Upcoming Payments
+## Sprint 36 — Upcoming Payments — done
 
-* Today
-* Tomorrow
-* This week
-* Next week
-* Later
+`UpcomingSchedule` sorts what is coming into Today / Tomorrow / Later this week /
+Next week / Later, and the dashboard draws one labelled section per window.
+
+**Named windows rather than dates.** "Due in 6 days" is a subtraction the reader
+has to do before they know whether it matters; "Next week" is the answer. The rows
+still carry the exact date — the heading is what makes ten of them scannable in a
+single look.
+
+**Weeks are calendar weeks, Monday to Sunday.** A rolling seven days is easier to
+compute and quietly wrong: on a Friday it files next Thursday under "this week",
+which is not what the words say. The consequence is that on a Sunday there is no
+"rest of this week" at all, so that heading simply does not appear — empty windows
+are dropped rather than shown as bare headings with nothing under them.
+
+Two orderings matter and neither is obvious. On a Sunday, tomorrow is Monday,
+which is also the first day of next week; **tomorrow wins**, because it is the more
+useful of the two true answers. And the groups come out in enum order rather than
+the order bills happened to arrive in, because a map iterates by insertion and
+"Later" above "Today" would be exactly backwards.
+
+**"Later" is counted, not listed.** Everything past next week collapses into one
+row — a count, a total and a tap through to Bills. This screen answers "what needs
+me now", and a bill six weeks out does not; but pretending it is not there would
+be worse, so it gets a line rather than a section. That replaced the Sprint 34
+three-deep cap and its "See all", which held bills back by position rather than by
+urgency — the fourth-soonest bill is not less urgent for being fourth.
+
+Section headings now carry a count. It was already being passed in Sprint 34 and
+never drawn; with up to four headings on screen it earns its place, because
+knowing how far a section runs without scrolling it is the point.
+
+Overdue is still excluded and still sits above all of this. A bill that is both
+late and due today is late, and the dashboard says so once.
 
 ## Sprint 37 — Quick Actions
 

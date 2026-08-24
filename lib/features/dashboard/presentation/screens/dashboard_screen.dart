@@ -19,6 +19,7 @@ import '../../../bills/domain/entities/bill_outlook.dart';
 import '../../../bills/domain/entities/bill_status.dart';
 import '../../../bills/domain/entities/bill_totals.dart';
 import '../../../bills/domain/entities/bill_with_status.dart';
+import '../../../bills/domain/entities/upcoming_schedule.dart';
 import '../../../bills/presentation/controllers/bill_detail_provider.dart';
 import '../../../bills/presentation/widgets/bill_detail_sheet.dart';
 import '../../../bills/presentation/widgets/bill_list_tile.dart';
@@ -44,10 +45,9 @@ import '../widgets/dashboard_quick_actions.dart';
 /// ## What it is not
 ///
 /// **Not the bills list with a different header.** Bills already answers "show me
-/// everything, let me search it". This answers "what needs me today", so it shows
-/// overdue in full and upcoming only [_upcomingLimit] deep, with a way through to
-/// the list for the rest. Two tabs that show the same rows are one tab and a
-/// wasted tap.
+/// everything, let me search it". This answers "what needs me today", so it lists
+/// overdue and the next two weeks in full and counts the rest, with a way through
+/// to the list. Two tabs that show the same rows are one tab and a wasted tap.
 ///
 /// It also does not repeat the summary card. That card is the Bills screen's hero
 /// and reusing it here would make the two screens open identically.
@@ -57,12 +57,6 @@ import '../widgets/dashboard_quick_actions.dart';
 /// they hang on.
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
-
-  /// How many upcoming bills to show before deferring to the Bills tab.
-  ///
-  /// Three fits above the fold on a small phone alongside everything above it.
-  /// A dashboard that scrolls for a screen and a half is a list.
-  static const int _upcomingLimit = 3;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -114,14 +108,13 @@ class DashboardScreen extends ConsumerWidget {
   ) {
     final BillTotals totals = BillTotals.of(bills);
     final List<BillWithStatus> overdue = _overdue(bills);
-    final List<BillWithStatus> pending = _pending(bills);
-    final List<BillWithStatus> upcoming = pending.take(_upcomingLimit).toList();
 
     // `today` from a bill row rather than the device clock — the same date the
     // statuses on this screen were computed against. Falls back only when there
     // are no bills, and then nothing below depends on it.
     final DateTime today = bills.firstOrNull?.today ?? DateTime.now();
     final BillOutlook outlook = BillOutlook.of(bills, today: today);
+    final UpcomingSchedule schedule = UpcomingSchedule.of(bills, today: today);
 
     return <Widget>[
       _Hero(totals: totals),
@@ -157,23 +150,38 @@ class DashboardScreen extends ConsumerWidget {
           actionLabel: 'Add bill',
           onAction: () => context.pushNamed(AppRoutes.addBill.routeName),
         )
-      else if (upcoming.isEmpty)
+      else if (schedule.isEmpty)
         // Bills exist, but none of them are waiting on anything. Said plainly
         // rather than shown as an empty heading, and it is genuinely good news.
         _AllClear(hasOverdue: overdue.isNotEmpty)
-      else
-        _Section(
-          label: 'Coming up',
-          count: upcoming.length,
-          bills: upcoming,
-          onOpen: (BillWithStatus item) => _openDetail(context, ref, item),
-          // Only when something is actually being held back. "See all" over a
-          // section already showing everything is a link to the screen you are
-          // on.
-          onSeeAll: pending.length > upcoming.length
-              ? () => context.goNamed(AppRoutes.bills.routeName)
-              : null,
-        ),
+      else ...<Widget>[
+        // Grouped by how soon rather than listed flat. "Due in 6 days" is a
+        // subtraction the reader has to do before they know whether it matters;
+        // "Next week" is the answer.
+        // Gaps lead rather than trail, so the last block here does not stack its
+        // own spacing on top of whatever follows.
+        for (final (int index, UpcomingGroup group)
+            in schedule.listed.indexed) ...<Widget>[
+          if (index > 0) const SizedBox(height: AppSpacing.sectionGap),
+          _Section(
+            label: group.window.label,
+            count: group.bills.length,
+            bills: group.bills,
+            onOpen: (BillWithStatus item) => _openDetail(context, ref, item),
+          ),
+        ],
+        // Everything past next week, counted rather than listed. This screen
+        // answers "what needs me now", and a bill six weeks out does not — but
+        // pretending it is not there would be worse.
+        if (schedule.tail case final UpcomingGroup tail) ...<Widget>[
+          if (schedule.listed.isNotEmpty)
+            const SizedBox(height: AppSpacing.sectionGap),
+          _LaterSummary(
+            group: tail,
+            onSeeAll: () => context.goNamed(AppRoutes.bills.routeName),
+          ),
+        ],
+      ],
 
       // The charts sit last on purpose. Everything above is actionable — a bill
       // to open, a button to press; these are context, and context that pushes
@@ -211,28 +219,6 @@ class DashboardScreen extends ConsumerWidget {
   /// Everything late, soonest first — which for overdue means longest overdue.
   static List<BillWithStatus> _overdue(List<BillWithStatus> bills) =>
       bills.where((BillWithStatus b) => b.status == BillStatus.overdue).toList()
-        ..sort(
-          (BillWithStatus a, BillWithStatus b) =>
-              a.bill.dueOn.compareTo(b.bill.dueOn),
-        );
-
-  /// Everything that still needs money and is not already late, soonest first.
-  ///
-  /// Returned whole rather than pre-trimmed, because the screen needs to know
-  /// whether anything is being left out — "See all" on a section already showing
-  /// everything is a link to what you are looking at.
-  ///
-  /// Archived bills are absent for the same reason they are absent everywhere:
-  /// the user put them away.
-  static List<BillWithStatus> _pending(List<BillWithStatus> bills) =>
-      bills
-          .where(
-            (BillWithStatus b) =>
-                !b.bill.isArchived &&
-                b.status != BillStatus.overdue &&
-                (b.status?.isOutstanding ?? false),
-          )
-          .toList()
         ..sort(
           (BillWithStatus a, BillWithStatus b) =>
               a.bill.dueOn.compareTo(b.bill.dueOn),
@@ -651,16 +637,18 @@ class _Section extends StatelessWidget {
     required this.count,
     required this.bills,
     required this.onOpen,
-    this.onSeeAll,
   });
 
   final String label;
+
+  /// How many rows are under this heading.
+  ///
+  /// Redundant with the rows themselves for two or three, and not for eight —
+  /// the point is knowing how far the section runs without scrolling it.
   final int count;
+
   final List<BillWithStatus> bills;
   final ValueChanged<BillWithStatus> onOpen;
-
-  /// Shown only where there is more to see than is listed.
-  final VoidCallback? onSeeAll;
 
   @override
   Widget build(BuildContext context) {
@@ -682,17 +670,24 @@ class _Section extends StatelessWidget {
                 ),
               ),
             ),
-            if (onSeeAll case final VoidCallback seeAll)
-              TextButton(
-                onPressed: seeAll,
-                style: TextButton.styleFrom(
-                  minimumSize: const Size(0, 36),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                  ),
-                ),
-                child: const Text('See all'),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: 2,
               ),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: const BorderRadius.all(Radius.circular(999)),
+                border: Border.all(color: colors.border),
+              ),
+              child: Text(
+                '$count',
+                style: textTheme.labelSmall?.copyWith(
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: AppSpacing.md),
@@ -701,6 +696,86 @@ class _Section extends StatelessWidget {
           if (item != bills.last) const SizedBox(height: AppSpacing.cardGap),
         ],
       ],
+    );
+  }
+}
+
+/// Everything past next week, counted rather than listed.
+///
+/// A row per bill for six weeks out turns the dashboard into the bills list. A
+/// count and a figure say the same thing in one line, and the tap goes where the
+/// rows actually live.
+///
+/// It names the soonest date as well, because when everything a user has falls
+/// past next week this row is the *only* thing under the summary — and "2 more
+/// bills later" on its own leaves them with no idea whether later means Tuesday
+/// or March.
+class _LaterSummary extends StatelessWidget {
+  const _LaterSummary({required this.group, required this.onSeeAll});
+
+  final UpcomingGroup group;
+  final VoidCallback onSeeAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
+    return Material(
+      color: colors.surface,
+      borderRadius: AppRadii.panel,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onSeeAll,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: colors.surfaceMuted,
+                  borderRadius: const BorderRadius.all(
+                    Radius.circular(AppRadii.xs),
+                  ),
+                ),
+                child: Icon(
+                  Icons.more_horiz_rounded,
+                  size: 20,
+                  color: colors.textSecondary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      group.bills.length == 1
+                          ? '1 more bill later'
+                          : '${group.bills.length} more bills later',
+                      style: textTheme.bodyLarge?.copyWith(
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xxs),
+                    Text(
+                      '${group.total.format()} · from '
+                      '${DateFormat.MMMd().format(group.bills.first.bill.dueOn)}',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: colors.textTertiary),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
