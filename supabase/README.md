@@ -42,9 +42,36 @@ matters: later migrations reference tables earlier ones create.
   public, so a table that exists without RLS is a public table — and the window
   between the two migrations is a window where it is readable by anyone.
 
+## Checks
+
+`checks/` holds scripts that verify an applied database rather than change one.
+Paste one into the SQL editor and read the result. **Each is written to raise on a
+problem rather than to print a report** — a check whose output has to be read
+carefully is a check that gets skimmed.
+
+| File | Run it after | What it refuses to let pass |
+|------|--------------|------------------------------|
+| `rls_audit.sql` | any migration | a table in `public` without row level security, a policy-less table, a view that leaks past one |
+| `user_isolation.sql` | any migration touching policies | one user's rows being visible to another |
+| `recurrence_dates.sql` | `0016` | the SQL date arithmetic disagreeing with the app's, a missing `bills_occurrence_key`, a timezone name that stopped resolving |
+
+`recurrence_dates.sql` is the one that matters most to keep running. The
+recurrence arithmetic exists twice — `Recurrence.occurrenceAfter` in Dart drives
+the preview, `next_recurrence_date` drives generation — and nothing in either
+language can enforce that they agree. Its cases are deliberately the same cases as
+`test/features/recurring/domain/entities/recurrence_generation_test.dart`.
+
 ## Status
 
-Sprint 17 **written, not yet applied**: `profiles`, `reminder_preferences` and the
-shared `set_updated_at` helper. Nothing exists in the database until someone runs
-them. See [`migrations/README.md`](migrations/README.md) for the
-list and for queries that verify an apply.
+Applied through `0016_generate_recurring_bills.sql`.
+
+Two things are worth checking rather than assuming:
+
+- **`pg_cron` must be enabled** (Database → Extensions) or `0016` skips scheduling
+  the daily run and recurring bills are only generated when someone opens the app.
+  The migration raises a `notice` when it skips.
+- Run `checks/recurrence_dates.sql` after applying `0016`. It is the only thing
+  standing between the two implementations of the date arithmetic.
+
+See [`migrations/README.md`](migrations/README.md) for the list and for queries
+that verify an apply.

@@ -572,16 +572,43 @@ generator starts *after* it: that bill is the occurrence for its own due date, a
 a bookmark on or before it would produce a duplicate. The unique index would catch
 it, but only once the bill is linked — and the scheduled job can run in between.
 
-## Sprint 33 — Recurrence Testing
+## Sprint 33 — Recurrence Testing — done
 
-Test:
+Four of the six were already covered by the 42 tests written alongside the
+arithmetic in Sprint 29 — writing that code without them would have meant
+validating the trickiest dates in the project on faith. This sprint adds what
+those did not reach, and closes the risk Sprint 31 created.
 
-* Month boundaries
-* Leap years
-* Different month lengths
-* Year transitions
-* Time zones
-* Duplicate generation
+* Month boundaries — Sprint 29, plus a **long-run** check here: 60 consecutive
+  months of a 31st schedule, asserting the day is always the last possible one in
+  that month. The ratchet failure is invisible for a year and permanent after it,
+  so a handful of steps does not prove absence.
+* Leap years — Sprint 29 (2028), plus the century rule (2100 is not a leap year),
+  and a yearly 29 February that **recovers** the 29th in the next leap year. That
+  is only possible because the rule is stored rather than the last date used.
+* Different month lengths — the last-day sentinel asserted across 60 months.
+* Year transitions — weekly, monthly and quarterly each crossing 31 December.
+* **Time zones** — new. Every occurrence is local midnight with no time on it; a
+  start time is discarded so two templates created the same day at different hours
+  are equal; a `DateTime.utc` start is read as the day it names rather than
+  shifted; and a weekly schedule keeps its weekday for 52 weeks, which is the
+  property a `Duration(days: 7)` implementation loses across a daylight-saving
+  boundary. On the SQL side, `checks/recurrence_dates.sql` asserts that Manila,
+  UTC and Los Angeles stay ordered and within a day of each other.
+* **Duplicate generation** — new. The database half is the unique index, so the
+  check asserts `bills_occurrence_key` exists *and is unique*. The client half is
+  that the series strictly increases and never repeats, over 40 steps of every
+  frequency — a bookmark that could stand still would spin against that index
+  forever. Also: resuming from a stored bookmark produces the same series as
+  running straight through, and asking twice from the same bookmark gives the same
+  answer.
+
+**The real deliverable is `supabase/checks/recurrence_dates.sql`.** Sprint 31 left
+the date arithmetic implemented twice — Dart for the preview, SQL for generation —
+with nothing able to enforce that they agree, and the symptom of divergence is
+bills appearing on dates the preview never promised. The check runs the *same 18
+cases* as `recurrence_generation_test.dart` against `next_recurrence_date` and
+raises with every disagreement. Run it after applying `0016`.
 
 ---
 
