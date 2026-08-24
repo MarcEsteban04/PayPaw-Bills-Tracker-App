@@ -45,6 +45,12 @@ enum AppRoutes {
   /// Reached automatically by the deep link, not from a menu.
   resetPassword(path: '/reset-password', routeName: 'reset-password'),
 
+  // --- Bills ---------------------------------------------------------------
+
+  /// The add-bill form. Above the shell: a full-screen form should not have the
+  /// navigation bar sitting under it.
+  addBill(path: '/bills/new', routeName: 'add-bill'),
+
   // --- Developer tools ------------------------------------------------------
 
   /// Gallery of every design token. Reached from Profile; not a user

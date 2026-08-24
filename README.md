@@ -53,6 +53,7 @@ Progress is tracked sprint-by-sprint in [`docs/project_dev_roadmap.md`](docs/pro
 | 20 | Supabase security | ✅ Phase 4 done — run the checks in supabase/checks/ |
 | 21 | Bill model | ✅ Complete |
 | 22 | Bill repository | ✅ Complete |
+| 23 | Add bill UI | ✅ Complete |
 | 11A | Welcome screen | ✅ Complete |
 | 11B | Account onboarding | ✅ Complete |
 
