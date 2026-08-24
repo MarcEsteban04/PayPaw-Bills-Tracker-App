@@ -61,9 +61,24 @@ class AppCard extends StatelessWidget {
         borderRadius: borderRadius,
         boxShadow: shadow ?? palette.cardShadow,
       ),
+      // The hairline goes on the Material, not the DecoratedBox above it: drawn
+      // outside, the ink splash would run over the top of it on every tap.
+      //
+      // Null in light mode, where the shadow already gives the card an edge. See
+      // [AppPalette.cardBorder].
+      //
+      // `shape` and `borderRadius` are mutually exclusive on `Material` — it
+      // asserts if given both — so the rounding is expressed one way or the
+      // other, never both.
       child: Material(
         color: color ?? palette.surface,
-        borderRadius: borderRadius,
+        borderRadius: palette.cardBorder == null ? borderRadius : null,
+        shape: palette.cardBorder == null
+            ? null
+            : RoundedRectangleBorder(
+                borderRadius: borderRadius,
+                side: BorderSide(color: palette.border),
+              ),
         clipBehavior: Clip.antiAlias,
         child: onTap == null ? content : InkWell(onTap: onTap, child: content),
       ),

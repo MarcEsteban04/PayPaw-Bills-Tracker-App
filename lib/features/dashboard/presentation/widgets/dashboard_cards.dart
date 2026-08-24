@@ -81,6 +81,10 @@ class DashboardCard extends StatelessWidget {
         color: colors.surface,
         borderRadius: AppRadii.panel,
         boxShadow: colors.cardShadow,
+        // Null in light mode, where the shadow gives the panel its edge. On a
+        // true black canvas a shadow does nothing, so the hairline is what stops
+        // the panel fading out instead of ending.
+        border: colors.cardBorder,
       ),
       child: Padding(padding: padding, child: child),
     );

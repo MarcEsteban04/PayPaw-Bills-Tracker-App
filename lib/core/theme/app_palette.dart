@@ -102,8 +102,9 @@ class AppPalette extends ThemeExtension<AppPalette> {
 
   /// Surface of the floating navigation bar.
   ///
-  /// Darker than the canvas in light mode and *lighter* than it in dark mode —
-  /// in both cases so the bar reads as floating above the page.
+  /// Near-black in both themes. It used to lift in dark mode so it would clear
+  /// the charcoal canvas; against true black that made it a grey slab, and the
+  /// bar takes its shape from its own contents instead.
   final Color navSurface;
 
   /// The active destination's pill. Lime in both modes; it is the brand's
@@ -227,6 +228,19 @@ class AppPalette extends ThemeExtension<AppPalette> {
   List<BoxShadow> get cardShadow => <BoxShadow>[
     BoxShadow(color: shadowCard, blurRadius: 20, offset: const Offset(0, 4)),
   ];
+
+  /// The hairline that gives a card its edge — in dark mode only.
+  ///
+  /// Light mode has no use for one: a white card on grey already has an edge,
+  /// and [cardShadow] lifts it off the page. **On a true black canvas neither
+  /// works.** A shadow is a shade of black and does nothing against black, and
+  /// the fill difference alone leaves a card that fades out rather than ending.
+  ///
+  /// So the two themes separate a card by opposite means, and this is the half
+  /// that only one of them needs. Null rather than a transparent border, so the
+  /// light-mode decoration is byte-for-byte what it was.
+  BoxBorder? get cardBorder =>
+      brightness == Brightness.dark ? Border.all(color: border) : null;
 
   /// Elements floating above content: the navigation, sheets, menus.
   List<BoxShadow> get floatingShadow => <BoxShadow>[
@@ -384,11 +398,13 @@ class AppPalette extends ThemeExtension<AppPalette> {
     // pill reads cleanly while a white-on-lime button would not.
     textOnPrimary: Color(0xFF0F1011),
     textOnDark: Color(0xFFF5F5F7),
-    surface: Color(0xFF141518),
-    surfaceMuted: Color(0xFF1E2024),
-    surfaceInput: Color(0xFF1A1C20),
-    border: Color(0xFF292C31),
-    disabled: Color(0xFF24272B),
+    surface: Color(0xFF161719),
+    surfaceMuted: Color(0xFF212328),
+    surfaceInput: Color(0xFF1C1E22),
+    // Lifted from #292C31. It is the only edge a card has in dark mode now, and
+    // at the old value the hairline was there in the file and not on the screen.
+    border: Color(0xFF34383F),
+    disabled: Color(0xFF26292E),
     onDisabled: Color(0xFF9DA3AC),
     // Heavier than before. A shadow is a shade of black, and against a black
     // canvas the old ones did nothing at all — the cards separate by being

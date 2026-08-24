@@ -243,9 +243,11 @@ The reference is light-only, so the dark palette is derived from it:
   screen after the lime pill. It is #0A0B0D in both now, still a hair above the
   canvas, and its own contents give it shape: the sunken circles are lighter
   again and the active pill is lime. A test still asserts it clears the canvas.
-- **Shadows go the other way.** In light mode they lift a card off the page. On
-  black a shade of black does nothing, so the card shadows are transparent and
-  the cards separate by being *lighter* than the ground instead.
+- **Cards get an edge two different ways.** In light mode the shadow lifts them
+  off the page. On black a shade of black does nothing, so the card shadows are
+  transparent and a hairline does the job instead — `AppPalette.cardBorder` is a
+  border in dark mode and null in light, so neither theme pays for the other's
+  solution.
 - `primary` is the **same lime in both themes**; `primaryText` is that lime in
   dark mode and a dark olive in light, since one has to survive white behind it
   and the other does not.
