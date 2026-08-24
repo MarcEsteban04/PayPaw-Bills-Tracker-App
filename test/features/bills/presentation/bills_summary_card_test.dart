@@ -24,6 +24,12 @@ void main() {
       name: 'Bill $id',
       amount: const Money.php(500000),
       dueOn: DateTime(2026, 9, 5),
+      // Set whenever the status says archived, because the view derives one from
+      // the other — `archived_at is not null` is the *first* branch of its case
+      // expression. A row with one and not the other is not a shape the database
+      // can produce, and a test built that way would be asserting against
+      // something that cannot happen.
+      archivedAt: status == BillStatus.archived ? DateTime(2026, 8, 12) : null,
       createdAt: DateTime(2026, 8, 2),
       updatedAt: DateTime(2026, 8, 2),
     ),

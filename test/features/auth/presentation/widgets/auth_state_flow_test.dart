@@ -8,6 +8,7 @@ import 'package:paypaw/core/providers/supabase_providers.dart';
 import 'package:paypaw/features/auth/data/repositories/supabase_auth_repository.dart';
 import 'package:paypaw/features/auth/domain/entities/authenticated_user.dart';
 import 'package:paypaw/features/auth/presentation/screens/sign_in_screen.dart';
+import 'package:paypaw/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:paypaw/features/onboarding/presentation/controllers/onboarding_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -66,7 +67,7 @@ void main() {
       // side: relaunching does not ask again.
       await pumpApp(tester, FakeAuthRepository(initialUser: marc));
 
-      expect(find.widgetWithText(AppBar, 'Dashboard'), findsOneWidget);
+      expect(find.byType(DashboardScreen), findsOneWidget);
       expect(find.byType(SignInScreen), findsNothing);
     });
 
@@ -76,7 +77,7 @@ void main() {
       await pumpApp(tester, FakeAuthRepository());
 
       expect(find.byType(SignInScreen), findsOneWidget);
-      expect(find.widgetWithText(AppBar, 'Dashboard'), findsNothing);
+      expect(find.byType(DashboardScreen), findsNothing);
     });
   });
 
@@ -158,7 +159,7 @@ void main() {
         initialUser: marc,
       );
       await pumpApp(tester, repository);
-      expect(find.widgetWithText(AppBar, 'Dashboard'), findsOneWidget);
+      expect(find.byType(DashboardScreen), findsOneWidget);
 
       // A refresh token rejected, or revoked from another device.
       repository.emitSessionExpiry();
@@ -184,7 +185,7 @@ void main() {
 
       expect(find.text('Get started'), findsOneWidget);
       expect(find.byType(SignInScreen), findsNothing);
-      expect(find.widgetWithText(AppBar, 'Dashboard'), findsNothing);
+      expect(find.byType(DashboardScreen), findsNothing);
     });
 
     testWidgets('an account that has not been set up opens on onboarding', (
@@ -200,7 +201,7 @@ void main() {
       );
 
       expect(find.text('Money and time'), findsOneWidget);
-      expect(find.widgetWithText(AppBar, 'Dashboard'), findsNothing);
+      expect(find.byType(DashboardScreen), findsNothing);
     });
 
     testWidgets('and a set-up account never sees either', (
@@ -210,7 +211,7 @@ void main() {
 
       expect(find.text('Get started'), findsNothing);
       expect(find.text('Money and time'), findsNothing);
-      expect(find.widgetWithText(AppBar, 'Dashboard'), findsOneWidget);
+      expect(find.byType(DashboardScreen), findsOneWidget);
     });
   });
 }

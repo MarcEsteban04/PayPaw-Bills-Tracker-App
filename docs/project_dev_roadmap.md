@@ -614,15 +614,44 @@ raises with every disagreement. Run it after applying `0016`.
 
 # 🏠 Phase 7 — Dashboard
 
-## Sprint 34 — Dashboard Structure
+## Sprint 34 — Dashboard Structure — done
 
-Create:
+The reference design's dashboard reads top to bottom as: who you are, one big
+figure, what you can do about it, then the detail. This follows that order,
+because it is the order the questions arrive in — "how much do I owe" before
+"what is it made of".
 
-* Header
-* Financial summary
-* Upcoming bills
-* Overdue section
-* Quick actions
+* Header — a time-of-day greeting over the local part of the email, with an
+  initial for an avatar. Sprint 54 adds the profile that would carry a real name.
+  **The greeting is the one place the device clock is the right source**: every
+  date in this app comes from the database because a wrong phone clock would
+  disagree with the statuses beside it, but "good evening" is about the person,
+  not the bill.
+* Financial summary — total outstanding, with chips for what is overdue and what
+  is due soon. Sprint 35 adds total paid and monthly obligations.
+* Upcoming bills — the next three, soonest first, with "See all" only when
+  something is actually being held back. Sprint 36 groups them by Today /
+  Tomorrow / This week.
+* Overdue section — in full, and always **above** upcoming. Something already late
+  outranks something that has not happened yet.
+* Quick actions — Add bill, All bills, Calendar. Sprint 37's list also has Mark
+  paid, Add debt and Add subscription, **none of which exist yet**. A row where
+  two of five do nothing teaches the user the row is decoration and they stop
+  reading it; each arrives when the thing behind it does.
+
+**No app bar.** Every other screen has one because the shell's tabs do not label
+what they switched to — but here the greeting is that label, and a bar reading
+"Dashboard" above "Good evening, marc" is two headers.
+
+**Not the bills list with a different header.** Bills answers "show me everything,
+let me search it". This answers "what needs me today", which is why upcoming is
+capped and the summary card is not reused — two tabs opening on the same card
+would be one tab and a wasted tap.
+
+`BillTotals` came out of the bills summary card on the way, because the dashboard
+needed the same figures. Two screens each summing their own way is two definitions
+of "total outstanding", and the day they disagree the user is looking at one
+believing the other.
 
 ## Sprint 35 — Financial Summary
 

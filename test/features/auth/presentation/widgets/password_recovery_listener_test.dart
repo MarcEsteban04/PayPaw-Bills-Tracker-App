@@ -6,6 +6,7 @@ import 'package:paypaw/core/providers/storage_providers.dart';
 import 'package:paypaw/core/providers/supabase_providers.dart';
 import 'package:paypaw/features/auth/data/repositories/supabase_auth_repository.dart';
 import 'package:paypaw/features/auth/domain/entities/authenticated_user.dart';
+import 'package:paypaw/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:paypaw/features/onboarding/presentation/controllers/onboarding_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -62,7 +63,7 @@ void main() {
     await pumpApp(tester, repository);
 
     // The app starts on the dashboard; the link can arrive from anywhere.
-    expect(find.widgetWithText(AppBar, 'Dashboard'), findsOneWidget);
+    expect(find.byType(DashboardScreen), findsOneWidget);
 
     repository.emitPasswordRecovery();
     await tester.pumpAndSettle();
@@ -76,6 +77,6 @@ void main() {
     await pumpApp(tester, FakeAuthRepository(initialUser: signedIn));
 
     expect(find.widgetWithText(AppBar, 'New password'), findsNothing);
-    expect(find.widgetWithText(AppBar, 'Dashboard'), findsOneWidget);
+    expect(find.byType(DashboardScreen), findsOneWidget);
   });
 }

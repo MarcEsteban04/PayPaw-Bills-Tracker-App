@@ -4,7 +4,7 @@ import '../../../../core/domain/money.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../domain/entities/bill_status.dart';
+import '../../domain/entities/bill_totals.dart';
 import '../../domain/entities/bill_with_status.dart';
 
 /// What the whole list adds up to.
@@ -42,7 +42,7 @@ class BillsSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppPalette colors = context.colors;
     final TextTheme textTheme = Theme.of(context).textTheme;
-    final _Totals totals = _Totals.of(bills);
+    final BillTotals totals = BillTotals.of(bills);
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -295,109 +295,4 @@ class _Figure extends StatelessWidget {
       ),
     );
   }
-}
-
-/// The sums, worked out once.
-class _Totals {
-  const _Totals({
-    required this.outstanding,
-    required this.overdue,
-    required this.dueSoon,
-    required this.billed,
-    required this.settled,
-    required this.unpaidCount,
-    required this.overdueCount,
-    required this.dueSoonCount,
-  });
-
-  factory _Totals.of(List<BillWithStatus> bills) {
-    // Currency comes from the bills themselves rather than a constant: adding
-    // Money of different currencies throws, and an empty list has no currency at
-    // all, so the first bill decides and PHP is the fallback.
-    //
-    // Mixed currencies would still throw. That is the right failure for now —
-    // silently adding dollars to pesos would be a wrong total presented
-    // confidently — and a per-currency breakdown belongs with the analytics in
-    // Phase 13.
-    final String currency = bills.isEmpty
-        ? 'PHP'
-        : bills.first.outstanding.currency;
-
-    Money outstanding = Money(minorUnits: 0, currency: currency);
-    Money overdue = Money(minorUnits: 0, currency: currency);
-    Money dueSoon = Money(minorUnits: 0, currency: currency);
-    Money billed = Money(minorUnits: 0, currency: currency);
-    Money settled = Money(minorUnits: 0, currency: currency);
-    int unpaidCount = 0;
-    int overdueCount = 0;
-    int dueSoonCount = 0;
-
-    for (final BillWithStatus bill in bills) {
-      // Archived bills are in neither the progress nor the totals. The user has
-      // put them away, and counting them would make the denominator include work
-      // nobody intends to do.
-      if (bill.status == BillStatus.archived) {
-        continue;
-      }
-
-      // Progress counts settled bills, unlike every other figure here — clearing
-      // one is the progress.
-      billed += bill.bill.amount;
-      settled += bill.paid;
-
-      if (!(bill.status?.isOutstanding ?? false)) {
-        continue;
-      }
-
-      outstanding += bill.outstanding;
-      unpaidCount++;
-
-      switch (bill.status) {
-        case BillStatus.overdue:
-          overdue += bill.outstanding;
-          overdueCount++;
-        // Due-today counts into the due-soon figure rather than getting a third
-        // panel. "Due soon" already reads as including today, two panels fit the
-        // card and three crowd it, and the list below has its own heading for the
-        // bills that need paying before tonight.
-        case BillStatus.dueSoon:
-        case BillStatus.dueToday:
-          dueSoon += bill.outstanding;
-          dueSoonCount++;
-        case _:
-          break;
-      }
-    }
-
-    return _Totals(
-      outstanding: outstanding,
-      overdue: overdue,
-      dueSoon: dueSoon,
-      billed: billed,
-      settled: settled,
-      unpaidCount: unpaidCount,
-      overdueCount: overdueCount,
-      dueSoonCount: dueSoonCount,
-    );
-  }
-
-  final Money outstanding;
-  final Money overdue;
-  final Money dueSoon;
-
-  /// Everything not archived, at face value.
-  final Money billed;
-
-  /// How much of [billed] has been paid.
-  final Money settled;
-
-  final int unpaidCount;
-  final int overdueCount;
-  final int dueSoonCount;
-
-  /// Whether there is a denominator worth drawing a bar for.
-  bool get hasProgress => billed.minorUnits > 0;
-
-  double get settledFraction =>
-      hasProgress ? settled.minorUnits / billed.minorUnits : 0;
 }

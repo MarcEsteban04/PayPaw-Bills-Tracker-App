@@ -5,6 +5,7 @@ import 'package:paypaw/app/paypaw_app.dart';
 import 'package:paypaw/app/shell/app_destination.dart';
 import 'package:paypaw/app/shell/paypaw_bottom_nav.dart';
 import 'package:paypaw/core/providers/storage_providers.dart';
+import 'package:paypaw/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Tests for the shell navigation.
@@ -33,7 +34,7 @@ void main() {
     await pumpApp(tester);
 
     expect(find.byType(PayPawBottomNav), findsOneWidget);
-    expect(find.widgetWithText(AppBar, 'Dashboard'), findsOneWidget);
+    expect(find.byType(DashboardScreen), findsOneWidget);
   });
 
   testWidgets('every destination is reachable and labelled', (
@@ -65,7 +66,7 @@ void main() {
 
     await tester.tap(find.bySemanticsLabel(AppDestination.dashboard.label));
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(AppBar, 'Dashboard'), findsOneWidget);
+    expect(find.byType(DashboardScreen), findsOneWidget);
   });
 
   testWidgets('only the selected destination shows its label', (
