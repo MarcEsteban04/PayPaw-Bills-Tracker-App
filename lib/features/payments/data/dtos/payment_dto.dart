@@ -1,5 +1,6 @@
 import '../../../../core/data/row_reader.dart';
 import '../../../../core/domain/money.dart';
+import '../../domain/entities/new_payment.dart';
 import '../../domain/entities/payment.dart';
 import '../../domain/entities/payment_method.dart';
 
@@ -9,8 +10,9 @@ import '../../domain/entities/payment_method.dart';
 /// `supabase/migrations/0009_payments.sql` exactly, and a mismatch is a runtime
 /// failure rather than a compile error.
 ///
-/// Read-only. There is no `toInsert` because nothing writes payments yet, and an
-/// unused mapper is a mapper nobody tested.
+/// Writes since Sprint 37, which is when recording a payment arrived. There is
+/// still no `toUpdate`: nothing edits a payment, and correcting one is a delete
+/// and a re-entry rather than an edit — the amount is what the bank says.
 abstract final class PaymentDto {
   static const String tableName = 'payments';
 
@@ -33,6 +35,37 @@ abstract final class PaymentDto {
       '$columnId, $columnUserId, $columnBillId, $columnDebtId, '
       '$columnAmountMinor, $columnCurrency, $columnPaidAt, $columnMethod, '
       '$columnReference, $columnNote, $columnCreatedAt, $columnUpdatedAt';
+
+  /// Values for an `insert`.
+  ///
+  /// `debt_id` is sent as null rather than omitted. The table's
+  /// `payments_single_target` check counts non-nulls across both columns, and
+  /// being explicit about the half that is empty is what makes the row's shape
+  /// legible next to that constraint.
+  ///
+  /// `id`, `created_at` and `updated_at` are absent because the database owns
+  /// them. Sending a client-side timestamp for `created_at` would make the audit
+  /// trail depend on whether the user's phone clock is right.
+  static Map<String, dynamic> toInsert(
+    NewPayment draft, {
+    required String userId,
+  }) {
+    return <String, dynamic>{
+      columnUserId: userId,
+      columnBillId: draft.billId,
+      columnDebtId: null,
+      columnAmountMinor: draft.amount.minorUnits,
+      columnCurrency: draft.amount.currency,
+      // A timestamptz, so it goes over the wire as an instant with its offset —
+      // unlike a due date, which is a date and is formatted as one. UTC because
+      // the column stores UTC; PostgREST would accept the local offset too, but
+      // then two devices in different timezones write the same moment two ways.
+      columnPaidAt: draft.paidAt.toUtc().toIso8601String(),
+      columnMethod: draft.method?.wireValue,
+      columnReference: draft.reference,
+      columnNote: draft.note,
+    };
+  }
 
   /// Reads a row.
   ///

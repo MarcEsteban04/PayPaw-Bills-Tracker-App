@@ -12,6 +12,7 @@ import '../../../../core/presentation/widgets/app_toast.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../payments/presentation/widgets/record_payment_sheet.dart';
 import '../../domain/entities/bill_filter.dart';
 import '../../domain/entities/bill_sort.dart';
 import '../../domain/entities/bill_status.dart';
@@ -346,6 +347,8 @@ class _BillList extends ConsumerWidget {
     }
 
     switch (action) {
+      case BillDetailAction.recordPayment:
+        await recordPaymentFor(context: context, ref: ref, item: item);
       case BillDetailAction.edit:
         _openEditor(context, item);
       case BillDetailAction.archive:

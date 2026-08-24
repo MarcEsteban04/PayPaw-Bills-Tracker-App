@@ -724,15 +724,75 @@ knowing how far a section runs without scrolling it is the point.
 Overdue is still excluded and still sits above all of this. A bill that is both
 late and due today is late, and the dashboard says so once.
 
-## Sprint 37 — Quick Actions
+## Sprint 37 — Quick Actions — done
 
-Add:
+The sprint reads as five buttons. Three of them could not be buttons.
 
-* Add bill
-* Mark paid
-* Add debt
-* Add subscription
-* View calendar
+**"Add debt" and "Add subscription" are not here.** Debts are Phase 11 and
+subscriptions are Phase 10; neither model exists, so both would be shortcuts to
+nothing. The rule from Sprint 34 stands — a row where two of five do nothing
+teaches the user the row is decoration, and they stop reading it.
+
+**"Mark paid" was not a button either. It was the missing half of the app.**
+`PaymentRepository` was read-only, `PaymentDto` had no `toInsert`, and this
+bullet is the *only* place in 85 sprints that asks for recording a bill payment.
+Until this sprint PayPaw was a bills tracker in which no bill could ever be
+marked paid: "Paid ₱0.00 / 0% settled" on the dashboard was unreachable by
+construction. So this sprint built payment recording end to end, and the quick
+action is the last two lines of it.
+
+### The sheet
+
+Amount pre-filled with what is owed, date pre-filled with today. The common case
+— "I paid this bill" — is one tap on Save, and everything else is optional.
+
+A bare "Mark as paid" button would have served that case in *zero* taps and been
+wrong for every other one: a partial payment, a payment made last Tuesday, a
+reference number worth keeping. Those are not edge cases in a bills app; they are
+the reason `payments` has the columns it has.
+
+**Overpaying warns and does not block.** A surcharge, a rounded-up transfer, a
+bill two people in a household both paid. The column permits it, so refusing here
+would leave someone unable to record what their statement says — but it is nearly
+always a typo, so it is said out loud beside the field with Save still alive.
+
+Partial payments needed no code at all, which is the schema decision from Sprint
+19 paying off: they are payments that sum to less than the amount due, and
+`bill_status` does the summing.
+
+### What the write invalidates, and why all three
+
+Nothing stores whether a bill is paid. After an insert the app's idea of the bill
+is stale in three places, and patching any of them by hand would be guessing at
+what the view is about to say: `billsProvider` (the list, its totals, every
+dashboard figure), `billDetailProvider(id)` (an open drawer showing an amount
+that just changed), and `paymentsForBillProvider(id)` (the history in that
+drawer, missing the row that was the point).
+
+### Two entry points, because they are different questions
+
+The **detail drawer** already has a bill in hand, so it goes straight to the
+sheet. It is the one filled circle among the four action icons: four equal
+circles would claim the four things you can do here are equally likely, and the
+reason anyone opens a bill is to deal with it.
+
+The **dashboard** has no bill, so "Mark paid" asks which one first — late first,
+then soonest, because the bill somebody has just paid is the one that was
+worrying them. That picker is deliberately not a second bills list: no search, no
+filters, no sort. And the action is absent entirely for a user with nothing
+outstanding — the same rule as the two unbuilt actions, applied per-user, since
+an entry point that opens onto an empty sheet is the same broken promise.
+
+### Fixed on the way
+
+The quick action labels were not tappable. Only the 56dp circle carried the
+`InkWell`, and a label sitting under a button reads as part of it — that is where
+a thumb goes. Found by a test that tapped "Mark paid" and got nothing.
+
+`PaymentRepository` gained `recordPayment` and nothing else. No update: a payment
+records something that happened, and the fix for a wrong one is to remove it and
+enter what occurred. No delete either, because nothing offers it yet — it arrives
+with the confirmation it needs.
 
 ## Sprint 38 — Dashboard Polish
 

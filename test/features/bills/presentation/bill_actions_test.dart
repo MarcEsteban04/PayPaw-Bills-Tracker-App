@@ -751,4 +751,79 @@ void main() {
       expect(repository.deleted, 'bill-1');
     });
   });
+
+  group('recording a payment', () {
+    testWidgets('is offered from the drawer, and settles the bill', (
+      WidgetTester tester,
+    ) async {
+      // The reason anyone opens a bill is to deal with it, which is why this is
+      // the one filled circle among the four actions.
+      await pumpList(tester, <BillWithStatus>[item()]);
+      await openDetail(tester, 'Meralco electricity');
+
+      await tester.tap(find.byTooltip('Record payment'));
+      await tester.pumpAndSettle();
+
+      // Pre-filled with what is owed: paying the whole thing is one more tap.
+      await tester.tap(find.widgetWithText(FilledButton, 'Record payment'));
+      await tester.pumpAndSettle();
+
+      expect(payments.recorded.single.amount, const Money.php(245050));
+      expect(payments.recorded.single.billId, 'bill-1');
+    });
+
+    testWidgets('and says so', (WidgetTester tester) async {
+      await pumpList(tester, <BillWithStatus>[item()]);
+      await openDetail(tester, 'Meralco electricity');
+
+      await tester.tap(find.byTooltip('Record payment'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Record payment'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Meralco electricity marked as paid'), findsOneWidget);
+    });
+
+    testWidgets('a partial payment is not called paid', (
+      WidgetTester tester,
+    ) async {
+      // Telling someone they are done when ₱2,000 is still owed is worse than
+      // saying nothing.
+      await pumpList(tester, <BillWithStatus>[item()]);
+      await openDetail(tester, 'Meralco electricity');
+
+      await tester.tap(find.byTooltip('Record payment'));
+      await tester.pumpAndSettle();
+      // Scoped to the sheet's Form: the bills screen behind it has a search
+      // field, and a bare TextField finder types the amount into that instead.
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(Form),
+          matching: find.byType(TextField),
+        ),
+        '500',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Record payment'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('₱500.00 recorded against Meralco electricity'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('and it is not offered on a bill that is already settled', (
+      WidgetTester tester,
+    ) async {
+      // Nothing left to pay, so the action has no result the user could see.
+      await pumpList(tester, <BillWithStatus>[
+        item(status: BillStatus.paid, paid: 245050),
+      ]);
+      await openDetail(tester, 'Meralco electricity');
+
+      expect(find.byTooltip('Record payment'), findsNothing);
+      expect(find.byTooltip('Edit'), findsOneWidget);
+    });
+  });
 }

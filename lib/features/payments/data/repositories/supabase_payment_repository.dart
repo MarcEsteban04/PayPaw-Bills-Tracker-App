@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/data/supabase_error_mapper.dart';
 import '../../../../core/error/app_exception.dart';
+import '../../domain/entities/new_payment.dart';
 import '../../domain/entities/payment.dart';
 import '../../domain/repositories/payment_repository.dart';
 import '../dtos/payment_dto.dart';
@@ -36,6 +37,37 @@ class SupabasePaymentRepository implements PaymentRepository {
 
       return rows.map(PaymentDto.toEntity).toList();
     });
+  }
+
+  @override
+  Future<Payment> recordPayment(NewPayment draft) async {
+    final String userId = _requireUserId('recordPayment');
+
+    return _guard(() async {
+      // `select().single()` so the insert hands back the stored row: the caller
+      // needs the id and the timestamps the database assigned, and re-fetching to
+      // find them is a second round trip for what the first one can return.
+      final Map<String, dynamic> row = await _client
+          .from(PaymentDto.tableName)
+          .insert(PaymentDto.toInsert(draft, userId: userId))
+          .select(PaymentDto.selectColumns)
+          .single();
+
+      return PaymentDto.toEntity(row);
+    });
+  }
+
+  String _requireUserId(String operation) {
+    final String? userId = _client.auth.currentUser?.id;
+
+    if (userId == null) {
+      throw AuthenticationException(
+        message: 'Your session ended. Sign in again to continue.',
+        debugMessage: 'SupabasePaymentRepository.$operation without a session',
+      );
+    }
+
+    return userId;
   }
 
   /// Runs [body], converting anything it throws into an `AppException`.

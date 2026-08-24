@@ -1,13 +1,14 @@
+import '../entities/new_payment.dart';
 import '../entities/payment.dart';
 
-/// Reads payments.
+/// Reads and records payments.
 ///
-/// ## Read-only, for now
+/// ## No update, and no delete either
 ///
-/// Sprint 26 needs the history on a bill's detail drawer. Recording a payment is
-/// a later sprint with its own form, validation and effect on the bill's status,
-/// and adding a `createPayment` here before anything calls it would be a method
-/// whose contract nobody has had to think through yet.
+/// Sprint 37 added recording. It did not add editing: a payment is a record of
+/// something that happened, and the fix for a wrong one is to remove it and enter
+/// what actually occurred. Deleting is not here yet because nothing offers it —
+/// when something does, it arrives with the confirmation it needs.
 ///
 /// ## Ownership is never a parameter
 ///
@@ -26,4 +27,17 @@ abstract interface class PaymentRepository {
   /// exist or belongs to someone else. Those are the same answer through RLS and
   /// have to stay the same answer.
   Future<List<Payment>> fetchPaymentsForBill(String billId);
+
+  /// Records money moving against a bill, and returns the stored row.
+  ///
+  /// **This does not touch the bill.** Nothing here marks it paid, because
+  /// nothing stores whether it is: `bill_status` derives that by comparing the
+  /// sum of payments against the amount due. A payment that settles a bill and a
+  /// payment that half-settles one are the same insert, and the caller's job
+  /// afterwards is to re-read, not to reason.
+  ///
+  /// Returns the row as the database wrote it rather than the draft, so the
+  /// caller sees the real id and the real timestamps instead of what it hoped
+  /// for.
+  Future<Payment> recordPayment(NewPayment draft);
 }

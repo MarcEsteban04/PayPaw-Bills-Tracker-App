@@ -1,4 +1,5 @@
 import 'package:paypaw/core/error/app_exception.dart';
+import 'package:paypaw/features/payments/domain/entities/new_payment.dart';
 import 'package:paypaw/features/payments/domain/entities/payment.dart';
 import 'package:paypaw/features/payments/domain/repositories/payment_repository.dart';
 
@@ -17,7 +18,10 @@ class FakePaymentRepository implements PaymentRepository {
   /// bill's drawer makes no round trip at all.
   String? fetchedFor;
 
-  /// Set to make the next fetch fail.
+  /// Every draft it was asked to record, in order.
+  final List<NewPayment> recorded = <NewPayment>[];
+
+  /// Set to make the next fetch or write fail.
   AppException? failure;
 
   @override
@@ -30,5 +34,33 @@ class FakePaymentRepository implements PaymentRepository {
 
     return _payments.where((Payment p) => p.billId == billId).toList()
       ..sort((Payment a, Payment b) => b.paidAt.compareTo(a.paidAt));
+  }
+
+  @override
+  Future<Payment> recordPayment(NewPayment draft) async {
+    if (failure case final AppException exception) {
+      throw exception;
+    }
+
+    recorded.add(draft);
+
+    // Kept, so a test can record a payment and then read the history back and
+    // find it — the real repository's insert is visible to the next select, and
+    // a fake where it is not would let a broken invalidation pass.
+    final Payment stored = Payment(
+      id: 'payment-${recorded.length}',
+      userId: 'user-1',
+      billId: draft.billId,
+      amount: draft.amount,
+      paidAt: draft.paidAt,
+      method: draft.method,
+      reference: draft.reference,
+      note: draft.note,
+      createdAt: draft.paidAt,
+      updatedAt: draft.paidAt,
+    );
+    _payments.add(stored);
+
+    return stored;
   }
 }

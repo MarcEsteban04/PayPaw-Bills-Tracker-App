@@ -1,8 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:paypaw/core/domain/money.dart';
 import 'package:paypaw/core/error/app_exception.dart';
 import 'package:paypaw/features/payments/data/repositories/supabase_payment_repository.dart';
+import 'package:paypaw/features/payments/domain/entities/new_payment.dart';
 import 'package:paypaw/features/payments/domain/entities/payment.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -137,6 +139,27 @@ void main() {
         repository.fetchPaymentsForBill('bill-1'),
         throwsA(isA<AppException>()),
       );
+    });
+  });
+
+  group('recordPayment', () {
+    test('refuses without a session, and sends nothing', () async {
+      // `user_id` is not a parameter anywhere in this repository — it comes from
+      // the session, and the RLS policy checks it on the way in. Without one
+      // there is no row to write, and firing the request anyway would trade a
+      // clear message for a 401 the UI has to guess at.
+      await expectLater(
+        repository.recordPayment(
+          NewPayment(
+            billId: 'bill-1',
+            amount: const Money.php(50000),
+            paidAt: DateTime.utc(2026, 8, 25),
+          ),
+        ),
+        throwsA(isA<AuthenticationException>()),
+      );
+
+      expect(http.requests, isEmpty);
     });
   });
 }

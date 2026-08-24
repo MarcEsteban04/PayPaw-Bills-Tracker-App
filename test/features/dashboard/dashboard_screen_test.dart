@@ -442,16 +442,87 @@ void main() {
 
   group('quick actions', () {
     testWidgets('only offers what actually works', (WidgetTester tester) async {
-      // Sprint 37's list includes marking a bill paid and adding a debt, neither
-      // of which exists. A row where two of five do nothing teaches the user that
-      // the row is decoration.
+      // Sprint 37's list also names "Add debt" and "Add subscription". Debts are
+      // Phase 11 and subscriptions are Phase 10, so neither has anywhere to go —
+      // and a row where two of five do nothing teaches the user that the row is
+      // decoration.
       await pumpDashboard(tester, const <BillWithStatus>[]);
 
       expect(find.text('Add bill'), findsWidgets);
       expect(find.text('All bills'), findsOneWidget);
       expect(find.text('Calendar'), findsOneWidget);
-      expect(find.text('Mark paid'), findsNothing);
       expect(find.text('Add debt'), findsNothing);
+      expect(find.text('Add subscription'), findsNothing);
+    });
+
+    testWidgets('offers Mark paid once there is something to pay', (
+      WidgetTester tester,
+    ) async {
+      await pumpDashboard(tester, <BillWithStatus>[
+        item(
+          id: 'a',
+          name: 'Water',
+          status: BillStatus.dueSoon,
+          dueOn: DateTime(2026, 9, 5),
+        ),
+      ]);
+
+      expect(find.text('Mark paid'), findsOneWidget);
+    });
+
+    testWidgets('and hides it when nothing is outstanding', (
+      WidgetTester tester,
+    ) async {
+      // The same rule as the two unbuilt actions, applied per-user: an entry
+      // point that opens onto an empty sheet is the same broken promise as one
+      // with nothing behind it.
+      await pumpDashboard(tester, <BillWithStatus>[
+        item(
+          id: 'a',
+          name: 'Water',
+          status: BillStatus.paid,
+          dueOn: DateTime(2026, 9, 5),
+        ),
+        item(
+          id: 'b',
+          name: 'Put away',
+          status: BillStatus.archived,
+          dueOn: DateTime(2026, 9, 6),
+          archived: true,
+        ),
+      ]);
+
+      expect(find.text('Mark paid'), findsNothing);
+    });
+
+    testWidgets('and asks which bill before recording anything', (
+      WidgetTester tester,
+    ) async {
+      // The dashboard has no bill in hand, unlike the detail drawer. Late first,
+      // because the bill somebody just paid is the one that was worrying them.
+      await pumpDashboard(tester, <BillWithStatus>[
+        item(
+          id: 'a',
+          name: 'Water',
+          status: BillStatus.dueSoon,
+          dueOn: DateTime(2026, 9, 5),
+        ),
+        item(
+          id: 'b',
+          name: 'Rent',
+          status: BillStatus.overdue,
+          dueOn: DateTime(2026, 8, 20),
+        ),
+      ]);
+
+      await tester.tap(find.text('Mark paid'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Which bill did you pay?'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('Rent').last).dy,
+        lessThan(tester.getTopLeft(find.text('Water').last).dy),
+      );
     });
   });
 

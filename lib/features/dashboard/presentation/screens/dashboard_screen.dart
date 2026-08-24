@@ -26,6 +26,8 @@ import '../../../bills/presentation/widgets/bill_list_tile.dart';
 import '../../../categories/domain/entities/category.dart';
 import '../../../categories/presentation/controllers/category_providers.dart';
 import '../../../categories/presentation/widgets/category_icon.dart';
+import '../../../payments/presentation/widgets/pay_bill_picker_sheet.dart';
+import '../../../payments/presentation/widgets/record_payment_sheet.dart';
 import '../../../recurring/domain/entities/recurring_bill.dart';
 import '../../../recurring/domain/entities/recurring_commitment.dart';
 import '../../../recurring/presentation/controllers/recurring_bill_providers.dart';
@@ -120,7 +122,7 @@ class DashboardScreen extends ConsumerWidget {
       _Hero(totals: totals),
       const SizedBox(height: AppSpacing.sectionGap),
 
-      DashboardQuickActions(actions: _actions(context)),
+      DashboardQuickActions(actions: _actions(context, ref, bills)),
 
       if (outlook.hasAnything) ...<Widget>[
         const SizedBox(height: AppSpacing.sectionGap),
@@ -198,23 +200,61 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   /// The actions that exist. See [DashboardQuickActions] on why the list is short.
-  List<QuickAction> _actions(BuildContext context) => <QuickAction>[
-    QuickAction(
-      icon: Icons.add_rounded,
-      label: 'Add bill',
-      onPressed: () => context.pushNamed(AppRoutes.addBill.routeName),
-    ),
-    QuickAction(
-      icon: Icons.receipt_long_rounded,
-      label: 'All bills',
-      onPressed: () => context.goNamed(AppRoutes.bills.routeName),
-    ),
-    QuickAction(
-      icon: Icons.calendar_month_rounded,
-      label: 'Calendar',
-      onPressed: () => context.goNamed(AppRoutes.calendar.routeName),
-    ),
-  ];
+  List<QuickAction> _actions(
+    BuildContext context,
+    WidgetRef ref,
+    List<BillWithStatus> bills,
+  ) {
+    final List<BillWithStatus> payable = payableBills(bills);
+
+    return <QuickAction>[
+      QuickAction(
+        icon: Icons.add_rounded,
+        label: 'Add bill',
+        onPressed: () => context.pushNamed(AppRoutes.addBill.routeName),
+      ),
+      // Absent when there is nothing to pay, rather than present and opening onto
+      // an empty sheet. Same rule the whole row follows: only actions that work.
+      if (payable.isNotEmpty)
+        QuickAction(
+          icon: Icons.check_circle_outline_rounded,
+          label: 'Mark paid',
+          onPressed: () => unawaited(_markPaid(context, ref, payable)),
+        ),
+      QuickAction(
+        icon: Icons.receipt_long_rounded,
+        label: 'All bills',
+        onPressed: () => context.goNamed(AppRoutes.bills.routeName),
+      ),
+      QuickAction(
+        icon: Icons.calendar_month_rounded,
+        label: 'Calendar',
+        onPressed: () => context.goNamed(AppRoutes.calendar.routeName),
+      ),
+    ];
+  }
+
+  /// Asks which bill, then records against it.
+  ///
+  /// Two sheets in sequence rather than one combined picker-and-form: the picker
+  /// has to close before the form opens, or the form's amount field ends up
+  /// under a list the user has already finished with.
+  static Future<void> _markPaid(
+    BuildContext context,
+    WidgetRef ref,
+    List<BillWithStatus> payable,
+  ) async {
+    final BillWithStatus? chosen = await showPayBillPicker(
+      context: context,
+      bills: payable,
+    );
+
+    if (chosen == null || !context.mounted) {
+      return;
+    }
+
+    await recordPaymentFor(context: context, ref: ref, item: chosen);
+  }
 
   /// Everything late, soonest first — which for overdue means longest overdue.
   static List<BillWithStatus> _overdue(List<BillWithStatus> bills) =>
@@ -238,9 +278,18 @@ class DashboardScreen extends ConsumerWidget {
       return;
     }
 
-    // Only Edit is handled here. Archive and delete belong with the list that
-    // owns them — a dashboard that can delete a bill is a dashboard that needs
-    // every confirmation and undo the list already has, duplicated.
+    // Recording a payment is handled here, and so is Edit. Archive and delete are
+    // not: a dashboard that can delete a bill is a dashboard that needs every
+    // confirmation and undo the list already has, duplicated.
+    //
+    // Paying is the exception because it is the thing this screen exists to
+    // prompt. It also needs no confirmation and no undo — a payment recorded by
+    // mistake is corrected by removing it, not by a countdown in a toast.
+    if (action == BillDetailAction.recordPayment) {
+      await recordPaymentFor(context: context, ref: ref, item: item);
+      return;
+    }
+
     if (action == BillDetailAction.edit) {
       // Not awaited: the caller does not care when the editor closes, and the
       // list it returns to is invalidated by the save itself.

@@ -18,20 +18,22 @@ import '../../domain/entities/bill_with_status.dart';
 import 'bill_status_display.dart';
 
 /// What the user chose to do from the detail sheet.
-enum BillDetailAction { edit, archive, restore, delete }
+enum BillDetailAction { recordPayment, edit, archive, restore, delete }
 
 /// Everything known about one bill, in a drawer.
 ///
 /// ## The shape
 ///
-/// A header carrying the identity and the three actions, one figure large enough
-/// to be the answer, and a list of facts beneath it.
+/// A header carrying the identity, one figure large enough to be the answer, a
+/// list of facts, and the actions at the foot.
 ///
-/// The actions are **icons in the header**, not stacked buttons. Three full-width
-/// buttons made a *reading* surface look like a decision — the eye went to the
-/// green rectangle before it reached the number the drawer exists to show. As
-/// icons they are present, reachable and quiet, and the amount gets to be the
-/// loudest thing on the sheet.
+/// The actions are **icons**, not stacked buttons. Full-width buttons made a
+/// *reading* surface look like a decision — the eye went to the green rectangle
+/// before it reached the number the drawer exists to show. As icons they are
+/// present, reachable and quiet, and the amount gets to be the loudest thing on
+/// the sheet. Recording a payment is the one filled circle among them, because
+/// four equal circles would claim the four things you can do here are equally
+/// likely and they are not.
 ///
 /// Each carries a tooltip and a semantics label, because an icon on its own has no
 /// name. Delete is safe as a bare icon only because it confirms; if that
@@ -222,7 +224,13 @@ class _BillDetail extends ConsumerWidget {
           // much, the details, then what you can do about it.
           Align(
             alignment: Alignment.centerRight,
-            child: _Actions(isArchived: item.bill.isArchived),
+            child: _Actions(
+              isArchived: item.bill.isArchived,
+              // Nothing to pay on a settled bill, and an archived one was put
+              // away — recording against either is an action whose result the
+              // user cannot see from here.
+              canRecordPayment: !isSettled && !item.bill.isArchived,
+            ),
           ),
         ],
       ),
@@ -289,11 +297,18 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// Edit, archive and delete, as icons.
+/// Record a payment, edit, archive and delete, as icons.
+///
+/// **Paying is the filled one.** Four equal circles would say the four things a
+/// user can do here are equally likely, and they are not — the reason anyone
+/// opens a bill is to deal with it. Filling one circle rather than adding a
+/// full-width button keeps the row's geometry, and the amount above it stays the
+/// loudest thing on the sheet.
 class _Actions extends StatelessWidget {
-  const _Actions({required this.isArchived});
+  const _Actions({required this.isArchived, required this.canRecordPayment});
 
   final bool isArchived;
+  final bool canRecordPayment;
 
   @override
   Widget build(BuildContext context) {
@@ -302,6 +317,16 @@ class _Actions extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
+        if (canRecordPayment) ...<Widget>[
+          _ActionButton(
+            icon: Icons.check_rounded,
+            label: 'Record payment',
+            foreground: colors.textOnPrimary,
+            background: colors.primary,
+            action: BillDetailAction.recordPayment,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+        ],
         _ActionButton(
           icon: Icons.edit_outlined,
           label: 'Edit',
