@@ -110,6 +110,12 @@ class BillTotals {
   final int overdueCount;
   final int dueSoonCount;
 
+  /// Outstanding money that is not yet late.
+  ///
+  /// Derived rather than summed in the loop above, so it cannot disagree with
+  /// its own two halves: whatever is owed is either overdue or it is not.
+  Money get upcoming => outstanding - overdue;
+
   /// Whether there is a denominator worth drawing a bar for.
   bool get hasProgress => billed.minorUnits > 0;
 

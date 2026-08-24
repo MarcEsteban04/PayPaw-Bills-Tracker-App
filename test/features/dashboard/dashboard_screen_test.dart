@@ -106,14 +106,15 @@ void main() {
       // A partly paid bill contributes its remainder. This is a measure of work
       // left, and counting the settled part would overstate it.
       //
-      // Two bills, so the total matches no single row — otherwise the finder
-      // cannot tell the headline from the row that happens to equal it.
+      // One bill overdue, so the total differs from "Upcoming" in the summary
+      // card as well as from every row — otherwise the finder cannot tell the
+      // headline from the figure that happens to equal it.
       await pumpDashboard(tester, <BillWithStatus>[
         item(
           id: 'a',
           name: 'Rent',
-          status: BillStatus.partiallyPaid,
-          dueOn: DateTime(2026, 9, 20),
+          status: BillStatus.overdue,
+          dueOn: DateTime(2026, 8, 20),
           amount: 500000,
           paid: 200000,
           categoryId: 'cat-rent',
@@ -122,8 +123,6 @@ void main() {
           id: 'b',
           name: 'Water',
           status: BillStatus.upcoming,
-          // Next month, so the total differs from the "this month" stat card
-          // as well as from every row.
           dueOn: DateTime(2026, 10, 25),
           categoryId: 'cat-water',
         ),
@@ -135,8 +134,10 @@ void main() {
       expect(find.text('₱4,000.00'), findsOneWidget);
       expect(find.text('₱6,000.00'), findsNothing);
     });
+  });
 
-    testWidgets('breaks the figure down only where there is a breakdown', (
+  group('the summary card', () {
+    testWidgets('splits the total into what is late and what is not', (
       WidgetTester tester,
     ) async {
       await pumpDashboard(tester, <BillWithStatus>[
@@ -145,6 +146,7 @@ void main() {
           name: 'Rent',
           status: BillStatus.overdue,
           dueOn: DateTime(2026, 8, 20),
+          amount: 300000,
         ),
         item(
           id: 'b',
@@ -154,15 +156,17 @@ void main() {
         ),
       ]);
 
-      expect(find.text('1 overdue'), findsOneWidget);
-      expect(find.text('1 due soon'), findsOneWidget);
+      expect(find.text('Upcoming'), findsOneWidget);
+      expect(find.text('Overdue'), findsOneWidget);
+      expect(find.text('1 bill late'), findsOneWidget);
+      expect(find.text('₱3,000.00'), findsWidgets);
     });
 
-    testWidgets('and says so plainly when nothing is pressing', (
+    testWidgets('says nothing is late rather than hiding the figure', (
       WidgetTester tester,
     ) async {
-      // An empty row of chips under the figure would read as something failing
-      // to load.
+      // A grid that changes shape depending on whether anything is overdue makes
+      // the reader work out which cell is missing.
       await pumpDashboard(tester, <BillWithStatus>[
         item(
           id: 'a',
@@ -172,8 +176,42 @@ void main() {
         ),
       ]);
 
-      expect(find.text('Nothing due yet'), findsOneWidget);
-      expect(find.textContaining('overdue'), findsNothing);
+      expect(find.text('Overdue'), findsOneWidget);
+      expect(find.text('0 bills late'), findsOneWidget);
+    });
+
+    testWidgets('reports what repeats every month', (
+      WidgetTester tester,
+    ) async {
+      // The one figure on this screen that is not in any bill row, and the one
+      // that finally gives the recurring templates a reader.
+      await pumpDashboard(tester, <BillWithStatus>[
+        item(
+          id: 'a',
+          name: 'Rent',
+          status: BillStatus.upcoming,
+          dueOn: DateTime(2026, 9, 20),
+        ),
+      ]);
+
+      expect(find.text('Every month'), findsOneWidget);
+      expect(find.text('nothing repeats'), findsOneWidget);
+    });
+
+    testWidgets('and reports paid alongside it', (WidgetTester tester) async {
+      await pumpDashboard(tester, <BillWithStatus>[
+        item(
+          id: 'a',
+          name: 'Rent',
+          status: BillStatus.partiallyPaid,
+          dueOn: DateTime(2026, 9, 20),
+          amount: 400000,
+          paid: 100000,
+        ),
+      ]);
+
+      expect(find.text('Paid'), findsOneWidget);
+      expect(find.text('25% of everything'), findsOneWidget);
     });
   });
 

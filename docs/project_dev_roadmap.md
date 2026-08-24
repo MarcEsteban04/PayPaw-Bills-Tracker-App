@@ -653,14 +653,40 @@ needed the same figures. Two screens each summing their own way is two definitio
 of "total outstanding", and the day they disagree the user is looking at one
 believing the other.
 
-## Sprint 35 — Financial Summary
+## Sprint 35 — Financial Summary — done
 
-Display:
+One card, "The money", with four figures in a 2×2 grid. It replaced the two
+month stat cards from Sprint 34: those answered "when", which the months chart
+below already answers in more detail.
 
-* Total upcoming
-* Total paid
-* Total overdue
-* Monthly obligations
+* Total upcoming — outstanding that is not yet late, derived as
+  `outstanding − overdue` rather than summed separately so it cannot disagree
+  with its own two halves.
+* Total paid — with the share of everything beside it, because a paid figure
+  without a denominator cannot be read as good or bad.
+* Total overdue — always shown, including as ₱0.00 and "0 bills late". A grid
+  that changes shape depending on whether anything is late makes the reader work
+  out which cell went missing.
+* Monthly obligations — **the only figure on the screen that is in no bill row**,
+  and the one that finally gives `recurringBillsProvider` a reader after four
+  sprints of being written and never read.
+
+`RecurringCommitment` normalises every active schedule to occurrences per year and
+divides by twelve. A weekly bill is **365.25 / 7 weeks a year, not 52** — the
+shortcut loses a week every five years, which on something charged weekly is real
+money. Paused and finished templates are excluded: a schedule the user stopped is
+not money they have to find. The total is rounded once at the end, because
+rounding each template first and summing drifts by up to half a centavo per bill
+and shows as a total that does not match its own parts.
+
+**It is an average, not a forecast.** A yearly bill does not arrive in twelfths,
+and the month it lands in is the month it hurts. The months chart answers *when*;
+this answers *how much, on average*, and they are shown apart because confusing
+them makes someone budget wrongly in exactly one direction.
+
+The hero's chips went with this: they carried overdue and due-soon as counts, and
+the summary card carries the same thing as amounts one block below. The hero is
+now one figure and one ring.
 
 ## Sprint 36 — Upcoming Payments
 

@@ -149,6 +149,79 @@ class DashboardStat extends StatelessWidget {
   }
 }
 
+/// One cell of the summary grid: a dot, a label, and a figure.
+///
+/// Flatter than [DashboardStat] on purpose — four of these share one card, and
+/// four boxed cards inside a card is a border for every number.
+class SummaryFigure extends StatelessWidget {
+  const SummaryFigure({
+    required this.label,
+    required this.value,
+    required this.tint,
+    this.caption,
+    super.key,
+  });
+
+  final String label;
+  final String value;
+  final String? caption;
+  final Color tint;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: tint, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.bodySmall?.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
+            maxLines: 1,
+            style: textTheme.titleLarge?.copyWith(
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        if (caption case final String line) ...<Widget>[
+          const SizedBox(height: AppSpacing.xxs),
+          Text(
+            line,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: textTheme.labelSmall?.copyWith(color: colors.textTertiary),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 /// A ring showing how much of what was billed has been settled.
 ///
 /// The reference design's donut, applied to the question this app answers. Drawn

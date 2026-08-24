@@ -25,6 +25,9 @@ import '../../../bills/presentation/widgets/bill_list_tile.dart';
 import '../../../categories/domain/entities/category.dart';
 import '../../../categories/presentation/controllers/category_providers.dart';
 import '../../../categories/presentation/widgets/category_icon.dart';
+import '../../../recurring/domain/entities/recurring_bill.dart';
+import '../../../recurring/domain/entities/recurring_commitment.dart';
+import '../../../recurring/presentation/controllers/recurring_bill_providers.dart';
 import '../widgets/dashboard_cards.dart';
 import '../widgets/dashboard_header.dart';
 import '../widgets/dashboard_quick_actions.dart';
@@ -128,7 +131,7 @@ class DashboardScreen extends ConsumerWidget {
 
       if (outlook.hasAnything) ...<Widget>[
         const SizedBox(height: AppSpacing.sectionGap),
-        _StatRow(outlook: outlook, today: today),
+        _StatRow(totals: totals, outlook: outlook, today: today),
       ],
 
       if (overdue.isNotEmpty) ...<Widget>[
@@ -331,8 +334,6 @@ class _Hero extends StatelessWidget {
               ],
             ],
           ),
-          const SizedBox(height: AppSpacing.lg),
-          _HeroChips(totals: totals),
           if (totals.hasProgress) ...<Widget>[
             const SizedBox(height: AppSpacing.md),
             Text(
@@ -390,93 +391,115 @@ class _Figures extends StatelessWidget {
   }
 }
 
-/// The chips under the hero's figure.
-///
-/// Their own row, full width, rather than in the left column beside the ring: a
-/// chip reading "₱4,000.00 1 overdue" is wider than the column the figure leaves,
-/// and `Wrap` cannot break a chip that does not fit.
-class _HeroChips extends StatelessWidget {
-  const _HeroChips({required this.totals});
-
-  final BillTotals totals;
-
-  @override
-  Widget build(BuildContext context) {
-    final AppPalette colors = context.colors;
-
-    return Wrap(
-      spacing: AppSpacing.sm,
-      runSpacing: AppSpacing.sm,
-      children: <Widget>[
-        if (totals.overdueCount > 0)
-          _Stat(
-            label: '${totals.overdueCount} overdue',
-            amount: totals.overdue.format(),
-            foreground: colors.overdueText,
-            background: colors.overdueTint,
-          ),
-        if (totals.dueSoonCount > 0)
-          _Stat(
-            label: '${totals.dueSoonCount} due soon',
-            amount: totals.dueSoon.format(),
-            foreground: colors.dueSoonText,
-            background: colors.dueSoonTint,
-          ),
-        // Neither chip is worth drawing when nothing is pressing, and an
-        // empty row under the figure would read as something failing to load.
-        if (!totals.needsAttention)
-          _Stat(
-            label: totals.unpaidCount > 0 ? 'Nothing due yet' : 'All clear',
-            amount: null,
-            foreground: colors.primaryText,
-            background: colors.primarySoft,
-          ),
-      ],
-    );
-  }
-}
-
 /// Two figures that answer "when", which the headline cannot.
 ///
 /// ₱5,500 outstanding is a different month depending on whether it all lands in
 /// three weeks or spreads over six.
-class _StatRow extends StatelessWidget {
-  const _StatRow({required this.outlook, required this.today});
+class _StatRow extends ConsumerWidget {
+  const _StatRow({
+    required this.totals,
+    required this.outlook,
+    required this.today,
+  });
 
+  final BillTotals totals;
   final BillOutlook outlook;
   final DateTime today;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final AppPalette colors = context.colors;
 
-    return IntrinsicHeight(
-      child: Row(
+    // Null while the templates are still arriving, which is a moment. The other
+    // three figures do not wait for it — a summary that blanks because one of
+    // four numbers is late is a summary that is usually blank.
+    final RecurringCommitment? commitment = switch (ref.watch(
+      recurringBillsProvider,
+    )) {
+      AsyncData<List<RecurringBill>>(value: final List<RecurringBill> all) =>
+        RecurringCommitment.of(all),
+      _ => null,
+    };
+
+    return DashboardCard(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Expanded(
-            child: DashboardStat(
-              label: 'This month',
-              value: outlook.dueThisMonth.format(),
-              caption: DateFormat.MMMM().format(today),
-              icon: Icons.today_rounded,
+          const DashboardCardTitle(title: 'The money'),
+          const SizedBox(height: AppSpacing.lg),
+          _FigureRow(
+            left: SummaryFigure(
+              label: 'Upcoming',
+              value: totals.upcoming.format(),
+              caption: '${outlook.dueThisMonth.format()} this month',
               tint: colors.dueSoon,
             ),
+            right: SummaryFigure(
+              label: 'Overdue',
+              value: totals.overdue.format(),
+              caption: totals.overdueCount == 1
+                  ? '1 bill late'
+                  : '${totals.overdueCount} bills late',
+              tint: colors.overdue,
+            ),
           ),
-          const SizedBox(width: AppSpacing.cardGap),
-          Expanded(
-            child: DashboardStat(
-              label: 'Next month',
-              value: outlook.dueNextMonth.format(),
-              caption: DateFormat.MMMM().format(
-                DateTime(today.year, today.month + 1),
-              ),
-              icon: Icons.event_repeat_rounded,
+          const SizedBox(height: AppSpacing.xl),
+          _FigureRow(
+            left: SummaryFigure(
+              label: 'Paid',
+              value: totals.settled.format(),
+              caption: totals.hasProgress
+                  ? '${(totals.settledFraction * 100).round()}% of everything'
+                  : null,
               tint: colors.primary,
+            ),
+            right: SummaryFigure(
+              label: 'Every month',
+              // A dash rather than a zero while it loads. "₱0.00" is a claim,
+              // and it is the wrong one for anyone who does have schedules.
+              value: commitment?.perMonth.format() ?? '—',
+              // The count, not the yearly figure. "₱192,000.00 a year, on
+              // average" was truncated to "on ave…" in half the card's width,
+              // and a caption that has to be guessed at is worse than a shorter
+              // one — the number of schedules is also the more useful fact,
+              // since it is what the reader would go and check.
+              caption: switch (commitment) {
+                null => 'counting…',
+                final RecurringCommitment c when !c.hasAnything =>
+                  'nothing repeats',
+                final RecurringCommitment c when c.activeCount == 1 =>
+                  'from 1 schedule',
+                final RecurringCommitment c =>
+                  'from ${c.activeCount} schedules',
+              },
+              tint: colors.info,
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Two figures sharing a row, each with half the width.
+///
+/// A plain `Row` of `Expanded`s rather than a `GridView`: two of them is not a
+/// grid, and a scrollable inside a scrollable is a wrestling match.
+class _FigureRow extends StatelessWidget {
+  const _FigureRow({required this.left, required this.right});
+
+  final Widget left;
+  final Widget right;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Expanded(child: left),
+        const SizedBox(width: AppSpacing.lg),
+        Expanded(child: right),
+      ],
     );
   }
 }
@@ -616,58 +639,6 @@ class _MonthsAhead extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// A small figure beside the headline — the reference's accent chips.
-class _Stat extends StatelessWidget {
-  const _Stat({
-    required this.label,
-    required this.amount,
-    required this.foreground,
-    required this.background,
-  });
-
-  final String label;
-  final String? amount;
-  final Color foreground;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) {
-    final TextTheme textTheme = Theme.of(context).textTheme;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(color: background, borderRadius: AppRadii.chip),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            if (amount case final String value) ...<Widget>[
-              Text(
-                value,
-                style: textTheme.labelMedium?.copyWith(
-                  color: foreground,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-            ],
-            Text(
-              label,
-              style: textTheme.labelMedium?.copyWith(
-                color: foreground,
-                fontWeight: amount == null ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
