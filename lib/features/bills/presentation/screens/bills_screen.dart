@@ -369,6 +369,7 @@ class _BillList extends ConsumerWidget {
   /// what archiving was for.
   static List<_Group> _group(List<BillWithStatus> bills) {
     final List<BillWithStatus> overdue = <BillWithStatus>[];
+    final List<BillWithStatus> dueToday = <BillWithStatus>[];
     final List<BillWithStatus> dueSoon = <BillWithStatus>[];
     final List<BillWithStatus> upcoming = <BillWithStatus>[];
     final List<BillWithStatus> settled = <BillWithStatus>[];
@@ -386,6 +387,8 @@ class _BillList extends ConsumerWidget {
       switch (bill.status) {
         case BillStatus.overdue:
           overdue.add(bill);
+        case BillStatus.dueToday:
+          dueToday.add(bill);
         case BillStatus.dueSoon:
           dueSoon.add(bill);
         case BillStatus.paid:
@@ -400,6 +403,10 @@ class _BillList extends ConsumerWidget {
 
     return <_Group>[
       if (overdue.isNotEmpty) _Group(label: 'Overdue', bills: overdue),
+      // Its own heading rather than folded into Due soon. Today is the last day
+      // a bill can be paid on time, and a group that mixes it with Friday's makes
+      // the reader check every date to find that out.
+      if (dueToday.isNotEmpty) _Group(label: 'Due today', bills: dueToday),
       if (dueSoon.isNotEmpty) _Group(label: 'Due soon', bills: dueSoon),
       if (upcoming.isNotEmpty) _Group(label: 'Upcoming', bills: upcoming),
       if (settled.isNotEmpty) _Group(label: 'Settled', bills: settled),

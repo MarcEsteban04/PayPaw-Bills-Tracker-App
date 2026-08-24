@@ -356,7 +356,12 @@ class _Totals {
         case BillStatus.overdue:
           overdue += bill.outstanding;
           overdueCount++;
+        // Due-today counts into the due-soon figure rather than getting a third
+        // panel. "Due soon" already reads as including today, two panels fit the
+        // card and three crowd it, and the list below has its own heading for the
+        // bills that need paying before tonight.
         case BillStatus.dueSoon:
+        case BillStatus.dueToday:
           dueSoon += bill.outstanding;
           dueSoonCount++;
         case _:

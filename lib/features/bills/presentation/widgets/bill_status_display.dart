@@ -19,6 +19,7 @@ abstract final class BillStatusDisplay {
   static String label(BillStatus? status) => switch (status) {
     BillStatus.upcoming => 'Upcoming',
     BillStatus.dueSoon => 'Due soon',
+    BillStatus.dueToday => 'Due today',
     BillStatus.partiallyPaid => 'Partly paid',
     BillStatus.overdue => 'Overdue',
     BillStatus.paid => 'Settled',
@@ -28,20 +29,27 @@ abstract final class BillStatusDisplay {
 
   /// The badge for a list row, or null where the row's date already says it.
   ///
-  /// Overdue and due-soon are urgent enough to repeat. Part-paid is the one a date
-  /// cannot express at all — a bill can be half settled and not due for weeks.
-  /// Everything else would be furniture.
+  /// Overdue, due-today and due-soon are urgent enough to repeat. Part-paid is the
+  /// one a date cannot express at all — a bill can be half settled and not due for
+  /// weeks. Everything else would be furniture.
   static String? badge(BillStatus? status) => switch (status) {
     BillStatus.overdue => 'OVERDUE',
+    BillStatus.dueToday => 'DUE TODAY',
     BillStatus.dueSoon => 'DUE SOON',
     BillStatus.partiallyPaid => 'PART PAID',
     _ => null,
   };
 
   /// Which colour pair the status wears.
+  ///
+  /// Due-today shares the due-soon tone rather than getting one of its own. A
+  /// tone is a pair of theme colours, and inventing a fourth urgency colour to sit
+  /// between amber and red would give the palette a distinction the eye cannot
+  /// reliably make. The word carries the difference; the colour says "not late
+  /// yet, but close".
   static AppStatusTone tone(BillStatus? status) => switch (status) {
     BillStatus.paid => AppStatusTone.paid,
-    BillStatus.dueSoon => AppStatusTone.dueSoon,
+    BillStatus.dueSoon || BillStatus.dueToday => AppStatusTone.dueSoon,
     BillStatus.overdue => AppStatusTone.overdue,
     BillStatus.partiallyPaid => AppStatusTone.info,
     BillStatus.upcoming || BillStatus.archived || null => AppStatusTone.neutral,

@@ -12,10 +12,21 @@ enum BillStatus {
   /// Not due yet, and outside the warning window.
   upcoming('upcoming'),
 
-  /// Due within the warning window the view defines.
+  /// Due within the warning window the view defines, but not today.
   dueSoon('due_soon'),
 
-  /// Something has been paid, but not all of it, and it is not yet late.
+  /// Due on the user's today. The last day it can be paid on time.
+  ///
+  /// Separate from [dueSoon], which covered a three-day window and said the same
+  /// thing about a bill due this afternoon as about one due on Friday.
+  dueToday('due_today'),
+
+  /// Something has been paid, but not all of it, and there is no date pressure.
+  ///
+  /// Ranks *below* the date statuses in the view, so a half-paid bill due
+  /// tomorrow reports [dueToday] rather than this. Nothing is lost by that:
+  /// `BillWithStatus.isPartiallyPaid` reads the amounts, not the status, so the
+  /// progress bar does not depend on this value.
   partiallyPaid('partially_paid'),
 
   /// Past its due date and not settled. Outranks [partiallyPaid]: money owed
@@ -57,6 +68,7 @@ enum BillStatus {
   bool get isOutstanding => switch (this) {
     BillStatus.upcoming ||
     BillStatus.dueSoon ||
+    BillStatus.dueToday ||
     BillStatus.partiallyPaid ||
     BillStatus.overdue => true,
     BillStatus.paid || BillStatus.archived => false,
@@ -64,7 +76,7 @@ enum BillStatus {
 
   /// Whether this bill wants the user's attention now.
   bool get needsAttention => switch (this) {
-    BillStatus.dueSoon || BillStatus.overdue => true,
+    BillStatus.dueSoon || BillStatus.dueToday || BillStatus.overdue => true,
     _ => false,
   };
 }

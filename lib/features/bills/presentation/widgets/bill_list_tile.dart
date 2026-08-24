@@ -57,7 +57,7 @@ class BillListTile extends ConsumerWidget {
 
     final Color? rail = switch (item.status) {
       BillStatus.overdue => colors.overdue,
-      BillStatus.dueSoon => colors.dueSoon,
+      BillStatus.dueSoon || BillStatus.dueToday => colors.dueSoon,
       _ => null,
     };
 
@@ -119,7 +119,8 @@ class BillListTile extends ConsumerWidget {
                           style: textTheme.bodySmall?.copyWith(
                             color: switch (item.status) {
                               BillStatus.overdue => colors.overdueText,
-                              BillStatus.dueSoon => colors.dueSoonText,
+                              BillStatus.dueSoon ||
+                              BillStatus.dueToday => colors.dueSoonText,
                               _ => colors.textSecondary,
                             },
                             fontWeight: item.status?.needsAttention ?? false
@@ -159,7 +160,8 @@ class BillListTile extends ConsumerWidget {
                           style: textTheme.labelSmall?.copyWith(
                             color: switch (item.status) {
                               BillStatus.overdue => colors.overdueText,
-                              BillStatus.dueSoon => colors.dueSoonText,
+                              BillStatus.dueSoon ||
+                              BillStatus.dueToday => colors.dueSoonText,
                               _ => colors.infoText,
                             },
                             fontWeight: FontWeight.w700,

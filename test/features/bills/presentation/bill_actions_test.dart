@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:paypaw/app/router/app_routes.dart';
 import 'package:paypaw/core/domain/money.dart';
 import 'package:paypaw/core/error/app_exception.dart';
+import 'package:paypaw/core/theme/app_palette.dart';
 import 'package:paypaw/core/theme/app_theme.dart';
 import 'package:paypaw/features/bills/domain/entities/bill.dart';
 import 'package:paypaw/features/bills/domain/entities/bill_status.dart';
@@ -249,6 +251,62 @@ void main() {
       expect(repository.archived, 'bill-1');
       expect(find.text('Meralco electricity archived'), findsOneWidget);
       expect(find.text('Undo'), findsOneWidget);
+    });
+  });
+
+  group('due today', () {
+    testWidgets('gets its own heading, above Due soon', (
+      WidgetTester tester,
+    ) async {
+      // Today is the last day a bill can be paid on time. A group that mixes it
+      // with Friday's makes the reader check every date to find that out.
+      await pumpList(tester, <BillWithStatus>[
+        item(status: BillStatus.dueToday),
+        item(id: 'bill-2', name: 'Maynilad water', status: BillStatus.dueSoon),
+      ]);
+
+      expect(find.text('DUE TODAY'), findsWidgets);
+      expect(find.text('DUE SOON'), findsWidgets);
+
+      final double today = tester.getTopLeft(find.text('DUE TODAY').first).dy;
+      final double soon = tester.getTopLeft(find.text('DUE SOON').first).dy;
+      expect(today, lessThan(soon));
+    });
+
+    testWidgets('is not left looking calmer than a bill due on Friday', (
+      WidgetTester tester,
+    ) async {
+      // The colour switches all read `BillStatus.dueSoon` with a wildcard
+      // fallback, so a new status silently lost the tint and the coloured rail —
+      // exactly backwards for the more urgent of the two.
+      await pumpList(tester, <BillWithStatus>[
+        item(status: BillStatus.dueToday),
+      ]);
+      await openDetail(tester, 'Meralco electricity');
+
+      final Text due = tester.widget<Text>(
+        find.text(DateFormat.yMMMEd().format(DateTime(2026, 9, 20))),
+      );
+
+      expect(due.style?.color, isNotNull);
+      expect(
+        due.style?.color,
+        isNot(AppTheme.light.extension<AppPalette>()!.textPrimary),
+      );
+    });
+
+    testWidgets('counts into the Due soon figure on the summary card', (
+      WidgetTester tester,
+    ) async {
+      // Rather than a third panel. Two fit the card and three crowd it, and the
+      // list below already separates them.
+      await pumpList(tester, <BillWithStatus>[
+        item(status: BillStatus.dueToday),
+      ]);
+
+      expect(find.text('Due soon'), findsOneWidget);
+      // The whole ₱2,450.50 outstanding, under Due soon rather than nowhere.
+      expect(find.text('₱2,450.50'), findsWidgets);
     });
   });
 

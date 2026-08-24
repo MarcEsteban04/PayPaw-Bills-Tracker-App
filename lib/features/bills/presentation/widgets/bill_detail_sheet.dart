@@ -135,7 +135,7 @@ class _BillDetail extends ConsumerWidget {
             detail: isSettled ? null : _relative(item),
             tone: switch (item.status) {
               BillStatus.overdue => colors.overdueText,
-              BillStatus.dueSoon => colors.dueSoonText,
+              BillStatus.dueSoon || BillStatus.dueToday => colors.dueSoonText,
               _ => null,
             },
           ),

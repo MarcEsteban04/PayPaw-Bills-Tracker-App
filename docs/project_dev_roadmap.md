@@ -356,16 +356,37 @@ with payments **cannot be deleted**. The delete dialog had been offering exactly
 that and explaining that the payments would go with it. It now refuses and offers
 archive. See `bill_repository.dart`, whose doc comment claimed the opposite.
 
-## Sprint 27 — Bill Status
+## Sprint 27 — Bill Status — done, minus Cancelled
 
-Implement:
+The status is computed by the `bill_status` view and never by the app, so this
+sprint is mostly a migration: `0015_bill_status_due_today.sql`. **It has to be
+applied before the new status appears.** Nothing breaks either way — an
+unmigrated database never emits `due_today`, and an old build parses it to null
+and shows "Unknown".
 
-* Upcoming
-* Due today
-* Paid
-* Overdue
-* Partially paid
-* Cancelled
+* Upcoming — already there.
+* Due today — **new.** `due_soon` covered a three-day window, so a bill due this
+  afternoon and one due on Friday said the same thing. The list already knew:
+  every row's subtitle read "Due today" off the date while its badge said
+  "DUE SOON" and it sat in the Due soon group. It now has its own status, its own
+  heading above Due soon, and its own badge. It shares the due-soon colour — the
+  word carries the difference, and a fourth urgency colour between amber and red
+  is a distinction the eye cannot reliably make.
+* Paid — already there, shown as "Settled".
+* Overdue — already there.
+* Partially paid — already there, but **moved below the dates in the view's
+  precedence.** It used to outrank `due_soon`, so a half-paid bill due tomorrow
+  reported `partially_paid`, lost its date entirely, and got filed with the bills
+  nobody has to think about this week. Nothing is lost by demoting it: the UI
+  reads partial payment off the amounts (`BillWithStatus.isPartiallyPaid`), not
+  the status, so the progress bar still works.
+* Cancelled — **not built, deliberately.** This is `archived` under a second
+  name. Sprint 25 built archiving as the soft delete: it takes a bill off the
+  list, excludes it from every total, and is reversible. A separate "cancelled"
+  state would need a second column and a second set of rules, and no screen would
+  treat it differently from archived — the summary card already skips both, the
+  list already groups both. Two words for one state is how a status column starts
+  drifting. Reopen this if cancelled should mean something archived does not.
 
 ## Sprint 28 — Bill Search & Filters
 
