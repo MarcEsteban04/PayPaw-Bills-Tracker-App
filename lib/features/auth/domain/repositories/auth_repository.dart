@@ -54,6 +54,21 @@ abstract interface class AuthRepository {
   /// there is none, which is what an expired or reused link looks like.
   Future<AuthenticatedUser> updatePassword({required String newPassword});
 
+  /// Ends the session on this device.
+  ///
+  /// Local only: it does not revoke sessions on the user's other devices. That is
+  /// the expected behaviour of a sign-out button, and the alternative would
+  /// silently log them out of their tablet.
+  Future<void> signOut();
+
+  /// Emits when the session ended **without the user asking** — a refresh token
+  /// expired or was rejected, or a stored session could not be restored.
+  ///
+  /// Separate from [authStateChanges] because the app needs to tell the two
+  /// apart: an explicit sign-out needs no explanation, and being silently
+  /// returned to a sign-in screen does.
+  Stream<void> sessionExpirations();
+
   /// Emits when a password reset link has been opened and a recovery session
   /// exists, so the app can ask for the new password.
   ///

@@ -5,6 +5,7 @@ import 'package:paypaw/app/paypaw_app.dart';
 import 'package:paypaw/core/providers/storage_providers.dart';
 import 'package:paypaw/core/providers/supabase_providers.dart';
 import 'package:paypaw/features/auth/data/repositories/supabase_auth_repository.dart';
+import 'package:paypaw/features/auth/domain/entities/authenticated_user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../helpers/fake_auth_repository.dart';
@@ -35,10 +36,21 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  // Signed in, because Sprint 15's guard sends an unauthenticated user to the
+  // sign-in screen — so an unauthenticated fake would never start on the
+  // dashboard.
+  const AuthenticatedUser signedIn = AuthenticatedUser(
+    id: 'user-1',
+    email: 'marc@example.com',
+    hasConfirmedEmail: true,
+  );
+
   testWidgets('a reset link arriving on any screen is followed', (
     WidgetTester tester,
   ) async {
-    final FakeAuthRepository repository = FakeAuthRepository();
+    final FakeAuthRepository repository = FakeAuthRepository(
+      initialUser: signedIn,
+    );
     await pumpApp(tester, repository);
 
     // The app starts on the dashboard; the link can arrive from anywhere.
@@ -53,7 +65,7 @@ void main() {
   testWidgets('nothing happens without a reset link', (
     WidgetTester tester,
   ) async {
-    await pumpApp(tester, FakeAuthRepository());
+    await pumpApp(tester, FakeAuthRepository(initialUser: signedIn));
 
     expect(find.widgetWithText(AppBar, 'New password'), findsNothing);
     expect(find.widgetWithText(AppBar, 'Dashboard'), findsOneWidget);

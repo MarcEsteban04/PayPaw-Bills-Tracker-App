@@ -10,15 +10,20 @@ and what have I already paid?*
 
 ## Status
 
-🚧 **Early development — Phases 1 and 2 complete.**
-Architecture, dependencies, app identity, the design system, four-tab navigation,
-the shared component kit, responsive layout and dark mode are all in place, and
-covered by 75 tests. The app opens on the dashboard; switch themes under
-Profile > Appearance, and browse the token and component galleries under
-Profile > Developer.
+🚧 **Early development — Phases 1 to 3 complete**, covered by 176 tests.
 
-Phase 3 (Authentication) is under way. The app-side Supabase wiring is in place;
-the dashboard steps need doing by hand — see
+Architecture, app identity, the design system, four-tab navigation, the shared
+component kit, responsive layout, dark mode and the full authentication flow are
+all in place.
+
+**Once a Supabase project is configured the app requires sign-in** — protected
+routes, automatic login from a stored session, sign-out, and session-expiry
+handling. Without configuration it runs unguarded, as every earlier sprint did.
+
+Switch themes under Profile > Appearance; browse the token and component
+galleries under Profile > Developer.
+
+The Supabase dashboard steps still need doing by hand — see
 [`docs/supabase_setup.md`](docs/supabase_setup.md).
 
 Progress is tracked sprint-by-sprint in [`docs/project_dev_roadmap.md`](docs/project_dev_roadmap.md)
@@ -40,6 +45,7 @@ Progress is tracked sprint-by-sprint in [`docs/project_dev_roadmap.md`](docs/pro
 | 12 | Registration | ✅ Complete — needs your project to run end to end |
 | 13 | Login | ✅ Complete — needs your project to run end to end |
 | 14 | Password recovery | ✅ Complete — needs your project to run end to end |
+| 15 | Authentication state | ✅ Complete — Phase 3 done |
 
 ---
 

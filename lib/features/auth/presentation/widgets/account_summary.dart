@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/presentation/widgets/app_button.dart';
 import '../../../../core/presentation/widgets/app_card.dart';
+import '../../../../core/presentation/widgets/app_dialog.dart';
 import '../../../../core/presentation/widgets/app_inline_message.dart';
 import '../../../../core/presentation/widgets/app_status_chip.dart';
 import '../../../../core/providers/supabase_providers.dart';
@@ -12,6 +13,7 @@ import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/authenticated_user.dart';
 import '../controllers/current_user_provider.dart';
+import '../controllers/sign_out_controller.dart';
 
 /// The account section of the Profile screen.
 ///
@@ -19,8 +21,8 @@ import '../controllers/current_user_provider.dart';
 /// configuration is not "signed out", it is *unable to sign in*, and offering a
 /// sign-in button that can only fail is worse than saying so.
 ///
-/// Sign-out arrives in Sprint 15 along with the route guards, so this shows the
-/// session without yet offering a way to end it.
+/// Signing out confirms first. It is not destructive, but it is disruptive, and
+/// one stray tap away from a re-authentication nobody wanted.
 class AccountSummary extends ConsumerWidget {
   const AccountSummary({super.key});
 
@@ -60,8 +62,50 @@ class AccountSummary extends ConsumerWidget {
   }
 }
 
-class _SignedIn extends StatelessWidget {
+class _SignedIn extends ConsumerWidget {
   const _SignedIn({required this.user});
+
+  final AuthenticatedUser user;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bool isSigningOut = ref.watch(signOutControllerProvider).isLoading;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _AccountCard(user: user),
+        const SizedBox(height: AppSpacing.md),
+        AppSecondaryButton(
+          label: 'Sign out',
+          icon: Icons.logout_rounded,
+          isBusy: isSigningOut,
+          onPressed: () => _confirmSignOut(context, ref),
+        ),
+      ],
+    );
+  }
+
+  /// Confirms first. Signing out is not destructive, but it is disruptive and
+  /// one stray tap away from a re-authentication the user did not want.
+  Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
+    final bool confirmed = await showAppConfirmDialog(
+      context: context,
+      title: 'Sign out?',
+      message:
+          'You will need to sign in again on this device. Your bills stay where '
+          'they are.',
+      confirmLabel: 'Sign out',
+    );
+
+    if (confirmed) {
+      await ref.read(signOutControllerProvider.notifier).signOut();
+    }
+  }
+}
+
+class _AccountCard extends StatelessWidget {
+  const _AccountCard({required this.user});
 
   final AuthenticatedUser user;
 

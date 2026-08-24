@@ -82,6 +82,29 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<void> signOut() async {
+    try {
+      await _client.auth.signOut();
+    } on AuthException catch (error) {
+      throw _mapAuthError(error);
+    } catch (error) {
+      throw mapSupabaseError(error);
+    }
+  }
+
+  @override
+  Stream<void> sessionExpirations() {
+    return _client.auth.onAuthStateChange
+        .where(
+          (AuthState state) =>
+              state.event == AuthChangeEvent.signedOut &&
+              state.signOutReason != null &&
+              state.signOutReason != SignOutReason.userInitiated,
+        )
+        .map((_) {});
+  }
+
+  @override
   Stream<void> passwordRecoveryRequests() {
     return _client.auth.onAuthStateChange
         .where(

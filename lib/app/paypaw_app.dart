@@ -6,6 +6,7 @@ import '../core/theme/app_palette.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/theme_mode_controller.dart';
 import '../features/auth/presentation/widgets/password_recovery_listener.dart';
+import '../features/auth/presentation/widgets/session_expiry_listener.dart';
 import 'router/app_router.dart';
 
 /// The root widget.
@@ -15,6 +16,13 @@ import 'router/app_router.dart';
 /// `main()`, and screen logic belongs in its feature.
 class PayPawApp extends ConsumerWidget {
   const PayPawApp({super.key});
+
+  /// Lets a message survive the redirect that follows a session expiring.
+  ///
+  /// `ScaffoldMessenger.of(context)` would be resolved against a navigator that
+  /// is about to be replaced; a key held above it is not.
+  static final GlobalKey<ScaffoldMessengerState> messengerKey =
+      GlobalKey<ScaffoldMessengerState>();
 
   /// Below this, honouring the setting would only make the app harder to read
   /// without helping anyone — Android's smallest setting is already legible.
@@ -38,6 +46,7 @@ class PayPawApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'PayPaw',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: messengerKey,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
@@ -65,8 +74,11 @@ class PayPawApp extends ConsumerWidget {
         maxScaleFactor: maxTextScale,
         // Wraps everything, because a password reset link can arrive while the
         // app is on any screen — or can be what launched it.
-        child: PasswordRecoveryListener(
-          child: child ?? const SizedBox.shrink(),
+        child: SessionExpiryListener(
+          messengerKey: messengerKey,
+          child: PasswordRecoveryListener(
+            child: child ?? const SizedBox.shrink(),
+          ),
         ),
       ),
     );

@@ -141,6 +141,56 @@ shell must pad its bottom by `AppSpacing.bottomNavClearance`.
 
 ---
 
+## Authentication state
+
+The session is a **stream**, not a value read at startup: it can end without the
+user asking — a refresh token rejected, or revoked from another device — and the
+app has to notice. `currentUserProvider` yields the session the SDK already
+restored, then every change to it.
+
+Sessions persist on the device because `supabase_flutter` stores them, so
+"automatic login" is not code we wrote: it is the stored session arriving before
+the first frame, which is also what lets the guard decide immediately instead of
+flashing a sign-in screen at someone already signed in.
+
+### The guard
+
+`authRedirect` in [`lib/app/router/auth_guard.dart`](../lib/app/router/auth_guard.dart)
+is a pure function, deliberately — a route guard is painful to test through a
+widget tree and trivial to test directly. Four rules:
+
+1. **No backend, no guarding.** Without Supabase configuration there is no
+   session and never will be, so guarding would trap the user on a sign-in screen
+   that cannot work.
+2. **Never decide before the answer is known.** While the session is loading it
+   returns null.
+3. **An error counts as signed out.** A guard that fails open is not a guard.
+4. **Signed-in users are bounced off the auth screens — except
+   `/reset-password`.** Opening a reset link *creates* a session, so by the time
+   that screen appears the user is signed in. Without the exemption the guard
+   would break the recovery flow it exists to protect.
+
+The router gets a `refreshListenable` rather than watching the session directly.
+Watching it inside the router provider would rebuild the whole `GoRouter` on every
+auth change and discard the navigation stack; a listenable lets the router stay
+put and re-run its guard.
+
+### Two global listeners
+
+Both wrap the app in `PayPawApp`, because both react to things that can happen on
+any screen:
+
+- **Password recovery** — a reset link navigates to the new-password screen.
+- **Session expiry** — an unasked-for sign-out shows a message saying so. Only
+  for sessions that ended on their own; announcing an explicit sign-out would be
+  telling the user what they just did.
+
+Both providers **count** events rather than emitting `void`. `ref.listen` compares
+states with `==`, and two `AsyncData<void>` values are equal, so a second event
+would never reach a listener.
+
+---
+
 ## Dependency injection
 
 Riverpod, exclusively. There is no service locator and no singleton registry.

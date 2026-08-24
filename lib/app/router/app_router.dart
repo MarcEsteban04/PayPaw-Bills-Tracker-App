@@ -2,6 +2,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/providers/supabase_providers.dart';
+import '../../features/auth/presentation/controllers/auth_refresh_notifier.dart';
+import '../../features/auth/presentation/controllers/current_user_provider.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/reset_password_screen.dart';
 import '../../features/auth/presentation/screens/sign_in_screen.dart';
@@ -16,6 +19,7 @@ import '../shell/app_destination.dart';
 import '../shell/app_shell.dart';
 import 'app_page_transitions.dart';
 import 'app_routes.dart';
+import 'auth_guard.dart';
 
 /// PayPaw's navigation graph.
 ///
@@ -31,8 +35,17 @@ import 'app_routes.dart';
 ///   /bills       bills
 ///   /calendar    calendar
 ///   /profile     profile
-/// /design-system                         above the shell, covers the nav bar
+/// /sign-in /sign-up /forgot-password     above the shell, public
+/// /reset-password                        above the shell, reached by deep link
+/// /design-system /components             above the shell, developer galleries
 /// ```
+///
+/// ## Guarding
+///
+/// `redirect` delegates to `authRedirect` in `auth_guard.dart`. Everything but
+/// the auth screens needs a session, and a signed-in user is bounced off the
+/// auth screens — with `/reset-password` exempt, because a recovery session
+/// signs the user in before that screen ever appears.
 ///
 /// The tabs are branches of one shell route rather than four top-level routes so
 /// that each keeps its own navigation stack: open a bill detail in Bills, switch
@@ -44,6 +57,20 @@ import 'app_routes.dart';
 final Provider<GoRouter> routerProvider = Provider<GoRouter>(
   (Ref ref) => GoRouter(
     initialLocation: AppRoutes.dashboard.path,
+
+    // The bridge, not the session itself. Watching the session here would
+    // rebuild the whole GoRouter on every auth change and discard the
+    // navigation stack with it; a listenable lets the router stay put and
+    // re-run its guard. The provider is never rebuilt, so neither is this.
+    refreshListenable: ref.watch(authRefreshProvider),
+
+    // read, not watch: the guard runs on demand, and refreshListenable is what
+    // decides when. Watching here would defeat the point of the bridge.
+    redirect: (_, GoRouterState state) => authRedirect(
+      isBackendConfigured: ref.read(isBackendConfiguredProvider),
+      session: ref.read(currentUserProvider),
+      location: state.matchedLocation,
+    ),
     routes: <RouteBase>[
       StatefulShellRoute.indexedStack(
         builder: (_, _, StatefulNavigationShell navigationShell) =>
