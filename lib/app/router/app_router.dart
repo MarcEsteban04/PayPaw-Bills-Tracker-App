@@ -59,9 +59,20 @@ import 'auth_guard.dart';
 /// A detail screen belongs *inside* its tab's branch, so the bottom navigation
 /// stays visible while it is open. Put a route above the shell only when it
 /// should cover the navigation entirely — as the design system gallery does.
+
+/// The router's own navigator, for the few places that need a context below it
+/// while living above it — `SessionExpiryListener` wraps this from inside
+/// `MaterialApp`'s builder, so it has no `Overlay` of its own.
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
+  debugLabel: 'paypaw-root-navigator',
+);
+
 final Provider<GoRouter> routerProvider = Provider<GoRouter>(
   (Ref ref) => GoRouter(
     initialLocation: AppRoutes.dashboard.path,
+
+    // Exposed so code above the navigator can still reach the root overlay.
+    navigatorKey: rootNavigatorKey,
 
     // The bridge, not the session itself. Watching the session here would
     // rebuild the whole GoRouter on every auth change and discard the

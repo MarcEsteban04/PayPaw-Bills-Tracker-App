@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/presentation/widgets/app_toast.dart';
 import '../controllers/session_expiry_provider.dart';
 
 /// Explains an unasked-for sign-out.
@@ -13,15 +14,17 @@ import '../controllers/session_expiry_provider.dart';
 /// commentary; announcing it would be telling the user what they just did.
 class SessionExpiryListener extends ConsumerWidget {
   const SessionExpiryListener({
-    required this.messengerKey,
+    required this.navigatorKey,
     required this.child,
     super.key,
   });
 
-  /// Used instead of `ScaffoldMessenger.of(context)`, because this widget sits
-  /// above the navigator and the message has to survive the redirect that
-  /// follows it.
-  final GlobalKey<ScaffoldMessengerState> messengerKey;
+  /// The router's navigator, because this widget wraps it from inside
+  /// `MaterialApp`'s builder and so has no `Overlay` in its own context.
+  ///
+  /// The message also has to survive the redirect that follows it, which is what
+  /// rules out anything owned by the route being left.
+  final GlobalKey<NavigatorState> navigatorKey;
 
   final Widget child;
 
@@ -32,13 +35,18 @@ class SessionExpiryListener extends ConsumerWidget {
       AsyncValue<int> next,
     ) {
       if (next case AsyncData<int>()) {
-        messengerKey.currentState
-          ?..hideCurrentSnackBar()
-          ..showSnackBar(
-            const SnackBar(
-              content: Text('Your session expired. Please sign in again.'),
-            ),
+        // The navigator's *overlay*, handed over directly. Looking upward from
+        // the navigator's own context finds nothing, because the overlay is its
+        // child.
+        if (navigatorKey.currentState?.overlay
+            case final OverlayState overlay) {
+          showAppToast(
+            context,
+            overlay: overlay,
+            message: 'Your session expired. Please sign in again.',
+            tone: AppToastTone.error,
           );
+        }
       }
     });
 

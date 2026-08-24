@@ -8,6 +8,7 @@ import '../../../../core/presentation/widgets/app_dialog.dart';
 import '../../../../core/presentation/widgets/app_empty_state.dart';
 import '../../../../core/presentation/widgets/app_error_state.dart';
 import '../../../../core/presentation/widgets/app_loading_indicator.dart';
+import '../../../../core/presentation/widgets/app_toast.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -86,9 +87,7 @@ class BillsScreen extends ConsumerWidget {
       // the same failure twice still arrives here as null then message.
       if (next.errorMessage case final String message
           when message != previous?.errorMessage) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(content: Text(message)));
+        showAppToast(context, message: message, tone: AppToastTone.error);
       }
     });
 
@@ -365,26 +364,20 @@ class _BillList extends ConsumerWidget {
     WidgetRef ref,
     BillWithStatus item,
   ) async {
-    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final BillActionsController controller = ref.read(
       billActionsControllerProvider.notifier,
     );
 
-    if (!await controller.archive(item.bill.id)) {
+    if (!await controller.archive(item.bill.id) || !context.mounted) {
       return;
     }
 
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('${item.bill.name} archived'),
-          action: SnackBarAction(
-            label: 'Undo',
-            onPressed: () => controller.restore(item.bill.id),
-          ),
-        ),
-      );
+    showAppToast(
+      context,
+      message: '${item.bill.name} archived',
+      actionLabel: 'Undo',
+      onAction: () => controller.restore(item.bill.id),
+    );
   }
 
   /// Asks before deleting, and reports what it did.
@@ -396,8 +389,6 @@ class _BillList extends ConsumerWidget {
     WidgetRef ref,
     BillWithStatus item,
   ) async {
-    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-
     // A bill with payments cannot be deleted at all.
     //
     // `payments.bill_id` is `on delete restrict`, which the migration calls the
@@ -443,9 +434,13 @@ class _BillList extends ConsumerWidget {
         .delete(item.bill.id);
 
     if (deleted) {
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('${item.bill.name} deleted')));
+      if (context.mounted) {
+        showAppToast(
+          context,
+          message: '${item.bill.name} deleted',
+          tone: AppToastTone.success,
+        );
+      }
     }
 
     return deleted;

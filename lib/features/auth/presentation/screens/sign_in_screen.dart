@@ -7,6 +7,7 @@ import '../../../../core/error/app_exception.dart';
 import '../../../../core/presentation/widgets/app_button.dart';
 import '../../../../core/presentation/widgets/app_inline_message.dart';
 import '../../../../core/presentation/widgets/app_text_field.dart';
+import '../../../../core/presentation/widgets/app_toast.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/authenticated_user.dart';
@@ -175,9 +176,11 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   void _onSignedIn(AuthenticatedUser user) {
     final NavigatorState navigator = Navigator.of(context);
 
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('Signed in as ${user.email}')));
+    showAppToast(
+      context,
+      message: 'Signed in as ${user.email}',
+      tone: AppToastTone.success,
+    );
 
     if (navigator.canPop()) {
       navigator.pop();

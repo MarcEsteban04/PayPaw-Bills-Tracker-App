@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
+import '../../../../core/presentation/widgets/app_toast.dart';
 import '../controllers/bill_detail_provider.dart';
 import '../controllers/bill_write_controller.dart';
 import '../widgets/bill_form.dart';
@@ -62,9 +63,14 @@ class AddBillScreen extends ConsumerWidget {
     // are for a row it has just seen for the first time.
     ref.invalidate(billsProvider);
 
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('${state.savedName!} saved')));
+    // Raised before the screen closes, and it survives that: the toast lives in
+    // the root overlay rather than in this route's messenger, so a form that
+    // dismisses itself does not take its own confirmation with it.
+    showAppToast(
+      context,
+      message: '${state.savedName!} saved',
+      tone: AppToastTone.success,
+    );
 
     closeBillForm(context);
   }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/presentation/widgets/app_error_state.dart';
 import '../../../../core/presentation/widgets/app_loading_indicator.dart';
 import '../../../../core/presentation/widgets/app_state_message.dart';
+import '../../../../core/presentation/widgets/app_toast.dart';
 import '../../../recurring/domain/entities/recurring_bill.dart';
 import '../../../recurring/presentation/controllers/recurring_bill_providers.dart';
 import '../../domain/entities/bill_with_status.dart';
@@ -129,9 +130,11 @@ class EditBillScreen extends ConsumerWidget {
     ref.invalidate(billDetailProvider(billId));
     ref.invalidate(billsProvider);
 
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('${state.savedName!} updated')));
+    showAppToast(
+      context,
+      message: '${state.savedName!} updated',
+      tone: AppToastTone.success,
+    );
 
     closeBillForm(context);
   }

@@ -295,6 +295,44 @@ void main() {
       expect(recurring.created!.nextDueOn, DateTime(2026, 9, 15));
     });
 
+    test('a second save reports too, rather than being swallowed', () async {
+      // The screens leave on the transition from null. `savedName` used to
+      // survive the previous save, so the second one was 'Converge' → 'Water'
+      // instead of null → something and nothing fired: no message, no close, and
+      // a form that looked like it had failed while the bill sat in the
+      // database.
+      final BillWriteController controller = container.read(
+        billWriteControllerProvider.notifier,
+      );
+
+      await controller.create(values());
+      expect(container.read(billWriteControllerProvider).savedName, 'Converge');
+
+      await controller.create(
+        BillFormValues(
+          name: 'Maynilad',
+          amount: '900',
+          dueOn: DateTime(2026, 9, 5),
+        ),
+      );
+
+      expect(container.read(billWriteControllerProvider).savedName, 'Maynilad');
+    });
+
+    test('and the name is cleared while the next write is in flight', () async {
+      // Which is what makes it an event rather than a fact.
+      final BillWriteController controller = container.read(
+        billWriteControllerProvider.notifier,
+      );
+
+      await controller.create(values());
+
+      final Future<bool> second = controller.create(values());
+      expect(container.read(billWriteControllerProvider).savedName, isNull);
+
+      await second;
+    });
+
     test('reports the saved name so the screen can leave', () async {
       // Both write paths set it. The recurring one has no Bill to report, which
       // is why the state carries a name rather than the entity.

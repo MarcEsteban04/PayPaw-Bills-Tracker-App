@@ -16,6 +16,7 @@ import '../../../../core/presentation/widgets/app_search_field.dart';
 import '../../../../core/presentation/widgets/app_skeleton.dart';
 import '../../../../core/presentation/widgets/app_status_chip.dart';
 import '../../../../core/presentation/widgets/app_text_field.dart';
+import '../../../../core/presentation/widgets/app_toast.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../recurring/domain/entities/recurrence.dart';
 import '../../../recurring/presentation/widgets/recurrence_field.dart';
@@ -119,6 +120,47 @@ class _ComponentsScreenState extends State<ComponentsScreen> {
               itemLabel: (_SampleCategory value) => value.label,
               onChanged: (_SampleCategory? value) =>
                   setState(() => _category = value),
+            ),
+          ),
+          _Section(
+            title: 'Toasts',
+            note:
+                'Top of the screen, in the root overlay — so a message raised '
+                'from inside a sheet outlives the sheet, and nothing lands on '
+                'the navigation bar. Tap one to dismiss it, or swipe it up.',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                AppSecondaryButton(
+                  label: 'Success',
+                  onPressed: () => showAppToast(
+                    context,
+                    message: 'Meralco electricity saved',
+                    tone: AppToastTone.success,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AppSecondaryButton(
+                  label: 'Error',
+                  onPressed: () => showAppToast(
+                    context,
+                    message:
+                        'No internet connection. Check your network and '
+                        'try again.',
+                    tone: AppToastTone.error,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AppSecondaryButton(
+                  label: 'With an action',
+                  onPressed: () => showAppToast(
+                    context,
+                    message: 'Meralco electricity archived',
+                    actionLabel: 'Undo',
+                    onAction: () => _showSnack('Undone'),
+                  ),
+                ),
+              ],
             ),
           ),
           _Section(
@@ -327,11 +369,7 @@ class _ComponentsScreenState extends State<ComponentsScreen> {
     );
   }
 
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
+  void _showSnack(String message) => showAppToast(context, message: message);
 }
 
 /// A titled block with an optional note on what to look for.

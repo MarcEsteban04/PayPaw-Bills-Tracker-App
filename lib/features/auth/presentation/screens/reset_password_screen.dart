@@ -7,6 +7,7 @@ import '../../../../core/error/app_exception.dart';
 import '../../../../core/presentation/widgets/app_button.dart';
 import '../../../../core/presentation/widgets/app_inline_message.dart';
 import '../../../../core/presentation/widgets/app_text_field.dart';
+import '../../../../core/presentation/widgets/app_toast.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/authenticated_user.dart';
@@ -158,11 +159,11 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   }
 
   void _onPasswordChangedSuccessfully() {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(content: Text('Password updated. You are signed in.')),
-      );
+    showAppToast(
+      context,
+      message: 'Password updated. You are signed in.',
+      tone: AppToastTone.success,
+    );
 
     // go, not pop: this screen is usually the first thing on the stack, because
     // the reset link launched the app. There may be nothing behind it.

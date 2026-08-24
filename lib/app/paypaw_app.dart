@@ -80,7 +80,7 @@ class PayPawApp extends ConsumerWidget {
           // Wraps everything, because a password reset link can arrive while the
           // app is on any screen — or can be what launched it.
           SessionExpiryListener(
-            messengerKey: messengerKey,
+            navigatorKey: rootNavigatorKey,
             child: PasswordRecoveryListener(
               child: child ?? const SizedBox.shrink(),
             ),

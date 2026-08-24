@@ -34,6 +34,12 @@ class BillWriteState {
   /// A name rather than the saved `Bill`, because the two write paths do not
   /// produce the same kind of row — a recurring save creates a template, not a
   /// bill — and the name is the only part either screen ever used.
+  ///
+  /// **Cleared at the start of every write**, which is what makes it an event
+  /// rather than a fact. The screens leave on the transition from null, so a value
+  /// that survived the last save meant the second one was `'Rent'` → `'Water'` —
+  /// not null → something — and nothing fired. No message, no close, and a form
+  /// that looked like it had failed while the bill sat saved in the database.
   final String? savedName;
 
   BillWriteState copyWith({
@@ -41,10 +47,11 @@ class BillWriteState {
     String? errorMessage,
     String? savedName,
     bool clearError = false,
+    bool clearSaved = false,
   }) => BillWriteState(
     isSaving: isSaving ?? this.isSaving,
     errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-    savedName: savedName ?? this.savedName,
+    savedName: clearSaved ? null : (savedName ?? this.savedName),
   );
 }
 
@@ -97,7 +104,7 @@ class BillWriteController extends Notifier<BillWriteState> {
       return false;
     }
 
-    state = state.copyWith(isSaving: true, clearError: true);
+    state = state.copyWith(isSaving: true, clearError: true, clearSaved: true);
 
     try {
       final RecurringBillRepository repository = ref.read(
@@ -175,7 +182,7 @@ class BillWriteController extends Notifier<BillWriteState> {
       return false;
     }
 
-    state = state.copyWith(isSaving: true, clearError: true);
+    state = state.copyWith(isSaving: true, clearError: true, clearSaved: true);
 
     try {
       // The schedule first, so the bill can be written with its link already
@@ -345,7 +352,7 @@ class BillWriteController extends Notifier<BillWriteState> {
       return false;
     }
 
-    state = state.copyWith(isSaving: true, clearError: true);
+    state = state.copyWith(isSaving: true, clearError: true, clearSaved: true);
 
     try {
       state = state.copyWith(isSaving: false, savedName: (await action()).name);
