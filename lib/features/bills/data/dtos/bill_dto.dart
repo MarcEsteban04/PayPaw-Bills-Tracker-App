@@ -1,3 +1,4 @@
+import '../../../../core/data/row_reader.dart';
 import '../../../../core/domain/money.dart';
 import '../../domain/entities/bill.dart';
 import '../../domain/entities/new_bill.dart';
@@ -121,82 +122,31 @@ abstract final class BillDto {
     };
   }
 
-  /// Parses a SQL `date` (`YYYY-MM-DD`) as a local date at midnight.
-  static DateTime parseDate(String value) {
-    final List<String> parts = value.split('-');
-    if (parts.length < 3) {
-      throw FormatException('Not a date: $value');
-    }
+  // The readers below moved to `RowReader` when payments got a mapper of its
+  // own — a payment DTO calling `BillDto.requireInt` would be a payment mapper
+  // depending on the bills feature for arithmetic. They stay here as delegates
+  // so `BillWithStatusDto` and the call sites that read the view keep one
+  // spelling, and so the table name is filled in once rather than at each call.
 
-    return DateTime(
-      int.parse(parts[0]),
-      int.parse(parts[1]),
-      // A `date` column sends exactly YYYY-MM-DD, but a timestamp reaching this
-      // path would carry a time; take the day and drop the rest.
-      int.parse(parts[2].split('T').first),
-    );
-  }
+  /// Parses a SQL `date` (`YYYY-MM-DD`) as a local date at midnight.
+  static DateTime parseDate(String value) => RowReader.parseDate(value);
 
   /// Formats a date for a SQL `date` column.
-  ///
-  /// Never `toIso8601String()`, which would append a time and a timezone and make
-  /// the value depend on where the device is.
-  static String formatDate(DateTime date) {
-    final String month = date.month.toString().padLeft(2, '0');
-    final String day = date.day.toString().padLeft(2, '0');
+  static String formatDate(DateTime date) => RowReader.formatDate(date);
 
-    return '${date.year}-$month-$day';
-  }
+  static String requireString(Map<String, dynamic> row, String column) =>
+      RowReader.requireString(row, column, table: _table);
 
-  // The four readers below are shared with `BillWithStatusDto`, which reads the
-  // same columns from the view. Public rather than private so there is one
-  // definition of how each column type is read, instead of two that drift.
+  static int requireInt(Map<String, dynamic> row, String column) =>
+      RowReader.requireInt(row, column, table: _table);
 
-  static String requireString(Map<String, dynamic> row, String column) {
-    final Object? value = row[column];
-    if (value is String && value.isNotEmpty) {
-      return value;
-    }
+  static DateTime requireTimestamp(Map<String, dynamic> row, String column) =>
+      RowReader.requireTimestamp(row, column, table: _table);
 
-    throw FormatException('bills.$column missing or not a string: $value');
-  }
+  static DateTime? optionalTimestamp(Object? value) =>
+      RowReader.optionalTimestamp(value);
 
-  /// Accepts an `int` and a numeric `String`.
-  ///
-  /// PostgREST sends `bigint` as a JSON number, but a value beyond 2^53 arrives
-  /// as a string to preserve precision. Amounts never get that large, and relying
-  /// on that is how a crash reaches production.
-  static int requireInt(Map<String, dynamic> row, String column) {
-    final Object? value = row[column];
-    if (value is int) {
-      return value;
-    }
-    if (value is String) {
-      final int? parsed = int.tryParse(value);
-      if (parsed != null) {
-        return parsed;
-      }
-    }
-
-    throw FormatException('bills.$column missing or not an integer: $value');
-  }
-
-  static DateTime requireTimestamp(Map<String, dynamic> row, String column) {
-    final DateTime? parsed = optionalTimestamp(row[column]);
-    if (parsed != null) {
-      return parsed;
-    }
-
-    throw FormatException('bills.$column missing or not a timestamp');
-  }
-
-  static DateTime? optionalTimestamp(Object? value) {
-    if (value is! String || value.isEmpty) {
-      return null;
-    }
-
-    // toLocal: timestamptz arrives in UTC, and a timestamp shown to a user should
-    // be in their own time.
-    return DateTime.tryParse(value)?.toLocal();
-  }
+  /// Named in parse failures. The view's rows carry the same columns, so one
+  /// name covers both.
+  static const String _table = 'bills';
 }

@@ -63,11 +63,17 @@ abstract interface class BillRepository {
   /// Brings an archived bill back.
   Future<Bill> unarchiveBill(String id);
 
-  /// Destroys a bill and everything referencing it.
+  /// Destroys a bill that has no payments against it.
   ///
-  /// Payments, reminders and attachment rows go with it, by `on delete cascade`.
-  /// That is the point of having this separately from [archiveBill], and the
-  /// reason the UI should reach for archive first. Sprint 25 decides when this is
-  /// offered at all.
+  /// **Fails when there are payments.** `payments.bill_id` is `on delete
+  /// restrict`, which is what makes "archive, do not delete" real: the record of
+  /// what was actually paid cannot vanish with the bill it paid. Reminders and
+  /// attachment rows do cascade — those are the app's own bookkeeping, not the
+  /// user's.
+  ///
+  /// This doc said "cascade" until Sprint 26, and the delete dialog was written
+  /// against it: it offered to delete a part-paid bill and explained that the
+  /// payments would go too. Postgres would have refused. Callers should check the
+  /// paid total and offer [archiveBill] instead.
   Future<void> deleteBill(String id);
 }

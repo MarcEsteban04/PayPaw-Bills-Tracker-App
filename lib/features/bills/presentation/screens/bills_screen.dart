@@ -301,16 +301,38 @@ class _BillList extends ConsumerWidget {
   ) async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
 
+    // A bill with payments cannot be deleted at all.
+    //
+    // `payments.bill_id` is `on delete restrict`, which the migration calls the
+    // thing that makes "archive, do not delete" real. So the dialog used to
+    // promise something Postgres refuses: it offered Delete, explained that the
+    // payments would go too, and the request came back a foreign key violation.
+    // Nobody had hit it because nothing could record a payment yet — this sprint
+    // is where the client learns payments exist.
+    if (item.paid.minorUnits > 0) {
+      final bool archive = await showAppConfirmDialog(
+        context: context,
+        title: 'This bill cannot be deleted',
+        message:
+            'PayPaw has ${item.paid.format()} recorded against '
+            '${item.bill.name}, and that history is the record of what you '
+            'actually paid. Archive it instead to take it off the list.',
+        confirmLabel: 'Archive',
+      );
+
+      if (archive && context.mounted) {
+        await _archive(context, ref, item);
+      }
+
+      return false;
+    }
+
     final bool confirmed = await showAppConfirmDialog(
       context: context,
       title: 'Delete ${item.bill.name}?',
-      // Says what is actually lost. "Are you sure?" tells the reader nothing they
-      // did not already know, and the payment history is the part they would
-      // miss — it is the record of what they paid and when.
-      message: item.paid.minorUnits > 0
-          ? 'This also deletes the ${item.paid.format()} of payments recorded '
-                'against it. Archive instead to keep the history.'
-          : 'This cannot be undone. Archive instead if you might want it back.',
+      // "Are you sure?" tells the reader nothing they did not already know.
+      message:
+          'This cannot be undone. Archive instead if you might want it back.',
       confirmLabel: 'Delete',
       isDestructive: true,
     );

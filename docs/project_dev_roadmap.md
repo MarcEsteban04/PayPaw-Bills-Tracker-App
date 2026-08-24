@@ -330,18 +330,31 @@ Create:
   Deliberately not on delete: an Undo button on an operation that cannot be
   undone is a lie, and the confirmation stands in for it.
 
-## Sprint 26 — Bill Details
+## Sprint 26 — Bill Details — done, except attachments
 
-Create detailed bill page showing:
+Shown in the detail drawer (`bill_detail_sheet.dart`), not a pushed page: a bill
+is six fields and three derived numbers, and a drawer keeps the list behind it so
+comparing two bills costs a tap each rather than a push and a pop.
 
-* Amount
-* Due date
-* Provider
+* Amount — the outstanding figure is the headline; the full amount appears in the
+  split line only when the bill is part paid.
+* Due date — with "In 27 days" beneath it, coloured when late or close.
+* Provider — the `payee` column.
 * Category
-* Status
-* Payment history
-* Notes
-* Attachments
+* Status — a chip beside the name, where it identifies the bill.
+* Payment history — new in this sprint. The `payments` table and its RLS existed
+  from Sprint 19; nothing in Dart had ever read it. Rendered only when the view's
+  paid total is above zero, which is exact: `amount_minor > 0` is a check
+  constraint, so a zero total means there are no rows to fetch.
+* Notes — wrapped as prose rather than truncated beside a label.
+* Attachments — **not built.** The table and the storage bucket exist, but nothing
+  can put a file in either until Sprint 57 builds the upload. A section that is
+  permanently empty is furniture, not a feature.
+
+Found while wiring this up: `payments.bill_id` is `on delete restrict`, so a bill
+with payments **cannot be deleted**. The delete dialog had been offering exactly
+that and explaining that the payments would go with it. It now refuses and offers
+archive. See `bill_repository.dart`, whose doc comment claimed the opposite.
 
 ## Sprint 27 — Bill Status
 

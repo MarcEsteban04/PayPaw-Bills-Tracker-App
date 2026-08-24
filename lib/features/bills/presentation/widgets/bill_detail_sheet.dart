@@ -10,6 +10,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../categories/domain/entities/category.dart';
 import '../../../categories/presentation/controllers/category_providers.dart';
 import '../../../categories/presentation/widgets/category_icon.dart';
+import '../../../payments/presentation/widgets/bill_payment_history.dart';
 import '../../domain/entities/bill_status.dart';
 import '../../domain/entities/bill_with_status.dart';
 import 'bill_status_display.dart';
@@ -38,8 +39,12 @@ enum BillDetailAction { edit, archive, restore, delete }
 ///
 /// A bill is six fields and three derived numbers, which fits. A drawer also keeps
 /// the list behind it, so comparing two bills costs a tap each rather than a push
-/// and a pop. Sprint 26 can promote it once there is payment history and there are
-/// attachments to show.
+/// and a pop.
+///
+/// Payment history arrived in Sprint 26 and it still fits — the sheet scrolls now,
+/// and a bill with a dozen payments is rarer than a bill someone wants to glance
+/// at. Attachments are the thing that would justify a screen, and there is nothing
+/// to attach until Sprint 57 builds the upload.
 ///
 /// Returns the chosen action, or null if the sheet was dismissed.
 Future<BillDetailAction?> showBillDetailSheet({
@@ -68,112 +73,127 @@ class _BillDetail extends ConsumerWidget {
 
     final bool isSettled = item.status == BillStatus.paid;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        _Header(item: item, category: category),
-        const SizedBox(height: AppSpacing.xl),
+    // Scrolls, since payment history arrived.
+    //
+    // The sheet gives its child whatever height is left and the Column asks for
+    // its full content height, so a bill with a handful of payments — or a short
+    // screen, or large text — overflowed with the yellow stripe. A drawer that
+    // grows with its data has to be able to scroll; it still hugs its content
+    // when there is little of it, because the sheet's Flexible is a maximum.
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          _Header(item: item, category: category),
+          const SizedBox(height: AppSpacing.xl),
 
-        // The one figure the drawer exists to show, at the size that says so.
-        // It was previously one of two equal rows in a grey box, which made the
-        // reader do the work of deciding which number mattered.
-        Text(
-          isSettled ? 'PAID IN FULL' : 'OUTSTANDING',
-          style: textTheme.labelSmall?.copyWith(
-            color: colors.textTertiary,
-            letterSpacing: 1.2,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          (isSettled ? item.bill.amount : item.outstanding).format(),
-          style: textTheme.displaySmall?.copyWith(
-            color: colors.textPrimary,
-            fontWeight: FontWeight.w700,
-            height: 1.05,
-          ),
-        ),
-
-        // Only when something has been paid but not everything. Otherwise the
-        // bar is empty or full, and the line under it repeats the figure above.
-        if (item.isPartiallyPaid) ...<Widget>[
-          const SizedBox(height: AppSpacing.md),
-          _PaidBar(fraction: _paidFraction(item)),
-          const SizedBox(height: AppSpacing.sm),
+          // The one figure the drawer exists to show, at the size that says so.
+          // It was previously one of two equal rows in a grey box, which made the
+          // reader do the work of deciding which number mattered.
           Text(
-            '${item.paid.format()} paid of ${item.bill.amount.format()}',
-            style: textTheme.bodySmall?.copyWith(color: colors.textSecondary),
+            isSettled ? 'PAID IN FULL' : 'OUTSTANDING',
+            style: textTheme.labelSmall?.copyWith(
+              color: colors.textTertiary,
+              letterSpacing: 1.2,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ],
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            (isSettled ? item.bill.amount : item.outstanding).format(),
+            style: textTheme.displaySmall?.copyWith(
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w700,
+              height: 1.05,
+            ),
+          ),
 
-        const SizedBox(height: AppSpacing.xl),
-        Divider(height: 1, color: colors.border),
-        const SizedBox(height: AppSpacing.lg),
+          // Only when something has been paid but not everything. Otherwise the
+          // bar is empty or full, and the line under it repeats the figure above.
+          if (item.isPartiallyPaid) ...<Widget>[
+            const SizedBox(height: AppSpacing.md),
+            _PaidBar(fraction: _paidFraction(item)),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              '${item.paid.format()} paid of ${item.bill.amount.format()}',
+              style: textTheme.bodySmall?.copyWith(color: colors.textSecondary),
+            ),
+          ],
 
-        // Icon-led rows rather than label/value pairs. The icon is what makes a
-        // list of facts scannable — the eye finds the calendar without reading
-        // the word "Due".
-        _Fact(
-          icon: Icons.event_outlined,
-          label: 'Due',
-          value: DateFormat.yMMMEd().format(item.bill.dueOn),
-          detail: isSettled ? null : _relative(item),
-          tone: switch (item.status) {
-            BillStatus.overdue => colors.overdueText,
-            BillStatus.dueSoon => colors.dueSoonText,
-            _ => null,
-          },
-        ),
-        if (category case final Category value) ...<Widget>[
-          const SizedBox(height: AppSpacing.md),
-          _Fact(
-            icon: Icons.sell_outlined,
-            label: 'Category',
-            value: value.name,
-          ),
-        ],
-        if (item.bill.payee case final String payee) ...<Widget>[
-          const SizedBox(height: AppSpacing.md),
-          _Fact(
-            icon: Icons.storefront_outlined,
-            label: 'Paid to',
-            value: payee,
-          ),
-        ],
-        if (item.lastPaidAt case final DateTime paidAt) ...<Widget>[
-          const SizedBox(height: AppSpacing.md),
-          _Fact(
-            icon: Icons.receipt_long_outlined,
-            label: 'Last payment',
-            value: DateFormat.yMMMd().format(paidAt),
-          ),
-        ],
-        if (item.bill.notes case final String notes) ...<Widget>[
-          const SizedBox(height: AppSpacing.md),
-          _Fact(
-            icon: Icons.notes_outlined,
-            label: 'Notes',
-            value: notes,
-            // Notes are prose, not a value. Left to wrap rather than truncated
-            // on one line beside its label.
-            isProse: true,
-          ),
-        ],
+          const SizedBox(height: AppSpacing.xl),
+          Divider(height: 1, color: colors.border),
+          const SizedBox(height: AppSpacing.lg),
 
-        const SizedBox(height: AppSpacing.xl),
-        // Their own row, right-aligned, rather than in the header beside the
-        // name. Three 48dp targets, a title and a status chip competing for one
-        // line overflowed a 392dp sheet by 22 points once the chip read "Partly
-        // paid" — and squeezing the name to fit would have been solving the wrong
-        // problem. Down here they also read in the right order: what it is, how
-        // much, the details, then what you can do about it.
-        Align(
-          alignment: Alignment.centerRight,
-          child: _Actions(isArchived: item.bill.isArchived),
-        ),
-      ],
+          // Icon-led rows rather than label/value pairs. The icon is what makes a
+          // list of facts scannable — the eye finds the calendar without reading
+          // the word "Due".
+          _Fact(
+            icon: Icons.event_outlined,
+            label: 'Due',
+            value: DateFormat.yMMMEd().format(item.bill.dueOn),
+            detail: isSettled ? null : _relative(item),
+            tone: switch (item.status) {
+              BillStatus.overdue => colors.overdueText,
+              BillStatus.dueSoon => colors.dueSoonText,
+              _ => null,
+            },
+          ),
+          if (category case final Category value) ...<Widget>[
+            const SizedBox(height: AppSpacing.md),
+            _Fact(
+              icon: Icons.sell_outlined,
+              label: 'Category',
+              value: value.name,
+            ),
+          ],
+          if (item.bill.payee case final String payee) ...<Widget>[
+            const SizedBox(height: AppSpacing.md),
+            _Fact(
+              icon: Icons.storefront_outlined,
+              label: 'Paid to',
+              value: payee,
+            ),
+          ],
+          if (item.bill.notes case final String notes) ...<Widget>[
+            const SizedBox(height: AppSpacing.md),
+            _Fact(
+              icon: Icons.notes_outlined,
+              label: 'Notes',
+              value: notes,
+              // Notes are prose, not a value. Left to wrap rather than truncated
+              // on one line beside its label.
+              isProse: true,
+            ),
+          ],
+
+          // The payment history replaces what used to be a "Last payment" fact
+          // row — the first line of the history said the same thing.
+          //
+          // Rendered only when the view's paid total is above zero. The table
+          // requires every payment to be a positive amount, so a zero total means
+          // there are no rows to fetch: this is the check that keeps an unpaid
+          // bill's drawer from making a round trip to learn nothing.
+          if (item.paid.minorUnits > 0) ...<Widget>[
+            const SizedBox(height: AppSpacing.xl),
+            Divider(height: 1, color: colors.border),
+            const SizedBox(height: AppSpacing.lg),
+            BillPaymentHistory(billId: item.bill.id),
+          ],
+
+          const SizedBox(height: AppSpacing.xl),
+          // Their own row, right-aligned, rather than in the header beside the
+          // name. Three 48dp targets, a title and a status chip competing for one
+          // line overflowed a 392dp sheet by 22 points once the chip read "Partly
+          // paid" — and squeezing the name to fit would have been solving the wrong
+          // problem. Down here they also read in the right order: what it is, how
+          // much, the details, then what you can do about it.
+          Align(
+            alignment: Alignment.centerRight,
+            child: _Actions(isArchived: item.bill.isArchived),
+          ),
+        ],
+      ),
     );
   }
 

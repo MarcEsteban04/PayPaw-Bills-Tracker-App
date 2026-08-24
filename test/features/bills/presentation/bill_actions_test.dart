@@ -14,7 +14,11 @@ import 'package:paypaw/features/bills/presentation/screens/bills_screen.dart';
 import 'package:paypaw/features/bills/presentation/widgets/bill_list_tile.dart';
 import 'package:paypaw/features/categories/domain/entities/category.dart';
 import 'package:paypaw/features/categories/presentation/controllers/category_providers.dart';
+import 'package:paypaw/features/payments/domain/entities/payment.dart';
+import 'package:paypaw/features/payments/domain/entities/payment_method.dart';
+import 'package:paypaw/features/payments/presentation/controllers/payment_providers.dart';
 
+import '../../payments/helpers/fake_payment_repository.dart';
 import '../helpers/fake_bill_repository.dart';
 
 /// The detail drawer, the swipe gestures, and the confirmation before a delete.
@@ -61,10 +65,35 @@ void main() {
     today: DateTime(2026, 9, 3),
   );
 
-  late FakeBillRepository repository;
+  Payment payment({
+    String id = 'pay-1',
+    String billId = 'bill-1',
+    int amount = 100000,
+    PaymentMethod? method = PaymentMethod.gcash,
+    String? reference,
+    required DateTime paidAt,
+  }) => Payment(
+    id: id,
+    userId: 'user-1',
+    billId: billId,
+    amount: Money.php(amount),
+    paidAt: paidAt,
+    method: method,
+    reference: reference,
+    createdAt: paidAt,
+    updatedAt: paidAt,
+  );
 
-  Future<void> pumpList(WidgetTester tester, List<BillWithStatus> bills) async {
+  late FakeBillRepository repository;
+  late FakePaymentRepository payments;
+
+  Future<void> pumpList(
+    WidgetTester tester,
+    List<BillWithStatus> bills, {
+    List<Payment> paid = const <Payment>[],
+  }) async {
     repository = FakeBillRepository(bills: bills);
+    payments = FakePaymentRepository(payments: paid);
 
     tester.view
       ..physicalSize = const Size(392 * 3, 1200 * 3)
@@ -78,6 +107,7 @@ void main() {
           categoriesProvider.overrideWith(
             (Ref ref) => Future<List<Category>>.value(categories),
           ),
+          paymentRepositoryProvider.overrideWithValue(payments),
         ],
         child: MaterialApp.router(
           theme: AppTheme.light,
@@ -350,12 +380,79 @@ void main() {
     });
   });
 
-  group('deleting', () {
-    testWidgets('asks first, and says what else goes with it', (
+  group('the payment history', () {
+    testWidgets('lists what was paid, most recent first', (
       WidgetTester tester,
     ) async {
-      // "Are you sure?" tells the reader nothing they did not know. The payment
-      // history is the part they would miss.
+      await pumpList(
+        tester,
+        <BillWithStatus>[item(status: BillStatus.partiallyPaid, paid: 100000)],
+        paid: <Payment>[
+          payment(amount: 60000, paidAt: DateTime(2026, 8, 14)),
+          payment(
+            id: 'pay-2',
+            amount: 40000,
+            method: PaymentMethod.bankTransfer,
+            reference: 'BPI-99120',
+            paidAt: DateTime(2026, 8, 28),
+          ),
+        ],
+      );
+
+      await openDetail(tester, 'Meralco electricity');
+
+      expect(find.text('PAYMENT HISTORY'), findsOneWidget);
+      expect(find.text('₱600.00'), findsOneWidget);
+      expect(find.text('₱400.00'), findsOneWidget);
+      expect(find.text('Bank transfer · Ref BPI-99120'), findsOneWidget);
+
+      // Most recent first: "did the one I sent last week go through" is the
+      // question a history answers, not "how did this start".
+      final double newer = tester.getTopLeft(find.text('₱400.00')).dy;
+      final double older = tester.getTopLeft(find.text('₱600.00')).dy;
+      expect(newer, lessThan(older));
+    });
+
+    testWidgets('is absent on a bill nothing has been paid against', (
+      WidgetTester tester,
+    ) async {
+      // And costs no round trip. The view already returned a paid total of zero,
+      // and the table refuses a payment of zero, so there is nothing to fetch.
+      await pumpList(tester, <BillWithStatus>[item()]);
+
+      await openDetail(tester, 'Meralco electricity');
+
+      expect(find.text('PAYMENT HISTORY'), findsNothing);
+      expect(payments.fetchedFor, isNull);
+    });
+
+    testWidgets('failing to load does not take the rest of the drawer with it', (
+      WidgetTester tester,
+    ) async {
+      // Everything above the history came from the row the list already had. A
+      // network failure should not replace facts that were never in doubt.
+      await pumpList(tester, <BillWithStatus>[
+        item(status: BillStatus.partiallyPaid, paid: 100000),
+      ]);
+      payments.failure = const NetworkException();
+      await openDetail(tester, 'Meralco electricity');
+
+      expect(
+        find.textContaining('Could not load the payments'),
+        findsOneWidget,
+      );
+      expect(find.text('OUTSTANDING'), findsOneWidget);
+      expect(find.byTooltip('Edit'), findsOneWidget);
+    });
+  });
+
+  group('deleting', () {
+    testWidgets('a bill with payments is refused, and archive is offered', (
+      WidgetTester tester,
+    ) async {
+      // payments.bill_id is `on delete restrict`, so Postgres would refuse this
+      // outright. The dialog used to offer Delete and explain that the payments
+      // would go with it — promising something the database does not allow.
       await pumpList(tester, <BillWithStatus>[
         item(status: BillStatus.partiallyPaid, paid: 100000),
       ]);
@@ -364,8 +461,42 @@ void main() {
       await tester.tap(find.byTooltip('Delete'));
       await tester.pumpAndSettle();
 
+      expect(find.text('This bill cannot be deleted'), findsOneWidget);
+      expect(find.textContaining('₱1,000.00 recorded against'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Archive'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Delete'), findsNothing);
+    });
+
+    testWidgets('and taking that offer archives it instead', (
+      WidgetTester tester,
+    ) async {
+      await pumpList(tester, <BillWithStatus>[
+        item(status: BillStatus.partiallyPaid, paid: 100000),
+      ]);
+      await openDetail(tester, 'Meralco electricity');
+      await tester.tap(find.byTooltip('Delete'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Archive'));
+      await tester.pumpAndSettle();
+
+      expect(repository.archived, 'bill-1');
+      expect(repository.deleted, isNull);
+    });
+
+    testWidgets('asks first on a bill with no payments', (
+      WidgetTester tester,
+    ) async {
+      // "Are you sure?" tells the reader nothing they did not know, so the
+      // message offers the alternative instead.
+      await pumpList(tester, <BillWithStatus>[item()]);
+      await openDetail(tester, 'Meralco electricity');
+
+      await tester.tap(find.byTooltip('Delete'));
+      await tester.pumpAndSettle();
+
       expect(find.text('Delete Meralco electricity?'), findsOneWidget);
-      expect(find.textContaining('₱1,000.00 of payments'), findsOneWidget);
+      expect(find.textContaining('Archive instead'), findsOneWidget);
       // Nothing has happened yet.
       expect(repository.deleted, isNull);
     });
