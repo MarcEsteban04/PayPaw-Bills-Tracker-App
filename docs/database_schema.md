@@ -286,7 +286,7 @@ Full and partial payments, against a bill **or** a debt.
 | `id` | `uuid` PK | |
 | `user_id` | `uuid` | |
 | `bill_id` | `uuid` null | `on delete restrict` |
-| `debt_id` | `uuid` null | `on delete cascade` |
+| `debt_id` | `uuid` null | `on delete restrict` — corrected in Sprint 19; a repayment is history whether the thing repaid was a bill or a loan from a cousin |
 | `amount_minor` | `bigint` check > 0 | |
 | `currency` | `char(3)` | |
 | `paid_at` | `timestamptz` | |

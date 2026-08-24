@@ -49,6 +49,7 @@ Progress is tracked sprint-by-sprint in [`docs/project_dev_roadmap.md`](docs/pro
 | 16 | Database planning | ✅ Complete — design only, nothing applied yet |
 | 17 | User tables | ✅ Migrations written — you apply them |
 | 18 | Bill tables | ✅ Migrations written — you apply them |
+| 19 | Payment tables | ✅ Migrations written — you apply them |
 
 ---
 
