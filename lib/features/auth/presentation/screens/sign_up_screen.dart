@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/app_routes.dart';
 import '../../../../core/error/app_exception.dart';
 import '../../../../core/presentation/widgets/app_button.dart';
 import '../../../../core/presentation/widgets/app_inline_message.dart';
@@ -11,6 +13,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/sign_up_outcome.dart';
 import '../../domain/validation/auth_validators.dart';
 import '../controllers/sign_up_controller.dart';
+import '../widgets/auth_screen_scaffold.dart';
 import '../widgets/password_requirements_list.dart';
 
 /// Registration.
@@ -63,42 +66,52 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
       signUpControllerProvider,
     );
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Create account')),
-      body: switch (state) {
-        AsyncData<SignUpOutcome?>(value: final SignUpOutcome outcome) =>
-          _Confirmation(outcome: outcome),
-        _ => _buildForm(state),
-      },
-    );
-  }
+    // The confirmation replaces the whole screen rather than sitting inside the
+    // card: at that point there is no form left, and a back button to sign-in
+    // would be inviting the user to abandon a step they have just completed.
+    if (state case AsyncData<SignUpOutcome?>(
+      value: final SignUpOutcome outcome,
+    )) {
+      return Scaffold(
+        body: SafeArea(child: _Confirmation(outcome: outcome)),
+      );
+    }
 
-  Widget _buildForm(AsyncValue<SignUpOutcome?> state) {
-    final TextTheme textTheme = Theme.of(context).textTheme;
     final bool isBusy = state.isLoading;
 
-    return Form(
-      key: _formKey,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.screenInset,
-          0,
-          AppSpacing.screenInset,
-          AppSpacing.xxxl,
-        ),
-        children: <Widget>[
-          Text('Track every bill in one place.', style: textTheme.bodyLarge),
-          const SizedBox(height: AppSpacing.sectionGap),
-
-          if (state.error case final Object error) ...<Widget>[
-            AppInlineMessage(
-              message: _messageFor(error),
+    return AuthScreenScaffold(
+      title: 'Create your account',
+      subtitle: 'Track every bill, subscription and utang in one place.',
+      // Sign-up is reached from the welcome screen with `go`, so there is
+      // usually nothing to pop. Sign-in is the right destination anyway: it is
+      // what someone who opened this by mistake is looking for.
+      backTo: AppRoutes.signIn,
+      banner: state.error == null
+          ? null
+          : AppInlineMessage(
+              message: _messageFor(state.error!),
               tone: AppStatusTone.overdue,
               icon: Icons.error_outline_rounded,
             ),
-            const SizedBox(height: AppSpacing.lg),
-          ],
+      // The link that was missing entirely. Without it, someone who tapped "Get
+      // started" but already had an account had no way to reach sign-in.
+      footer: AuthFooterLink(
+        leading: 'Already have an account?',
+        label: 'Sign in',
+        onPressed: isBusy
+            ? null
+            : () => context.goNamed(AppRoutes.signIn.routeName),
+      ),
+      form: _buildForm(isBusy: isBusy),
+    );
+  }
 
+  Widget _buildForm({required bool isBusy}) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
           AppTextField(
             controller: _email,
             label: 'Email',

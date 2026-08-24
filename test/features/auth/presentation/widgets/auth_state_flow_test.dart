@@ -7,6 +7,7 @@ import 'package:paypaw/core/providers/storage_providers.dart';
 import 'package:paypaw/core/providers/supabase_providers.dart';
 import 'package:paypaw/features/auth/data/repositories/supabase_auth_repository.dart';
 import 'package:paypaw/features/auth/domain/entities/authenticated_user.dart';
+import 'package:paypaw/features/auth/presentation/screens/sign_in_screen.dart';
 import 'package:paypaw/features/onboarding/presentation/controllers/onboarding_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -66,7 +67,7 @@ void main() {
       await pumpApp(tester, FakeAuthRepository(initialUser: marc));
 
       expect(find.widgetWithText(AppBar, 'Dashboard'), findsOneWidget);
-      expect(find.widgetWithText(AppBar, 'Sign in'), findsNothing);
+      expect(find.byType(SignInScreen), findsNothing);
     });
 
     testWidgets('no session lands on sign-in instead', (
@@ -74,7 +75,7 @@ void main() {
     ) async {
       await pumpApp(tester, FakeAuthRepository());
 
-      expect(find.widgetWithText(AppBar, 'Sign in'), findsOneWidget);
+      expect(find.byType(SignInScreen), findsOneWidget);
       expect(find.widgetWithText(AppBar, 'Dashboard'), findsNothing);
     });
   });
@@ -125,7 +126,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repository.signOutCalls, 1);
-      expect(find.widgetWithText(AppBar, 'Sign in'), findsOneWidget);
+      expect(find.byType(SignInScreen), findsOneWidget);
     });
 
     testWidgets('cancelling keeps the session', (WidgetTester tester) async {
@@ -163,7 +164,7 @@ void main() {
       repository.emitSessionExpiry();
       await tester.pumpAndSettle();
 
-      expect(find.widgetWithText(AppBar, 'Sign in'), findsOneWidget);
+      expect(find.byType(SignInScreen), findsOneWidget);
       // Being returned to a sign-in screen with no explanation reads as the app
       // losing your work.
       expect(
@@ -182,7 +183,7 @@ void main() {
       await pumpApp(tester, FakeAuthRepository(), hasSeenWelcome: false);
 
       expect(find.text('Get started'), findsOneWidget);
-      expect(find.widgetWithText(AppBar, 'Sign in'), findsNothing);
+      expect(find.byType(SignInScreen), findsNothing);
       expect(find.widgetWithText(AppBar, 'Dashboard'), findsNothing);
     });
 

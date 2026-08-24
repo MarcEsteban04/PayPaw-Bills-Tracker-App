@@ -164,6 +164,35 @@ void main() {
       expect(find.text('Get started'), findsOneWidget);
     });
 
+    testWidgets('the actions sit near the bottom, not floating mid-screen', (
+      WidgetTester tester,
+    ) async {
+      // The bug the layout was rebuilt for. Three versions of a measured reserve
+      // left a strip of dead space under the last control on a real phone: the
+      // composition sat high and the buttons floated. The reserve is gone —
+      // IntrinsicHeight plus a Spacer put the slack above the words instead — and
+      // this is what stops it coming back.
+      for (final Size size in <Size>[
+        Size(360, 800),
+        Size(392, 830),
+        Size(412, 915),
+      ]) {
+        await pumpWelcome(tester, size: size);
+
+        final double bottom = tester
+            .getRect(find.text('I already have an account'))
+            .bottom;
+
+        expect(
+          size.height - bottom,
+          lessThan(48),
+          reason:
+              'dead space below the last control at '
+              'x',
+        );
+      }
+    });
+
     testWidgets('the artwork gives up room when text is scaled up', (
       WidgetTester tester,
     ) async {
@@ -198,13 +227,14 @@ void main() {
     });
   });
 
-  group('the dark commitment', () {
-    testWidgets('is black whichever theme is active', (
+  group('the hero card', () {
+    testWidgets('the art sits on its own black, not on a black screen', (
       WidgetTester tester,
     ) async {
-      // The illustration is drawn on black. A light scaffold behind it would
-      // show a hard rectangle around the letterboxed image, which is exactly
-      // what committing to dark avoids.
+      // The fix for the app flipping theme on the first tap. The illustration
+      // still needs a black ground — it is drawn on one — but that ground is now
+      // a card on the light canvas, so the welcome screen and the sign-up screen
+      // it leads to belong to the same app.
       for (final ThemeData theme in <ThemeData>[
         AppTheme.light,
         AppTheme.dark,
@@ -223,7 +253,18 @@ void main() {
           find.byType(Scaffold),
         );
 
-        expect(scaffold.backgroundColor, const Color(0xFF000000));
+        // Transparent, so the app's canvas gradient shows through — the same as
+        // every other screen. Previously this was hard-coded black.
+        expect(scaffold.backgroundColor, isNull);
+
+        // The black is on the card behind the image instead.
+        expect(
+          find.descendant(
+            of: find.byType(ClipRRect),
+            matching: find.byType(ColoredBox),
+          ),
+          findsOneWidget,
+        );
       }
     });
   });

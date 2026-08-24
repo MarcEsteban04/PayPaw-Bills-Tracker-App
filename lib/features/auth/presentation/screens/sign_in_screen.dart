@@ -12,6 +12,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/authenticated_user.dart';
 import '../../domain/validation/auth_validators.dart';
 import '../controllers/sign_in_controller.dart';
+import '../widgets/auth_screen_scaffold.dart';
 
 /// Sign in.
 ///
@@ -65,30 +66,29 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     final TextTheme textTheme = Theme.of(context).textTheme;
     final bool isBusy = state.isLoading;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Sign in')),
-      body: Form(
+    return AuthScreenScaffold(
+      title: 'Welcome back',
+      subtitle: 'Sign in to pick up where you left off.',
+      backTo: AppRoutes.welcome,
+      banner: state.error == null
+          ? null
+          : AppInlineMessage(
+              message: _messageFor(state.error!),
+              tone: AppStatusTone.overdue,
+              icon: Icons.error_outline_rounded,
+            ),
+      footer: AuthFooterLink(
+        leading: 'No account yet?',
+        label: 'Create one',
+        onPressed: isBusy
+            ? null
+            : () => context.goNamed(AppRoutes.signUp.routeName),
+      ),
+      form: Form(
         key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screenInset,
-            0,
-            AppSpacing.screenInset,
-            AppSpacing.xxxl,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Text('Welcome back.', style: textTheme.bodyLarge),
-            const SizedBox(height: AppSpacing.sectionGap),
-
-            if (state.error case final Object error) ...<Widget>[
-              AppInlineMessage(
-                message: _messageFor(error),
-                tone: AppStatusTone.overdue,
-                icon: Icons.error_outline_rounded,
-              ),
-              const SizedBox(height: AppSpacing.lg),
-            ],
-
             AppTextField(
               controller: _email,
               label: 'Email',
@@ -122,33 +122,37 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: AppSpacing.sectionGap),
-
-            AppPrimaryButton(
-              label: 'Sign in',
-              isBusy: isBusy,
-              onPressed: _submit,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            Center(
+            // Sits with the password field rather than under the button, which
+            // is where it belongs: it is a thing to do about the password, not
+            // an alternative to signing in.
+            Align(
+              alignment: Alignment.centerRight,
               child: TextButton(
                 onPressed: isBusy
                     ? null
                     : () =>
                           context.pushNamed(AppRoutes.forgotPassword.routeName),
-                child: const Text('Forgot your password?'),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(0, 48),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                  ),
+                ),
+                child: Text(
+                  'Forgot your password?',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: context.colors.primaryText,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
-            Center(
-              child: TextButton(
-                onPressed: isBusy
-                    ? null
-                    : () => context.pushReplacementNamed(
-                        AppRoutes.signUp.routeName,
-                      ),
-                child: const Text('No account yet? Create one'),
-              ),
+            const SizedBox(height: AppSpacing.md),
+
+            AppPrimaryButton(
+              label: 'Sign in',
+              isBusy: isBusy,
+              onPressed: _submit,
             ),
           ],
         ),

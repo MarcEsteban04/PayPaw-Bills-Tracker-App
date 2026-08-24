@@ -19,6 +19,14 @@ void main() {
   ) async {
     addTearDown(repository.dispose);
 
+    // A phone-shaped surface, not the 800x600 default. These screens are laid
+    // out for a phone, and on the default surface the submit button sits below
+    // the fold — a fact about the test viewport rather than the design.
+    tester.view
+      ..physicalSize = const Size(392 * 3, 830 * 3)
+      ..devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+
     await tester.pumpWidget(
       ProviderScope(
         overrides: [

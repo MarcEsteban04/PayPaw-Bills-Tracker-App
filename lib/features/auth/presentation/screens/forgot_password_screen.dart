@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/app_routes.dart';
 import '../../../../core/error/app_exception.dart';
 import '../../../../core/presentation/widgets/app_button.dart';
 import '../../../../core/presentation/widgets/app_inline_message.dart';
@@ -10,6 +12,7 @@ import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../domain/validation/auth_validators.dart';
 import '../controllers/forgot_password_controller.dart';
+import '../widgets/auth_screen_scaffold.dart';
 
 /// Requests a password reset email.
 ///
@@ -42,44 +45,46 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       forgotPasswordControllerProvider,
     );
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Reset password')),
-      body: switch (state) {
-        AsyncData<String?>(value: final String email) => _Sent(email: email),
-        _ => _buildForm(state),
-      },
-    );
-  }
+    if (state case AsyncData<String?>(value: final String email)) {
+      return Scaffold(
+        body: SafeArea(child: _Sent(email: email)),
+      );
+    }
 
-  Widget _buildForm(AsyncValue<String?> state) {
     final bool isBusy = state.isLoading;
 
-    return Form(
-      key: _formKey,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.screenInset,
-          0,
-          AppSpacing.screenInset,
-          AppSpacing.xxxl,
-        ),
-        children: <Widget>[
-          Text(
-            'Enter the email address on your account and we will send you a '
-            'link to set a new password.',
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-
-          if (state.error case final Object error) ...<Widget>[
-            AppInlineMessage(
-              message: _messageFor(error),
+    return AuthScreenScaffold(
+      title: 'Reset your password',
+      // The explanation belongs here rather than as the first line of the form:
+      // it is context for the whole screen, not a label for the field.
+      subtitle:
+          'Enter the email on your account and we will send you a link to set '
+          'a new password.',
+      backTo: AppRoutes.signIn,
+      banner: state.error == null
+          ? null
+          : AppInlineMessage(
+              message: _messageFor(state.error!),
               tone: AppStatusTone.overdue,
               icon: Icons.error_outline_rounded,
             ),
-            const SizedBox(height: AppSpacing.lg),
-          ],
+      footer: AuthFooterLink(
+        leading: 'Remembered it?',
+        label: 'Back to sign in',
+        onPressed: isBusy
+            ? null
+            : () => context.goNamed(AppRoutes.signIn.routeName),
+      ),
+      form: _buildForm(isBusy: isBusy),
+    );
+  }
 
+  Widget _buildForm({required bool isBusy}) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
           AppTextField(
             controller: _email,
             label: 'Email',
