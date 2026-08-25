@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
-import '../../domain/entities/bill_reminder.dart';
+import '../../domain/entities/bill_notice.dart';
 import '../../domain/entities/notification_channel.dart';
 import '../../domain/entities/notification_permission.dart';
 import '../../domain/services/notification_service.dart';
@@ -98,30 +98,36 @@ class LocalNotificationService implements NotificationService {
   }
 
   @override
-  Future<void> replaceScheduledReminders(List<BillReminder> reminders) async {
+  Future<void> replaceScheduledNotices(List<BillNotice> notices) async {
     final AndroidFlutterLocalNotificationsPlugin? android = _android;
     if (android == null) {
       return;
     }
 
-    // Pending only. `cancelAll` would also clear reminders already showing in
-    // the shade, and a user who has not yet dealt with "your rent is due
+    // Pending only. `cancelAll` would also clear notifications already showing
+    // in the shade, and a user who has not yet dealt with "your rent is due
     // tomorrow" should not have it swept away because they opened the app.
     await android.cancelAllPendingNotifications();
 
-    for (final BillReminder reminder in reminders) {
+    for (final BillNotice notice in notices) {
+      // Each notice names *its own* channel. Posting an overdue alert on the
+      // reminders channel would put it behind the wrong toggle: someone who
+      // switched reminders off would stop being told their bills are late,
+      // which is the one message they did not ask to silence.
+      final NotificationChannel channel = notice.kind.channel;
+
       await android.zonedSchedule(
-        id: reminder.notificationId,
-        title: reminder.title,
-        body: reminder.body,
-        scheduledDate: tz.TZDateTime.from(reminder.firesAt, tz.local),
+        id: notice.notificationId,
+        title: notice.title,
+        body: notice.body,
+        scheduledDate: tz.TZDateTime.from(notice.firesAt, tz.local),
         // The channel's own id and copy, not a second spelling of them. A
         // details block naming a channel that does not exist posts nothing on
         // Android 8 and up, silently.
         notificationDetails: AndroidNotificationDetails(
-          NotificationChannel.billReminders.id,
-          NotificationChannel.billReminders.name,
-          channelDescription: NotificationChannel.billReminders.description,
+          channel.id,
+          channel.name,
+          channelDescription: channel.description,
           importance: Importance.high,
           priority: Priority.high,
         ),
@@ -130,13 +136,13 @@ class LocalNotificationService implements NotificationService {
         // calendars — see the manifest. `allowWhileIdle` is what keeps Doze from
         // holding a reminder until the phone is next picked up.
         scheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        payload: reminder.billId,
+        payload: notice.billId,
       );
     }
   }
 
   @override
-  Future<Set<int>> scheduledReminderIds() async {
+  Future<Set<int>> scheduledNoticeIds() async {
     final List<PendingNotificationRequest> pending =
         await _android?.pendingNotificationRequests() ??
         const <PendingNotificationRequest>[];

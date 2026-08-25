@@ -6,7 +6,7 @@ import 'package:paypaw/features/bills/domain/entities/bill_status.dart';
 import 'package:paypaw/features/bills/domain/entities/bill_with_status.dart';
 import 'package:paypaw/features/bills/presentation/controllers/bill_detail_provider.dart';
 import 'package:paypaw/features/bills/presentation/controllers/bill_repository_provider.dart';
-import 'package:paypaw/features/notifications/domain/entities/bill_reminder.dart';
+import 'package:paypaw/features/notifications/domain/entities/bill_notice.dart';
 import 'package:paypaw/features/notifications/domain/entities/reminder_preferences.dart';
 import 'package:paypaw/features/notifications/presentation/controllers/notification_providers.dart';
 import 'package:paypaw/features/notifications/presentation/controllers/reminder_sync.dart';
@@ -68,32 +68,38 @@ void main() {
     // asked for.
     container.read(reminderSyncProvider);
     notifications.rebuilds.clear();
-    notifications.scheduled = const <BillReminder>[];
+    notifications.scheduled = const <BillNotice>[];
 
     return container;
   }
 
   group('rebuilding', () {
-    test(
-      'writes one reminder per offset for each bill that wants one',
-      () async {
-        final ProviderContainer container = containerWith(<BillWithStatus>[
-          bill(),
-        ]);
-        await container.read(billsProvider.future);
+    test('writes both kinds for a bill that wants them', () async {
+      final ProviderContainer container = containerWith(<BillWithStatus>[
+        bill(),
+      ]);
+      await container.read(billsProvider.future);
 
-        await container.read(reminderSyncProvider).rebuild();
+      await container.read(reminderSyncProvider).rebuild();
 
-        // The default preferences are {3, 1, 0}.
-        expect(notifications.scheduled, hasLength(3));
-        expect(
-          notifications.scheduled
-              .map((BillReminder r) => r.daysBefore)
-              .toList(),
-          <int>[3, 1, 0],
-        );
-      },
-    );
+      // Three reminders from the default {3, 1, 0}, and four overdue steps.
+      // The bill is thirty days out, so every one of the seven is still ahead.
+      expect(notifications.scheduled, hasLength(7));
+      expect(
+        notifications.scheduled
+            .where((BillNotice n) => n.kind == BillNoticeKind.reminder)
+            .map((BillNotice n) => n.days)
+            .toList(),
+        <int>[3, 1, 0],
+      );
+      expect(
+        notifications.scheduled
+            .where((BillNotice n) => n.kind == BillNoticeKind.overdue)
+            .map((BillNotice n) => n.days)
+            .toList(),
+        BillNoticeSchedule.overdueDays,
+      );
+    });
 
     test('and leaves out the bills that do not', () async {
       final ProviderContainer container = containerWith(<BillWithStatus>[
@@ -119,7 +125,7 @@ void main() {
       await container.read(reminderSyncProvider).rebuild();
 
       expect(notifications.rebuilds, hasLength(2));
-      expect(notifications.scheduled, hasLength(3));
+      expect(notifications.scheduled, hasLength(7));
     });
   });
 

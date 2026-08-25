@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../auth/presentation/controllers/current_user_provider.dart';
 import '../../../bills/domain/entities/bill_with_status.dart';
 import '../../../bills/presentation/controllers/bill_detail_provider.dart';
-import '../../domain/entities/bill_reminder.dart';
+import '../../domain/entities/bill_notice.dart';
 import '../../domain/entities/reminder_preferences.dart';
 import 'notification_providers.dart';
 
@@ -57,8 +57,8 @@ class ReminderSync {
 
       await _ref
           .read(notificationServiceProvider)
-          .replaceScheduledReminders(
-            BillReminderSchedule.of(
+          .replaceScheduledNotices(
+            BillNoticeSchedule.of(
               bills,
               preferences: preferences,
               // The device clock, and here it is the right source. Every other
@@ -83,7 +83,7 @@ class ReminderSync {
     try {
       await _ref
           .read(notificationServiceProvider)
-          .replaceScheduledReminders(const <BillReminder>[]);
+          .replaceScheduledNotices(const <BillNotice>[]);
     } on Object catch (error) {
       debugPrint('PayPaw: could not clear the reminder schedule ($error)');
     }

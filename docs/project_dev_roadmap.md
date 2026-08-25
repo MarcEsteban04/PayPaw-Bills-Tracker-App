@@ -1061,11 +1061,83 @@ each with `window=+1h`, which is the inexact scheduling from Sprint 39 behaving
 as designed. Revoking the permission brings the card back; tapping it produces
 the system dialog; allowing it makes the card disappear.
 
-## Sprint 41 — Overdue Notifications
+## Sprint 41 — Overdue Notifications — done
 
-* Detect overdue bills
-* Notify users
-* Prevent notification spam
+The channel has existed since Sprint 39 and had nothing to post to it. It does
+now: a bill that goes past its due date and stays unpaid gets told about on a
+schedule that escalates and then stops.
+
+### Saying it too often is the whole problem
+
+A reminder is easy because it fires once at a known moment. **"This is late" is
+true every morning until the bill is paid**, which makes it the one message an
+app can send forever. Daily is how a forgotten ₱200 bill becomes a month of
+alerts and the user switches the channel off — losing the notification PayPaw
+most needed to deliver.
+
+So it decays: **the day after, then three, a week, a fortnight.** Four alerts
+across two weeks and then silence. By day fourteen nobody is failing to pay
+because they forgot, and a fifth would be the app insisting rather than
+informing. The bill is still there, still red, still at the top of the list.
+
+The second spam rule is the one that is easy to miss, and it comes free from the
+past filter: **a bill entered when it is already ten days late does not fire
+three alerts at once.** Only the steps still ahead of it are scheduled, so it is
+announced once rather than in a burst. A bill two months late gets nothing.
+
+Fixed rather than configurable. `reminder_preferences.days_before` covers the
+days *before* a due date and has no column for after; inventing one before Sprint
+42 has a screen to edit it would be a preference nobody could reach.
+
+### One switch, both kinds
+
+`is_enabled` silences reminders and overdue alerts together. It reads as
+"reminders", but it is the user asking PayPaw not to notify them about bills, and
+honouring that for the gentler message while overriding it for the blunter one
+would be the app deciding it knows better. Android's per-channel toggles are the
+finer control for someone who wants only one.
+
+### BillReminder became BillNotice
+
+Two kinds of message, not two settings of one, so the type carries a
+`BillNoticeKind` and each kind carries its own channel. `days` counts *back* from
+the due date for a reminder and *forward* for an overdue notice — which side it
+falls on is the kind's business, not a sign bit's, and a negative number there
+would be readable exactly once.
+
+The kind is in the notification id as well as the offset. Without it a reminder
+three days before and an overdue notice three days after the same bill hash the
+same, and the second silently replaces the first.
+
+**Each notice names its own channel at post time.** Passing the reminders channel
+for everything — which the first cut did, inherited from Sprint 40 — would put
+overdue alerts behind the reminders toggle, exactly the thing the two channels
+exist to prevent.
+
+Sprint 40's exclusion of overdue bills is gone. It was right then: every reminder
+for a bill already late is in the past, so nothing was scheduled either way.
+Their overdue notices are not.
+
+### Correcting Sprint 40's note on notification ids
+
+That sprint claimed a hash that changed between app versions would leave a
+reminder that could never be cancelled. It would not: `replaceScheduledNotices`
+cancels *every* pending notification before laying down a new set, so an id only
+has to be unique within one pass. FNV-1a is still the right choice — it is
+reproducible in a test, and a collision would drop a notice with no sign it
+happened — but the reason given was overstated.
+
+### Verified on the device
+
+`dumpsys alarm` shows **sixteen** alarms where there were eight. Rent, due the
+18th: reminders on the 11th, 15th, 17th and 18th, then overdue on the 19th, 21st,
+25th and 2 October. Converge, due the 20th: the same shape two days later. The
+doubled dates are the two kinds interleaving — the 19th carries Converge's "due
+tomorrow" and Rent's first overdue.
+
+Both channels are registered and distinct. Which channel a notice actually posts
+on is covered by tests but has not been watched firing on a device; the first
+real one lands on 11 September.
 
 ## Sprint 42 — Notification Settings
 

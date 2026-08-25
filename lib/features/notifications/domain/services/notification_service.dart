@@ -1,4 +1,4 @@
-import '../entities/bill_reminder.dart';
+import '../entities/bill_notice.dart';
 import '../entities/notification_permission.dart';
 
 /// The device's notification machinery, as PayPaw needs it.
@@ -52,13 +52,13 @@ abstract interface class NotificationService {
   /// The failure that avoids is the one that matters: a reminder left scheduled
   /// for a bill that was paid, deleted, or moved. It fires anyway, it is right
   /// about nothing, and the user cannot make it stop.
-  Future<void> replaceScheduledReminders(List<BillReminder> reminders);
+  Future<void> replaceScheduledNotices(List<BillNotice> reminders);
 
   /// Everything currently scheduled, by notification id.
   ///
   /// For verifying on a device what the app believes it has arranged — there is
   /// otherwise no way to see a schedule that will not fire for days.
-  Future<Set<int>> scheduledReminderIds();
+  Future<Set<int>> scheduledNoticeIds();
 
   /// Whether PayPaw may post notifications, and whether asking is worth doing.
   Future<NotificationPermission> permission();
