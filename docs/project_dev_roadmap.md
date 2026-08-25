@@ -1354,12 +1354,114 @@ skips.
 
 # 📅 Phase 9 — Payment Calendar
 
-## Sprint 44 — Calendar UI
+## Sprint 44 — Calendar UI — done
 
-* Monthly calendar
-* Weekly view
-* Daily view
-* Navigation
+The calendar has been a placeholder since Sprint 8 promising "Sprints 44-47".
+This is the month view, and the navigation to get around it.
+
+### The question it answers
+
+**Is there a heavy week coming.** The bills list already says what is next; only
+a grid shows that the 15th to the 18th carries four bills and the rest of the
+month carries none. That is the one thing a list sorted by date cannot do, and
+it is the whole reason this screen exists rather than being a third sort order.
+
+### Two of the four bullets were dropped
+
+The roadmap asked for a monthly view, a weekly view, a daily view and
+navigation. Two of those were not built, deliberately.
+
+A **weekly** view on a phone is a month grid with one row. It answers a narrower
+question than the month does and it cannot answer the one above at all, so it
+would cost a mode switch on every visit in order to show strictly less. The case
+for it would be that a week has room for bill *names* where a square does not —
+and if that case ever holds it will be because Sprint 45 could not fit the
+statuses into the squares, which is a decision to take with that sprint's
+evidence rather than now.
+
+A **daily** view is "what is due on this date". That is a real need, and it is
+exactly what Sprint 46 opens from a tapped square: a list under the month rather
+than instead of it. Building it now as a third mode would mean building it twice
+and then deleting one.
+
+What is left is a month and a way to move through it, which is a complete thing
+rather than a third of three.
+
+### The grid is six rows, always
+
+A month needs five rows or six depending on the weekday it starts on. A grid
+that changed height would jump the whole page — heading, summary and all — on
+every step forward or back. Six rows costs a row of dimmed dates in the shorter
+months and buys a page that stays still.
+
+The days either side are **shown, not blanked**. A grid with holes at both ends
+reads as broken, and the last days of the previous month are exactly where a
+bill that has just gone overdue sits.
+
+### Dates are built, never stepped
+
+Every cell is `DateTime(year, month, n)` with `n` allowed to run past the end of
+the month or below one; the constructor normalises both. Walking with
+`Duration(days: 1)` is the obvious alternative and is wrong twice a year — a day
+crossing a DST boundary is 23 or 25 hours, and the walk drifts onto the previous
+date and stays there for the rest of the grid.
+
+The Philippines has not observed DST since 1978, so this costs nothing today. It
+is written this way because a calendar that quietly breaks for anyone who travels
+is not worth three saved characters, and because the test that proves it — every
+cell is the day after the one before — is the only kind of test that catches a
+whole class of off-by-one at once.
+
+### What a square says, and what it does not
+
+The date, whether it is today, and **how many** bills fall on it. Not yet *what*
+kind: the paid, overdue, upcoming and partly-paid colours are Sprint 45, and a
+badge that means "something" now becomes a badge that means "something overdue"
+then without the grid changing shape.
+
+A count rather than one dot per bill. Dots stop being countable at three, and
+"how many" is the question being asked of a month view anyway.
+
+**Archived bills are not counted.** They were put away, and a marked square would
+be the calendar insisting on something the user has already dismissed. Settled
+bills are — "this was paid on time" is part of what a month view is for.
+
+### Today comes from the database, not the phone
+
+`BillWithStatus.today`, like everywhere else. A phone in another zone would light
+a different square than the statuses beside it are computed against, and a
+calendar disagreeing with the list it came from is worse than either being wrong
+alone. An account with no bills has no row to read it from and falls back to the
+device clock, which is safe precisely because there is nothing to contradict.
+
+### Navigation
+
+Arrows either side, and a **Today** button that appears only when it would do
+something. Stepping four months out and finding no way back but four taps is the
+standard way a calendar wastes somebody's time; a permanently visible Today on
+today's own month is a control that visibly does nothing, which teaches the user
+to stop reading the row.
+
+The month lives in a provider rather than in the screen's state, so stepping
+through months survives switching tabs and coming back.
+
+### The month summary
+
+The grid shows the shape of a month; a line under it says the size — how many
+bills, and what is still owed. Without it a reader looking at eleven marked
+squares has to add them up to answer the question they came with. It counts only
+what falls **in** the month, not the dimmed days either side, or the total would
+disagree with the heading above it.
+
+### Two things the device caught that the tests could not
+
+* The count badge used `surfaceMuted`, which on a true-black sheet is very
+  nearly the sheet — it read as a smudge, which is the whole failure for a mark
+  whose only job is to be found. It is the brand tint now. That is the fifth
+  time this palette pair has been too faint on a dark surface.
+* The badge stretched across the square instead of hugging its number, because a
+  `Container` given an `alignment` expands to its constraints. It looked
+  identical whether it said 1 or 11.
 
 ## Sprint 45 — Payment Indicators
 
