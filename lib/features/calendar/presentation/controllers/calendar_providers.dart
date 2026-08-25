@@ -37,19 +37,28 @@ class CalendarMonthController extends Notifier<CalendarMonth> {
     return CalendarMonth.of(today);
   }
 
-  void next() => state = state.next;
+  void next() {
+    state = state.next;
+    _dropSelection();
+  }
 
-  void previous() => state = state.previous;
+  void previous() {
+    state = state.previous;
+    _dropSelection();
+  }
 
-  /// Jumps to the month containing [date].
+  /// Jumps to the month containing [date]. Leaves the selected day alone, so
+  /// tapping a dimmed cell can bring its month into view without losing it.
   void showMonthOf(DateTime date) =>
       state = CalendarMonth.of(date, firstWeekday: state.firstWeekday);
 
-  /// Back to today's month.
+  /// A day picked in a month is not a day picked in the next one.
   ///
-  /// Takes the date rather than reading it, because the caller is a widget that
-  /// already has it and the fallback belongs in one place.
-  void showToday(DateTime today) => showMonthOf(today);
+  /// Stepping forward with a selection still held would leave the panel below
+  /// showing one date while the grid above showed thirty others, with nothing
+  /// on screen connecting them.
+  void _dropSelection() =>
+      ref.read(selectedCalendarDayProvider.notifier).clear();
 }
 
 final NotifierProvider<CalendarMonthController, CalendarMonth>
@@ -57,6 +66,37 @@ calendarMonthProvider =
     NotifierProvider<CalendarMonthController, CalendarMonth>(
       CalendarMonthController.new,
     );
+
+/// The day whose bills are listed under the grid, or null for the whole month.
+///
+/// ## Null is a state worth having
+///
+/// The calendar opens on no selection, and the panel beneath shows everything
+/// due that month. That is a better first answer than an empty box waiting to be
+/// filled — and it is the same answer the grid is already giving, spelled out.
+///
+/// Tapping the selected day again returns to it, which is the only obvious way
+/// back once a day is chosen.
+class SelectedCalendarDay extends Notifier<DateTime?> {
+  @override
+  DateTime? build() => null;
+
+  /// Picks a day, or unpicks it if it was already the one selected.
+  void toggle(DateTime day) {
+    final DateTime picked = CalendarMonth.dateOnly(day);
+
+    state = state == picked ? null : picked;
+  }
+
+  void select(DateTime day) => state = CalendarMonth.dateOnly(day);
+
+  void clear() => state = null;
+}
+
+final NotifierProvider<SelectedCalendarDay, DateTime?>
+selectedCalendarDayProvider = NotifierProvider<SelectedCalendarDay, DateTime?>(
+  SelectedCalendarDay.new,
+);
 
 /// Every bill that is not archived, keyed by the day it is due.
 ///

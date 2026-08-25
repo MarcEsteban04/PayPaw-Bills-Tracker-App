@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/presentation/layout/app_content_width.dart';
-import '../../../../core/presentation/widgets/app_dialog.dart';
 import '../../../../core/presentation/widgets/app_empty_state.dart';
 import '../../../../core/presentation/widgets/app_error_state.dart';
 import '../../../../core/presentation/widgets/app_loading_indicator.dart';
@@ -12,8 +11,6 @@ import '../../../../core/presentation/widgets/app_toast.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../notifications/presentation/widgets/bill_reminder_sheet.dart';
-import '../../../payments/presentation/widgets/record_payment_sheet.dart';
 import '../../domain/entities/bill_filter.dart';
 import '../../domain/entities/bill_sort.dart';
 import '../../domain/entities/bill_status.dart';
@@ -21,7 +18,7 @@ import '../../domain/entities/bill_with_status.dart';
 import '../controllers/bill_actions_controller.dart';
 import '../controllers/bill_detail_provider.dart';
 import '../controllers/bill_filter_controller.dart';
-import '../widgets/bill_detail_sheet.dart';
+import '../widgets/bill_detail_actions.dart';
 import '../widgets/bill_filter_bar.dart';
 import '../widgets/bill_filter_sheets.dart';
 import '../widgets/bill_list_tile.dart';
@@ -385,14 +382,16 @@ class _BillList extends ConsumerWidget {
             for (final BillWithStatus item in group.bills) ...<Widget>[
               BillSwipeActions(
                 billKey: item.bill.id,
-                onEdit: () => _openEditor(context, item),
-                confirmDelete: () => _confirmDelete(context, ref, item),
+                onEdit: () => openBillEditor(context, item),
+                confirmDelete: () =>
+                    confirmDeleteBill(context: context, ref: ref, item: item),
                 child: BillListTile(
                   item: item,
                   // A tap opens the detail drawer, not the editor. Looking at a
                   // bill and changing it were the same gesture before, and most
                   // taps are looks.
-                  onTap: () => _openDetail(context, ref, item),
+                  onTap: () =>
+                      openBillDetail(context: context, ref: ref, item: item),
                 ),
               ),
               const SizedBox(height: AppSpacing.cardGap),
@@ -401,141 +400,6 @@ class _BillList extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  /// Opens the edit form for one bill.
-  static void _openEditor(BuildContext context, BillWithStatus item) =>
-      context.pushNamed(
-        AppRoutes.editBill.routeName,
-        pathParameters: <String, String>{'id': item.bill.id},
-      );
-
-  /// Opens the detail drawer and acts on whatever the user chose there.
-  ///
-  /// The sheet returns an intent rather than doing the work itself: navigation and
-  /// dialogs need a context that outlives the sheet, and a widget that pops itself
-  /// and then keeps working is a widget that eventually uses a dead context.
-  static Future<void> _openDetail(
-    BuildContext context,
-    WidgetRef ref,
-    BillWithStatus item,
-  ) async {
-    final BillDetailAction? action = await showBillDetailSheet(
-      context: context,
-      item: item,
-    );
-
-    if (!context.mounted || action == null) {
-      return;
-    }
-
-    switch (action) {
-      case BillDetailAction.recordPayment:
-        await recordPaymentFor(context: context, ref: ref, item: item);
-      case BillDetailAction.reminders:
-        await showBillReminderSheet(context: context, item: item);
-      case BillDetailAction.edit:
-        _openEditor(context, item);
-      case BillDetailAction.archive:
-        await _archive(context, ref, item);
-      case BillDetailAction.restore:
-        await ref
-            .read(billActionsControllerProvider.notifier)
-            .restore(item.bill.id);
-      case BillDetailAction.delete:
-        await _confirmDelete(context, ref, item);
-    }
-  }
-
-  /// Archives, and offers the way back.
-  ///
-  /// Undo is honest here because archiving is reversible — it is one column. The
-  /// delete path deliberately has no undo, and confirms instead.
-  static Future<void> _archive(
-    BuildContext context,
-    WidgetRef ref,
-    BillWithStatus item,
-  ) async {
-    final BillActionsController controller = ref.read(
-      billActionsControllerProvider.notifier,
-    );
-
-    if (!await controller.archive(item.bill.id) || !context.mounted) {
-      return;
-    }
-
-    showAppToast(
-      context,
-      message: '${item.bill.name} archived',
-      actionLabel: 'Undo',
-      onAction: () => controller.restore(item.bill.id),
-    );
-  }
-
-  /// Asks before deleting, and reports what it did.
-  ///
-  /// Returns whether the bill is gone, which is also what tells the swipe whether
-  /// to let the row leave the list.
-  static Future<bool> _confirmDelete(
-    BuildContext context,
-    WidgetRef ref,
-    BillWithStatus item,
-  ) async {
-    // A bill with payments cannot be deleted at all.
-    //
-    // `payments.bill_id` is `on delete restrict`, which the migration calls the
-    // thing that makes "archive, do not delete" real. So the dialog used to
-    // promise something Postgres refuses: it offered Delete, explained that the
-    // payments would go too, and the request came back a foreign key violation.
-    // Nobody had hit it because nothing could record a payment yet — this sprint
-    // is where the client learns payments exist.
-    if (item.paid.minorUnits > 0) {
-      final bool archive = await showAppConfirmDialog(
-        context: context,
-        title: 'This bill cannot be deleted',
-        message:
-            'PayPaw has ${item.paid.format()} recorded against '
-            '${item.bill.name}, and that history is the record of what you '
-            'actually paid. Archive it instead to take it off the list.',
-        confirmLabel: 'Archive',
-      );
-
-      if (archive && context.mounted) {
-        await _archive(context, ref, item);
-      }
-
-      return false;
-    }
-
-    final bool confirmed = await showAppConfirmDialog(
-      context: context,
-      title: 'Delete ${item.bill.name}?',
-      // "Are you sure?" tells the reader nothing they did not already know.
-      message:
-          'This cannot be undone. Archive instead if you might want it back.',
-      confirmLabel: 'Delete',
-      isDestructive: true,
-    );
-
-    if (!confirmed) {
-      return false;
-    }
-
-    final bool deleted = await ref
-        .read(billActionsControllerProvider.notifier)
-        .delete(item.bill.id);
-
-    if (deleted) {
-      if (context.mounted) {
-        showAppToast(
-          context,
-          message: '${item.bill.name} deleted',
-          tone: AppToastTone.success,
-        );
-      }
-    }
-
-    return deleted;
   }
 
   /// Buckets the bills by how much attention they need.

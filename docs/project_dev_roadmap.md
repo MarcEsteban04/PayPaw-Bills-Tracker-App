@@ -1463,6 +1463,49 @@ disagree with the heading above it.
   `Container` given an `alignment` expands to its constraints. It looked
   identical whether it said 1 or 11.
 
+### Amended the same day: the day detail, and the month total
+
+Marc asked for both before the sprint closed, so they are here rather than in
+Sprint 46. Three of that sprint's four bullets are done — see its entry below.
+
+**Tapping a date narrows the list under the grid** to that day. Tapping it again
+returns to the month. The panel is never empty: with no day picked it lists
+everything due that month, grouped by date, which is the grid's own answer
+spelled out and is a better thing to find on arrival than a box waiting to be
+filled.
+
+Tapping a dimmed date brings its month into view first. Without that the panel
+would name a day that nothing on screen pointed at.
+
+A picked day is **outlined**; today is **filled**. Two marks that can land on the
+same square, so they cannot be the same mark — picking today would otherwise look
+like picking nothing.
+
+Stepping to another month drops the selection. A day picked in September is not a
+day in October, and holding it would leave the panel showing one date while the
+grid showed thirty others.
+
+**The month summary now leads with the total** — what the month costs, whether or
+not any of it is paid, which is the number somebody budgets against and the one
+that does not move under them as they settle things. What is left appears beside
+it as a sentence rather than a second labelled figure.
+
+#### The rows are the bills list's own, and so is the drawer
+
+`BillListTile`, so a bill reads the same wherever it is found. Tapping one opens
+the same detail drawer the list opens — which meant extracting that drawer's
+action handling out of `BillsScreen` into `bill_detail_actions.dart`, because the
+alternative was a second copy of the switch. The half that falls behind in a
+copied switch is always the warning: the delete dialog that knows a bill with
+payments cannot be deleted at all, and offers to archive it instead.
+
+#### And the screen had to start scrolling
+
+A fixed column held the grid, the summary and the day list, and on a real phone
+the last of those hung 146 pixels off the bottom. Every widget test here missed
+it, because they pump a view tall enough to hide the problem — there is now one
+that pumps 392×800 and asserts nothing overflows.
+
 ## Sprint 45 — Payment Indicators
 
 Display:
@@ -1474,10 +1517,15 @@ Display:
 
 ## Sprint 46 — Calendar Interaction
 
-* Tap date
-* View bills
-* Open bill details
+* ~~Tap date~~ — done in Sprint 44
+* ~~View bills~~ — done in Sprint 44
+* ~~Open bill details~~ — done in Sprint 44
 * Add bill from date
+
+Three of the four landed early, because they were asked for while Sprint 44 was
+still open and a calendar you cannot tap is half a feature. What is left is
+adding a bill from a chosen date, which needs the add form to accept a due date
+it did not collect — a different piece of work from any of the above.
 
 ## Sprint 47 — Calendar Optimization
 

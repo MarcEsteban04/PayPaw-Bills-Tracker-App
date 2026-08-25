@@ -29,6 +29,7 @@ class MonthGrid extends StatelessWidget {
     required this.month,
     required this.today,
     required this.countFor,
+    this.selectedDay,
     this.onDayTap,
     super.key,
   });
@@ -38,11 +39,13 @@ class MonthGrid extends StatelessWidget {
   /// The date to mark as today, already reduced to a day.
   final DateTime today;
 
+  /// The date the user has picked, if any. Already reduced to a day.
+  final DateTime? selectedDay;
+
   /// How many bills fall on a date. Zero for an empty day.
   final int Function(DateTime day) countFor;
 
-  /// Tapping a square. Null while there is nothing to open — Sprint 46 gives
-  /// this a destination.
+  /// Tapping a square.
   final void Function(DateTime day)? onDayTap;
 
   @override
@@ -61,6 +64,7 @@ class MonthGrid extends StatelessWidget {
                     day: day,
                     isInMonth: month.contains(day),
                     isToday: day == today,
+                    isSelected: day == selectedDay,
                     count: countFor(day),
                     onTap: onDayTap == null ? null : () => onDayTap!(day),
                   ),
@@ -123,6 +127,7 @@ class _DayCell extends StatelessWidget {
     required this.day,
     required this.isInMonth,
     required this.isToday,
+    required this.isSelected,
     required this.count,
     required this.onTap,
   });
@@ -130,6 +135,7 @@ class _DayCell extends StatelessWidget {
   final DateTime day;
   final bool isInMonth;
   final bool isToday;
+  final bool isSelected;
   final int count;
   final VoidCallback? onTap;
 
@@ -165,6 +171,13 @@ class _DayCell extends StatelessWidget {
               decoration: BoxDecoration(
                 color: isToday ? colors.primary : Colors.transparent,
                 borderRadius: AppRadii.card,
+                // An outline for the picked day, a fill for today. Two marks
+                // that can land on the same square, so they cannot be the same
+                // mark — picking today would otherwise look like picking
+                // nothing.
+                border: isSelected
+                    ? Border.all(color: colors.primary, width: 2)
+                    : null,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -208,12 +221,15 @@ class _DayCell extends StatelessWidget {
   String _spokenLabel() {
     final String date = DateFormat.MMMMEEEEd().format(day);
     final String todayPrefix = isToday ? 'Today, ' : '';
+    final String selected = isSelected ? ', selected' : '';
 
-    return switch (count) {
-      0 => '$todayPrefix$date, nothing due',
-      1 => '$todayPrefix$date, 1 bill due',
-      _ => '$todayPrefix$date, $count bills due',
+    final String due = switch (count) {
+      0 => 'nothing due',
+      1 => '1 bill due',
+      _ => '$count bills due',
     };
+
+    return '$todayPrefix$date, $due$selected';
   }
 }
 

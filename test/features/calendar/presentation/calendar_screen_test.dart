@@ -52,11 +52,16 @@ void main() {
   Future<void> pumpCalendar(
     WidgetTester tester, {
     List<BillWithStatus> bills = const <BillWithStatus>[],
+    Size size = const Size(392, 1200),
   }) async {
     repository = FakeBillRepository(bills: bills);
 
+    // Tall by default so a finder does not have to scroll to reach a row. The
+    // overflow test below uses a real phone instead, which is the only way this
+    // suite would ever have caught the grid and the day list not fitting
+    // together.
     tester.view
-      ..physicalSize = const Size(392 * 3, 1200 * 3)
+      ..physicalSize = size * 3
       ..devicePixelRatio = 3;
     addTearDown(tester.view.reset);
 
@@ -78,8 +83,12 @@ void main() {
   ///
   /// Found by its spoken label rather than by its number, because a grid shows
   /// the same number twice whenever a month leads or trails into another.
+  ///
+  /// The lookahead keeps it off the panel heading below the grid, which names
+  /// the selected day in exactly the same words and would otherwise make every
+  /// tap ambiguous.
   Finder square(String semanticLabel) =>
-      find.bySemanticsLabel(RegExp('^$semanticLabel'));
+      find.bySemanticsLabel(RegExp('^(?=.*due)$semanticLabel'));
 
   group('the month it opens on', () {
     testWidgets('is the one today falls in', (WidgetTester tester) async {
@@ -285,7 +294,10 @@ void main() {
       );
 
       expect(find.text('2 bills this month'), findsOneWidget);
+      expect(find.text('TOTAL'), findsOneWidget);
+      // The month total, which no single row can show.
       expect(find.text('₱5,500.50'), findsOneWidget);
+      expect(find.text('₱5,500.50 still to pay'), findsOneWidget);
     });
 
     testWidgets('leaves out what falls in the months either side', (
@@ -296,7 +308,16 @@ void main() {
       await pumpCalendar(
         tester,
         bills: <BillWithStatus>[
-          bill(id: 'a', dueOn: DateTime(2026, 9, 18), amount: 400000),
+          // Part-paid so the summary total and the row's outstanding figure
+          // are different numbers, and the assertion below cannot pass by
+          // finding the row.
+          bill(
+            id: 'a',
+            dueOn: DateTime(2026, 9, 18),
+            amount: 400000,
+            paid: 50000,
+            status: BillStatus.partiallyPaid,
+          ),
           bill(id: 'b', dueOn: DateTime(2026, 8, 30), amount: 999900),
           bill(id: 'c', dueOn: DateTime(2026, 10, 10), amount: 999900),
         ],
@@ -321,7 +342,9 @@ void main() {
       );
 
       expect(find.text('All settled'), findsOneWidget);
-      expect(find.text('₱0.00'), findsNothing);
+      // The total still shows: it is what the month cost, and that does not
+      // become zero because it was paid.
+      expect(find.text('₱1,500.00'), findsOneWidget);
     });
 
     testWidgets('and an empty month says nothing is due', (
@@ -345,5 +368,197 @@ void main() {
 
     expect(find.text('Nothing is due this month.'), findsOneWidget);
     expect(find.bySemanticsLabel(RegExp('^Today, ')), findsOneWidget);
+  });
+
+  group('the list under the grid', () {
+    testWidgets('opens on the whole month, not on nothing', (
+      WidgetTester tester,
+    ) async {
+      // An empty box waiting to be filled would waste the bottom half of the
+      // screen and fail to say that tapping does anything.
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[
+          bill(id: 'a', dueOn: DateTime(2026, 9, 18)),
+          bill(id: 'b', name: 'Converge', dueOn: DateTime(2026, 9, 20)),
+        ],
+      );
+
+      expect(find.text('Due in September'), findsOneWidget);
+      expect(find.text('Meralco'), findsOneWidget);
+      expect(find.text('Converge'), findsOneWidget);
+    });
+
+    testWidgets('and dates each group when there is more than one', (
+      WidgetTester tester,
+    ) async {
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[
+          bill(id: 'a', dueOn: DateTime(2026, 9, 18)),
+          bill(id: 'b', name: 'Converge', dueOn: DateTime(2026, 9, 20)),
+        ],
+      );
+
+      expect(find.text('Fri, Sep 18'), findsOneWidget);
+      expect(find.text('Sun, Sep 20'), findsOneWidget);
+    });
+
+    testWidgets('tapping a date narrows it to that day', (
+      WidgetTester tester,
+    ) async {
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[
+          bill(id: 'a', dueOn: DateTime(2026, 9, 18)),
+          bill(id: 'b', name: 'Converge', dueOn: DateTime(2026, 9, 20)),
+        ],
+      );
+
+      await tester.tap(square('Friday, September 18'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Friday, September 18'), findsOneWidget);
+      expect(find.text('Meralco'), findsOneWidget);
+      expect(find.text('Converge'), findsNothing);
+    });
+
+    testWidgets('a day with nothing on it says so rather than going blank', (
+      WidgetTester tester,
+    ) async {
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[bill(id: 'a', dueOn: DateTime(2026, 9, 18))],
+      );
+
+      await tester.tap(square('Saturday, September 19'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nothing is due on this day.'), findsOneWidget);
+    });
+
+    testWidgets('tapping the same date again goes back to the month', (
+      WidgetTester tester,
+    ) async {
+      // The only obvious way back once a day is chosen.
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[
+          bill(id: 'a', dueOn: DateTime(2026, 9, 18)),
+          bill(id: 'b', name: 'Converge', dueOn: DateTime(2026, 9, 20)),
+        ],
+      );
+
+      await tester.tap(square('Friday, September 18'));
+      await tester.pumpAndSettle();
+      await tester.tap(square('Friday, September 18'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Due in September'), findsOneWidget);
+      expect(find.text('Converge'), findsOneWidget);
+    });
+
+    testWidgets('the picked day is marked as picked', (
+      WidgetTester tester,
+    ) async {
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[bill(id: 'a', dueOn: DateTime(2026, 9, 18))],
+      );
+
+      await tester.tap(square('Friday, September 18'));
+      await tester.pumpAndSettle();
+
+      expect(find.bySemanticsLabel(RegExp('selected')), findsOneWidget);
+    });
+
+    testWidgets('tapping a dimmed date brings its month into view', (
+      WidgetTester tester,
+    ) async {
+      // Otherwise the panel names a day that nothing on screen points at.
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[bill(id: 'a', dueOn: DateTime(2026, 8, 30))],
+      );
+
+      await tester.tap(square('Sunday, August 30'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('August 2026'), findsOneWidget);
+      expect(find.text('Sunday, August 30'), findsOneWidget);
+      expect(find.text('Meralco'), findsOneWidget);
+    });
+
+    testWidgets('changing month lets the day go', (WidgetTester tester) async {
+      // A day picked in September is not a day in October, and holding it would
+      // leave the panel showing one date while the grid showed thirty others.
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[bill(id: 'a', dueOn: DateTime(2026, 9, 18))],
+      );
+
+      await tester.tap(square('Friday, September 18'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel('Next month'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Due in October'), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('selected')), findsNothing);
+    });
+
+    testWidgets('and Today picks today, not just its month', (
+      WidgetTester tester,
+    ) async {
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[bill(id: 'a', dueOn: DateTime(2026, 9, 3))],
+      );
+
+      await tester.tap(find.bySemanticsLabel('Next month'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Today'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Thursday, September 3'), findsOneWidget);
+      expect(find.text('Meralco'), findsOneWidget);
+    });
+
+    testWidgets('tapping a bill opens its drawer', (WidgetTester tester) async {
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[bill(id: 'a', dueOn: DateTime(2026, 9, 18))],
+      );
+
+      await tester.tap(find.text('Meralco'));
+      await tester.pumpAndSettle();
+
+      // The bills list's own drawer, so a bill reads the same wherever it is
+      // opened from and the actions inside it all work.
+      expect(find.text('OUTSTANDING'), findsOneWidget);
+      expect(find.text('Due'), findsOneWidget);
+    });
+  });
+
+  testWidgets('the whole screen fits on a real phone, and scrolls', (
+    WidgetTester tester,
+  ) async {
+    // It did not. A fixed column held the grid, the summary and the day list,
+    // and on a 800dp screen the last of those hung 146 pixels off the bottom —
+    // invisible to every other test here, which pumps a view tall enough to
+    // hide the problem.
+    await pumpCalendar(
+      tester,
+      size: const Size(392, 800),
+      bills: <BillWithStatus>[
+        bill(id: 'a', dueOn: DateTime(2026, 9, 18)),
+        bill(id: 'b', name: 'Converge', dueOn: DateTime(2026, 9, 20)),
+      ],
+    );
+
+    expect(tester.takeException(), isNull);
+
+    // And the rows below the fold are reachable rather than clipped away.
+    await tester.scrollUntilVisible(find.text('Converge'), 200);
+    expect(find.text('Converge'), findsOneWidget);
   });
 }
