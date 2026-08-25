@@ -1238,15 +1238,117 @@ reminder sheet, "Record payment" on the payment sheet built in Sprint 37. The
 filter sheets, whose content fits, do not. It is cosmetic, it predates this
 sprint, and it belongs to `showAppBottomSheet` rather than to anything here.
 
-## Sprint 43 — Notification Testing
+## Sprint 43 — Notification Testing — done
 
-Test:
+A verification sprint. The deliverable is evidence, plus the one fix the evidence
+demanded.
 
-* App closed
-* Device restarted
-* Time zone changes
-* Multiple reminders
-* Recurring bills
+Everything below was run on a Pixel emulator against the real account, with the
+device schedule read from `dumpsys alarm` and the plugin's own cache read from
+`shared_prefs/scheduled_notifications.xml`. Counts are **pending alarms**, not
+lines of output — sixteen is two bills times four reminder offsets plus four
+overdue steps each.
+
+### App closed — passes
+
+Backgrounded, then `am kill`. The process is gone and all sixteen alarms remain:
+they live in `AlarmManager`, not in the app. This is what the whole design rests
+on and it had never been checked.
+
+**Force-stop is different, and it is worth knowing.** A user who taps "Force
+stop" in system settings loses every alarm — sixteen to zero — and the app cannot
+receive broadcasts, including boot, until it is next opened. That is Android's
+documented behaviour for a force-stopped package and there is nothing PayPaw can
+do about it. Opening the app restores the whole schedule, which is what the
+`fireImmediately` rebuild is for.
+
+### Device restarted — passes, but not instantly
+
+`adb reboot`, then nothing: the app was never opened. All sixteen came back.
+
+The first measurement said zero and was wrong — taken twenty-five seconds after
+`sys.boot_completed`, when the boot broadcast had not yet reached the app.
+Logcat gives the real figure: `completeLatency:36156` across 115 receivers. So
+**restoration is not instant**, and a reminder due within a minute of a restart
+could be late. Nothing to fix; worth not misreading again.
+
+### Time zone changes — failed, and this is the sprint's fix
+
+The one scenario that was genuinely broken.
+
+`initialize()` reads the device zone once per process, and
+`flutter_local_notifications` only re-registers alarms on boot and
+package-replaced — not on `TIMEZONE_CHANGED`. So a phone that changes zone keeps
+every alarm at the instant it was set. A 9am reminder set in Manila arrives at
+1am in London.
+
+Two changes:
+
+* **`NotificationService.refreshTimezone()`**, called on every app resume through
+  an `AppLifecycleListener` on `reminderSyncProvider`. It answers a question —
+  did the zone move — and the schedule is rebuilt only when it says yes. Resume
+  is frequent; cancelling and re-laying a dozen alarms on each one would not be.
+* **The scheduled instant is now built from the notice's own fields** rather than
+  converted from it. `firesAt` is a wall-clock intention — "nine in the morning,
+  three days before it is due" — and `TZDateTime.from` was reading it as an
+  instant and re-expressing that same moment in the new zone, which is precisely
+  the 1am arrival. Naming the fields says what was meant.
+
+Verified on the device. App running under GMT with the first alarm at
+`origWhen 1789117200000` (11 Sep, 09:00 GMT). Backgrounded, zone moved to
+Asia/Manila, brought back to the front — same process, no restart — and every
+alarm moved by exactly 28,800,000ms to `1789088400000`, which is 11 Sep 09:00 in
+Manila. A resume with no move leaves the alarm objects byte-identical, so the
+"only when it changed" half holds too.
+
+**What it cannot do:** help a user who never opens PayPaw after landing. That is
+the honest limit of doing this without a background receiver of our own, and the
+failure it leaves — one day's reminders some hours out — is smaller than the one
+it fixes.
+
+### Multiple reminders — passes
+
+Sixteen scheduled, sixteen distinct notification ids in the plugin's cache, split
+eight and eight across `bill_reminders` and `overdue_bills`. No collisions, and
+each kind on its own channel — which is what keeps switching reminders off from
+silencing "this bill is late".
+
+### Recurring bills — passes
+
+Rent is generated from a monthly template, and it carries reminders like any
+other bill. That is not a special case anywhere in the code: `billsProvider`
+awaits generation before it fetches, and `ReminderSync` listens to
+`billsProvider` with `fireImmediately`, so an occurrence the nightly job created
+is simply in the set the schedule is built from. Nothing in the recurring feature
+knows reminders exist.
+
+### And one thing nobody had ever watched happen
+
+A reminder actually arriving. The clock was moved to a minute before the first
+alarm and left to run:
+
+> **PayPaw · now**
+> **Rent is due in 7 days**
+> ₱4,000.00 · due Fri, Sep 18
+
+On the `bill_reminders` channel, as intended — Sprint 41 left this explicitly
+open. It also fired about an hour after its scheduled time, which is the inexact
+scheduling from Sprint 39 behaving exactly as designed and as the manifest
+promises.
+
+It shows the **Flutter default icon**, which is now a user-facing problem rather
+than a launcher-screen one.
+
+### Unresolved
+
+Later firings in the same session consumed their alarm and their cache entry but
+posted nothing visible, and logcat shows the app being started with
+`SELECT_NOTIFICATION` at the moment the alarm fired rather than a notification
+appearing. This may well be an artifact of jumping an emulator's clock forward by
+days — which moves the app into a restricted standby bucket and batches its
+inexact alarms — rather than anything in PayPaw. It is recorded rather than
+explained away: settling it needs a real device left to run, not a clock that
+skips.
 
 ---
 

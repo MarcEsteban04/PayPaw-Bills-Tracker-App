@@ -51,6 +51,32 @@ class FakeNotificationService implements NotificationService {
   Future<String?> billThatLaunchedTheApp() async => launchedWithBillId;
 
   @override
+  Future<bool> refreshTimezone() async {
+    timezoneReads++;
+
+    if (failTimezoneRead) {
+      throw StateError('the platform could not name the local zone');
+    }
+
+    // One move, then the phone has arrived. A fake that reported a change on
+    // every resume would let a rebuild-on-every-resume bug pass.
+    final bool moved = timezoneMoved;
+    timezoneMoved = false;
+
+    return moved;
+  }
+
+  /// How many times the app asked whether the device had changed zone.
+  int timezoneReads = 0;
+
+  /// Set by a test to say the phone has landed somewhere new. Cleared by the
+  /// first [refreshTimezone] that reports it.
+  bool timezoneMoved = false;
+
+  /// Whether asking the platform for the local zone fails.
+  bool failTimezoneRead = false;
+
+  @override
   Future<void> replaceScheduledNotices(List<BillNotice> reminders) async {
     scheduled = reminders;
     rebuilds.add(reminders);

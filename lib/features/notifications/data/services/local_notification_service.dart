@@ -120,7 +120,22 @@ class LocalNotificationService implements NotificationService {
         id: notice.notificationId,
         title: notice.title,
         body: notice.body,
-        scheduledDate: tz.TZDateTime.from(notice.firesAt, tz.local),
+        // Built from the notice's own fields, not converted from it.
+        //
+        // `firesAt` is a wall-clock intention — "nine in the morning, three days
+        // before it is due" — and not an instant. `TZDateTime.from` would read
+        // it as an instant in whatever zone Dart currently calls local and then
+        // re-express that same moment here, so a phone that changed zone since
+        // the DateTime was constructed would get 9am *there*, in the small hours
+        // of wherever the user now is. Naming the fields says what was meant.
+        scheduledDate: tz.TZDateTime(
+          tz.local,
+          notice.firesAt.year,
+          notice.firesAt.month,
+          notice.firesAt.day,
+          notice.firesAt.hour,
+          notice.firesAt.minute,
+        ),
         // The channel's own id and copy, not a second spelling of them. A
         // details block naming a channel that does not exist posts nothing on
         // Android 8 and up, silently.
@@ -193,6 +208,21 @@ class LocalNotificationService implements NotificationService {
     await _android?.openAppNotificationSettings();
   }
 
+  @override
+  Future<bool> refreshTimezone() async {
+    // Read before, compared after. `tz.local` is only readable once the database
+    // is loaded, and on the very first call it is not — so a first call reports
+    // no change, which is correct: nothing has been scheduled yet to be wrong.
+    final String? before = _timezonesLoaded ? tz.local.name : null;
+
+    await _configureTimezone();
+
+    return before != null && tz.local.name != before;
+  }
+
+  /// Whether the timezone database has been loaded into `package:timezone`.
+  bool _timezonesLoaded = false;
+
   /// Points `package:timezone` at the device's own zone.
   ///
   /// Its default is UTC, which for a Philippine user is eight hours wrong in the
@@ -202,8 +232,15 @@ class LocalNotificationService implements NotificationService {
   /// A zone *name* rather than an offset, because an offset cannot survive DST
   /// or a flight. `initializeTimeZones` loads the full database so a user who
   /// travels gets the rules of wherever they now are.
+  ///
+  /// Safe to run again, and [refreshTimezone] does: the database load is guarded
+  /// but reading the device's zone is not, because that is the whole point of
+  /// calling it a second time.
   Future<void> _configureTimezone() async {
-    tz_data.initializeTimeZones();
+    if (!_timezonesLoaded) {
+      tz_data.initializeTimeZones();
+      _timezonesLoaded = true;
+    }
 
     try {
       final TimezoneInfo zone = await FlutterTimezone.getLocalTimezone();

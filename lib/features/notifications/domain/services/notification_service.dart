@@ -30,6 +30,20 @@ abstract interface class NotificationService {
   /// plugin reports that.
   Future<void> initialize({void Function(String billId)? onBillTapped});
 
+  /// Re-reads the device's timezone. True if it moved.
+  ///
+  /// [initialize] reads it once, and once is not enough: a phone that crosses a
+  /// border — or simply has "set automatically" turned on and lands somewhere —
+  /// changes zone under a process that is still running, and every reminder on
+  /// it was placed against the old one. A user who flies from Manila to London
+  /// would be warned about tomorrow's rent at one in the morning.
+  ///
+  /// The caller is expected to rebuild the schedule when this returns true;
+  /// nothing here reschedules anything. Returns false when the zone is
+  /// unchanged, which is the overwhelmingly common case and the reason this
+  /// answers a question rather than doing the work unconditionally.
+  Future<bool> refreshTimezone();
+
   /// The bill whose reminder started the app, if one did.
   ///
   /// A tap on a notification while the app is dead does not reach

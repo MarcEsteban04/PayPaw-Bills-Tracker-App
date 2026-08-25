@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/presentation/controllers/current_user_provider.dart';
@@ -79,6 +79,37 @@ class ReminderSync {
     }
   }
 
+  /// Rebuilds the schedule, but only if the device has changed timezone.
+  ///
+  /// Called when the app comes back to the foreground, because that is the one
+  /// moment PayPaw can notice. Android broadcasts `TIMEZONE_CHANGED`, but
+  /// `flutter_local_notifications` only listens for boot and package-replaced —
+  /// so a phone that lands somewhere new keeps every alarm at the instant it was
+  /// set, and a 9am reminder arrives at one in the morning.
+  ///
+  /// Rebuilding *only* on a change rather than on every resume is deliberate:
+  /// resume is frequent, cancelling and re-laying a dozen alarms is not free,
+  /// and nothing else about the schedule goes stale while the app is in the
+  /// background. Every write already rebuilds through the listeners below.
+  ///
+  /// It cannot help a user who never opens the app after landing. That is the
+  /// honest limit of doing this without a background receiver of our own, and
+  /// the failure it leaves — a reminder some hours out on the day after a
+  /// flight — is smaller than the one it fixes.
+  Future<void> rebuildIfTimezoneChanged() async {
+    try {
+      final bool moved = await _ref
+          .read(notificationServiceProvider)
+          .refreshTimezone();
+
+      if (moved) {
+        await rebuild();
+      }
+    } on Object catch (error) {
+      debugPrint('PayPaw: could not re-read the device timezone ($error)');
+    }
+  }
+
   /// Clears every scheduled reminder.
   ///
   /// For signing out. The reminders on the device belong to the account that
@@ -129,6 +160,14 @@ final Provider<ReminderSync> reminderSyncProvider = Provider<ReminderSync>((
   ref.listen(billsProvider, (_, _) => sync.rebuild(), fireImmediately: true);
   ref.listen(reminderPreferencesProvider, (_, _) => sync.rebuild());
   ref.listen(billReminderOverridesProvider, (_, _) => sync.rebuild());
+
+  // Coming back to the foreground is the one moment the app can notice that the
+  // phone has moved. See [ReminderSync.rebuildIfTimezoneChanged] — it does
+  // nothing at all unless the zone actually changed, which is almost always.
+  final AppLifecycleListener lifecycle = AppLifecycleListener(
+    onResume: () => unawaited(sync.rebuildIfTimezoneChanged()),
+  );
+  ref.onDispose(lifecycle.dispose);
 
   return sync;
 });

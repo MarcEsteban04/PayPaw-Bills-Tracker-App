@@ -56,6 +56,35 @@ void main() {
     });
   });
 
+  group('re-reading the timezone', () {
+    test('reports no change on the first ask', () async {
+      // There is nothing to compare against yet, and nothing has been scheduled
+      // that could be wrong. Reporting a move here would have every launch
+      // cancelling and re-laying the whole schedule for no reason.
+      expect(await service.refreshTimezone(), isFalse);
+    });
+
+    test('and none on a second, since the device has not moved', () async {
+      // The overwhelmingly common case: this runs on every resume, and a resume
+      // is frequent. It answers a question rather than doing the work, so that
+      // "nothing happened" costs nothing.
+      await service.initialize();
+
+      expect(await service.refreshTimezone(), isFalse);
+      expect(await service.refreshTimezone(), isFalse);
+    });
+
+    test('it leaves the database loaded and a zone set', () async {
+      // Off-device the platform cannot name a zone, so this falls back to UTC —
+      // which is the point of the test: the fallback is a working state, not a
+      // half-initialised one that the next scheduled reminder would trip over.
+      await service.refreshTimezone();
+
+      expect(tz.timeZoneDatabase.isInitialized, isTrue);
+      expect(tz.local.name, isNotEmpty);
+    });
+  });
+
   group('with no platform implementation', () {
     test('reports that there is no permission to grant', () async {
       // Not `denied`. Nothing has refused anything — there is simply no runtime
