@@ -8,14 +8,14 @@ import '../../../../core/presentation/widgets/app_button.dart';
 import '../../../../core/presentation/widgets/app_dropdown_field.dart';
 import '../../../../core/presentation/widgets/app_inline_message.dart';
 import '../../../../core/theme/app_palette.dart';
-import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../notifications/domain/entities/reminder_time.dart';
+import '../../../notifications/presentation/widgets/reminder_day_selector.dart';
+import '../../../notifications/presentation/widgets/reminder_time_field.dart';
 import '../../domain/entities/account_setup.dart';
 import '../../domain/entities/setup_options.dart';
 import '../controllers/onboarding_controller.dart';
 import '../widgets/onboarding_step_header.dart';
-import '../widgets/reminder_day_selector.dart';
 
 /// Two steps of setup, run once per account, immediately after sign-up.
 ///
@@ -293,7 +293,7 @@ class _RemindersStep extends StatelessWidget {
           enabled: setup.remindersEnabled,
         ),
         const SizedBox(height: AppSpacing.xl),
-        _ReminderTimeField(
+        ReminderTimeField(
           time: setup.reminderTime,
           enabled: setup.remindersEnabled,
           onChanged: onTimeChanged,
@@ -304,92 +304,6 @@ class _RemindersStep extends StatelessWidget {
 }
 
 /// The time of day reminders arrive, via the platform time picker.
-class _ReminderTimeField extends StatelessWidget {
-  const _ReminderTimeField({
-    required this.time,
-    required this.enabled,
-    required this.onChanged,
-  });
-
-  final ReminderTime time;
-  final bool enabled;
-  final ValueChanged<ReminderTime> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final AppPalette colors = context.colors;
-    final TextTheme textTheme = Theme.of(context).textTheme;
-
-    // Formatted through the framework's localisations rather than by hand, so a
-    // device set to 24-hour time shows 21:00 and not 9:00 PM.
-    final String formatted = TimeOfDay(
-      hour: time.hour,
-      minute: time.minute,
-    ).format(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          'At what time',
-          style: textTheme.labelLarge?.copyWith(
-            color: enabled ? colors.textPrimary : colors.onDisabled,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Material(
-          color: enabled ? colors.surfaceInput : colors.disabled,
-          borderRadius: const BorderRadius.all(Radius.circular(AppRadii.md)),
-          child: InkWell(
-            onTap: enabled ? () => _pick(context) : null,
-            borderRadius: const BorderRadius.all(Radius.circular(AppRadii.md)),
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 48),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.md,
-              ),
-              child: Row(
-                children: <Widget>[
-                  Icon(
-                    Icons.schedule_rounded,
-                    size: 20,
-                    color: enabled ? colors.textSecondary : colors.onDisabled,
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Text(
-                      formatted,
-                      style: textTheme.bodyLarge?.copyWith(
-                        color: enabled ? colors.textPrimary : colors.onDisabled,
-                      ),
-                    ),
-                  ),
-                  Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: enabled ? colors.textSecondary : colors.onDisabled,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _pick(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(hour: time.hour, minute: time.minute),
-      helpText: 'Reminder time',
-    );
-
-    if (picked != null) {
-      onChanged(ReminderTime(hour: picked.hour, minute: picked.minute));
-    }
-  }
-}
 
 class _FieldNote extends StatelessWidget {
   const _FieldNote({required this.text});

@@ -56,6 +56,11 @@ enum AppRoutes {
   /// the form opens on what the database currently holds.
   editBill(path: '/bills/:id/edit', routeName: 'edit-bill'),
 
+  /// Reminder defaults: which days before a due date, at what time, and whether
+  /// at all. Reached from Profile — which is where onboarding has always told
+  /// the user to look.
+  reminderSettings(path: '/reminders', routeName: 'reminders'),
+
   // --- Developer tools ------------------------------------------------------
 
   /// Gallery of every design token. Reached from Profile; not a user

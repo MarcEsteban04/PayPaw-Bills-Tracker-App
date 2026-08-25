@@ -17,6 +17,8 @@ import 'package:paypaw/features/bills/presentation/screens/bills_screen.dart';
 import 'package:paypaw/features/bills/presentation/widgets/bill_list_tile.dart';
 import 'package:paypaw/features/categories/domain/entities/category.dart';
 import 'package:paypaw/features/categories/presentation/controllers/category_providers.dart';
+import 'package:paypaw/features/notifications/domain/entities/bill_reminder_override.dart';
+import 'package:paypaw/features/notifications/presentation/controllers/notification_providers.dart';
 import 'package:paypaw/features/payments/domain/entities/payment.dart';
 import 'package:paypaw/features/payments/domain/entities/payment_method.dart';
 import 'package:paypaw/features/payments/presentation/controllers/payment_providers.dart';
@@ -94,6 +96,8 @@ void main() {
     WidgetTester tester,
     List<BillWithStatus> bills, {
     List<Payment> paid = const <Payment>[],
+    Map<String, BillReminderOverride> reminderOverrides =
+        const <String, BillReminderOverride>{},
   }) async {
     repository = FakeBillRepository(bills: bills);
     payments = FakePaymentRepository(payments: paid);
@@ -111,6 +115,9 @@ void main() {
             (Ref ref) => Future<List<Category>>.value(categories),
           ),
           paymentRepositoryProvider.overrideWithValue(payments),
+          billReminderOverridesProvider.overrideWith(
+            (Ref ref) async => reminderOverrides,
+          ),
         ],
         child: MaterialApp.router(
           theme: AppTheme.light,
@@ -174,6 +181,68 @@ void main() {
       // the list row behind the sheet legitimately show the same figure.
       expect(find.text('OUTSTANDING'), findsOneWidget);
       expect(find.text('₱1,000.00 paid of ₱2,450.50'), findsOneWidget);
+    });
+
+    testWidgets('says what this bill\'s reminders currently do', (
+      WidgetTester tester,
+    ) async {
+      // A fact, not an instruction. "Tap to change" is what the chevron already
+      // says, and a row in a column of facts that answers no question is a row
+      // the eye learns to skip.
+      await pumpList(tester, <BillWithStatus>[item()]);
+
+      await openDetail(tester, 'Meralco electricity');
+
+      expect(find.text('Following your settings'), findsOneWidget);
+    });
+
+    testWidgets('and says so when a bill has been silenced', (
+      WidgetTester tester,
+    ) async {
+      // The state worth surfacing. A bill nobody will be warned about should say
+      // so where somebody might notice, not only behind a tap.
+      await pumpList(
+        tester,
+        <BillWithStatus>[item()],
+        reminderOverrides: const <String, BillReminderOverride>{
+          'bill-1': BillReminderOverride(billId: 'bill-1', isEnabled: false),
+        },
+      );
+
+      await openDetail(tester, 'Meralco electricity');
+
+      expect(find.text('Off for this bill'), findsOneWidget);
+    });
+
+    testWidgets('or that it has a rule of its own', (
+      WidgetTester tester,
+    ) async {
+      await pumpList(
+        tester,
+        <BillWithStatus>[item()],
+        reminderOverrides: const <String, BillReminderOverride>{
+          'bill-1': BillReminderOverride(
+            billId: 'bill-1',
+            daysBefore: <int>[7],
+          ),
+        },
+      );
+
+      await openDetail(tester, 'Meralco electricity');
+
+      expect(find.text('Set for this bill'), findsOneWidget);
+    });
+
+    testWidgets('and tapping it opens the per-bill sheet', (
+      WidgetTester tester,
+    ) async {
+      await pumpList(tester, <BillWithStatus>[item()]);
+
+      await openDetail(tester, 'Meralco electricity');
+      await tester.tap(find.text('Following your settings'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Reminders for this bill'), findsOneWidget);
     });
 
     testWidgets('hides the split when nothing has been paid', (

@@ -1139,12 +1139,104 @@ Both channels are registered and distinct. Which channel a notice actually posts
 on is covered by tests but has not been watched firing on a device; the first
 real one lands on 11 September.
 
-## Sprint 42 — Notification Settings
+## Sprint 42 — Notification Settings — done
 
-* Global reminder settings
-* Per-bill settings
-* Enable/disable notifications
-* Custom reminder times
+Onboarding has said "you can change this any time in Profile" since Sprint 11B,
+and until now that was not true: the preferences were collected once and then
+only ever read. This is the screen that promise was about, plus the per-bill
+departure from it.
+
+### Every control saves itself
+
+There is no Save button on the defaults screen. Each control is one complete
+decision — a switch, a set of toggles, a time — and a form that collects four of
+those and then asks for confirmation is a form that can be abandoned halfway,
+leaving the user unsure which half took.
+
+The cost is that a failed write has to be *shown*, because there is no button
+left sitting there to retry. It arrives as a toast and the control springs back
+to whatever the database still says. A silent failure on a screen like this reads
+as the tap never registering.
+
+The per-bill sheet does have one, and that is not an inconsistency: a per-bill
+rule is a small set of choices made together, and saving each keystroke would
+leave rows in the database for a customisation the user was still assembling and
+might abandon.
+
+### Null means inherit
+
+`bill_reminders` has every column nullable, and that is the whole design. An
+override that had to restate every setting would drift the moment the defaults
+changed: move the reminder time from 9am to 6pm and every bill ever touched would
+stay at nine, silently, forever. So a bill that wants a different *time* stores a
+time and nothing else.
+
+`BillReminderOverride.resolve` therefore merges **field by field**. Resolving
+wholesale — take the override if any field is set, otherwise the defaults —
+compiles, reads correctly, and silently drops the other two settings.
+
+Three consequences worth stating:
+
+* **An override that overrides nothing is deleted, not written.** The table has a
+  check constraint saying so, and turning the sheet's switch off sends the empty
+  override that means the deletion.
+* **Turning the switch on copies the defaults in.** Starting empty would produce
+  exactly that empty override, so the switch would appear to do nothing.
+* **`is_enabled: false` is an override, not an absence.** It is the common case —
+  a bill on auto-debit — and reading `false` as unset would delete the row and
+  start reminding the user about the one bill they silenced.
+
+### The overdue offsets are not configurable, and the screen says so
+
+`{1, 3, 7, 14} and then stop` is stated on the settings screen rather than
+offered. It is the anti-spam rule from Sprint 41, and a screen that lists every
+other reminder rule while staying silent about this one invites the reader to
+assume it is off. A per-bill override cannot change it either — only silence it,
+through the same switch that silences the reminders.
+
+### The bug the sheet's tests found
+
+The first cut seeded its draft from `ref.watch(...).value ?? {}` on the first
+build. A bill that *had* an override opened as one following the defaults,
+because the query had not come back yet — and Save then wrote the empty override
+that deletes its row. Absence and not-yet-known are different answers and only
+one of them is safe to act on; the sheet now waits for both providers before it
+seeds, and shows a spinner until then.
+
+### The detail sheet states a fact
+
+The way in is a row in the bill's detail drawer, and it says what that bill's
+reminders currently *do* — following your settings, set for this bill, or off for
+this bill — rather than "tap to change", which is what the chevron already says.
+The silenced case is the reason: a bill nobody will be warned about should say so
+where somebody might notice.
+
+It goes among the facts rather than as a fifth action icon. The icons are things
+you do *to* a bill; four of them is already a row that has to be read rather than
+scanned.
+
+### Nothing here reschedules anything
+
+Saving invalidates the provider the schedule is built from, and `ReminderSync` is
+listening. That is the same route every bill write has taken since Sprint 40,
+which is why the settings controller has no idea notifications exist.
+
+### Verified on the device
+
+Turning "7 days before" off dropped the pending alarms by three — one per bill —
+and turning it back on restored them. Silencing Rent through the per-bill sheet
+took the schedule from 58 alarm lines to 34 and left Converge's alone; turning
+customisation back off restored all of them and reopened the sheet on "follows
+your reminder settings", which is the loading-order fix above working against
+real data.
+
+### Noticed while testing, not fixed here
+
+Every bottom sheet whose content scrolls paints its primary button's label a
+second time at the top of the screen, dimmed under the scrim — "Save" on the
+reminder sheet, "Record payment" on the payment sheet built in Sprint 37. The
+filter sheets, whose content fits, do not. It is cosmetic, it predates this
+sprint, and it belongs to `showAppBottomSheet` rather than to anything here.
 
 ## Sprint 43 — Notification Testing
 

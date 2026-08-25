@@ -7,6 +7,7 @@ import '../../../auth/presentation/controllers/current_user_provider.dart';
 import '../../../bills/domain/entities/bill_with_status.dart';
 import '../../../bills/presentation/controllers/bill_detail_provider.dart';
 import '../../domain/entities/bill_notice.dart';
+import '../../domain/entities/bill_reminder_override.dart';
 import '../../domain/entities/reminder_preferences.dart';
 import 'notification_providers.dart';
 
@@ -54,6 +55,9 @@ class ReminderSync {
       final ReminderPreferences preferences = await _ref.read(
         reminderPreferencesProvider.future,
       );
+      final Map<String, BillReminderOverride> overrides = await _ref.read(
+        billReminderOverridesProvider.future,
+      );
 
       await _ref
           .read(notificationServiceProvider)
@@ -61,6 +65,7 @@ class ReminderSync {
             BillNoticeSchedule.of(
               bills,
               preferences: preferences,
+              overrides: overrides,
               // The device clock, and here it is the right source. Every other
               // date in this app comes from the database because a wrong phone
               // clock would disagree with the statuses beside it — but the
@@ -123,6 +128,7 @@ final Provider<ReminderSync> reminderSyncProvider = Provider<ReminderSync>((
   // launch after the phone rescheduled nothing.
   ref.listen(billsProvider, (_, _) => sync.rebuild(), fireImmediately: true);
   ref.listen(reminderPreferencesProvider, (_, _) => sync.rebuild());
+  ref.listen(billReminderOverridesProvider, (_, _) => sync.rebuild());
 
   return sync;
 });

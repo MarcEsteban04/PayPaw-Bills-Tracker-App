@@ -10,6 +10,8 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../categories/domain/entities/category.dart';
 import '../../../categories/presentation/controllers/category_providers.dart';
 import '../../../categories/presentation/widgets/category_icon.dart';
+import '../../../notifications/domain/entities/bill_reminder_override.dart';
+import '../../../notifications/presentation/controllers/notification_providers.dart';
 import '../../../payments/presentation/widgets/bill_payment_history.dart';
 import '../../../recurring/domain/entities/recurring_bill.dart';
 import '../../../recurring/presentation/controllers/recurring_bill_providers.dart';
@@ -18,7 +20,14 @@ import '../../domain/entities/bill_with_status.dart';
 import 'bill_status_display.dart';
 
 /// What the user chose to do from the detail sheet.
-enum BillDetailAction { recordPayment, edit, archive, restore, delete }
+enum BillDetailAction {
+  recordPayment,
+  reminders,
+  edit,
+  archive,
+  restore,
+  delete,
+}
 
 /// Everything known about one bill, in a drawer.
 ///
@@ -189,6 +198,25 @@ class _BillDetail extends ConsumerWidget {
               ),
             },
           ],
+          // Tappable, unlike every other fact here.
+          //
+          // A bill's reminder rule is the one thing on this sheet that is a
+          // *setting* rather than a fact about the bill, and settings need a way
+          // in. It goes here rather than as a fifth action icon: the icons are
+          // things you do to a bill, and four of them is already a row that has
+          // to be read rather than scanned.
+          //
+          // It still states a *fact* — what this bill's reminders currently do —
+          // rather than an instruction. "Tap to change" is what the chevron
+          // already says, and a row in a column of facts that answers no
+          // question is a row the eye learns to skip.
+          const SizedBox(height: AppSpacing.md),
+          _Fact(
+            icon: Icons.notifications_outlined,
+            label: 'Reminders',
+            value: _remindersSummary(ref, item.bill.id),
+            onTap: () => Navigator.of(context).pop(BillDetailAction.reminders),
+          ),
           if (item.bill.notes case final String notes) ...<Widget>[
             const SizedBox(height: AppSpacing.md),
             _Fact(
@@ -251,6 +279,29 @@ class _BillDetail extends ConsumerWidget {
     final int days when days < 0 => '${-days} days ago',
     final int days => 'In $days days',
   };
+
+  /// What this bill's reminders currently do, in one line.
+  ///
+  /// Three answers, because there are three states worth telling apart: the
+  /// bill follows the defaults, it has its own rule, or it has been silenced.
+  /// The last one is the reason this row states a fact at all — a bill nobody
+  /// will be warned about should say so where somebody might notice, not only
+  /// behind a tap.
+  ///
+  /// While the overrides are still loading it says the common case rather than
+  /// showing a spinner in a column of facts. The row is a way in, not a report,
+  /// and the sheet behind it corrects the guess a moment later.
+  static String _remindersSummary(WidgetRef ref, String billId) {
+    final BillReminderOverride? override = ref
+        .watch(billReminderOverridesProvider)
+        .value?[billId];
+
+    return switch (override) {
+      null => 'Following your settings',
+      BillReminderOverride(isEnabled: false) => 'Off for this bill',
+      _ => 'Set for this bill',
+    };
+  }
 }
 
 /// Identity on the left, actions on the right.
@@ -422,6 +473,7 @@ class _Fact extends StatelessWidget {
     this.detail,
     this.tone,
     this.isProse = false,
+    this.onTap,
   });
 
   final IconData icon;
@@ -437,11 +489,46 @@ class _Fact extends StatelessWidget {
   /// Whether the value is a paragraph rather than a short value.
   final bool isProse;
 
+  /// Makes the row a control rather than a statement.
+  ///
+  /// Only the reminders row uses it. Everything else here is a fact about the
+  /// bill; that one is a *setting*, and a setting has to be reachable.
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
     final AppPalette colors = context.colors;
     final TextTheme textTheme = Theme.of(context).textTheme;
 
+    final Widget row = _row(context, colors, textTheme);
+
+    if (onTap == null) {
+      return row;
+    }
+
+    // Padded and inked, so the tappable row has a target worth aiming at and
+    // says so when pressed. The negative margin keeps it aligned with the facts
+    // above it rather than sitting indented from them.
+    return Material(
+      color: Colors.transparent,
+      borderRadius: AppRadii.card,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadii.card,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+          child: Row(
+            children: <Widget>[
+              Expanded(child: row),
+              Icon(Icons.chevron_right_rounded, color: colors.textTertiary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _row(BuildContext context, AppPalette colors, TextTheme textTheme) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../domain/entities/account_setup.dart';
+import '../../domain/entities/reminder_preferences.dart';
 
 /// Which days before a due date to be reminded on.
 ///
@@ -36,7 +36,7 @@ class ReminderDaySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool atLimit = selected.length >= AccountSetup.maxDaysBefore;
+    final bool atLimit = selected.length >= ReminderPreferences.maxOffsets;
 
     return Wrap(
       spacing: AppSpacing.sm,

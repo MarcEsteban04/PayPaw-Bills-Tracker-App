@@ -2,6 +2,7 @@ import 'package:intl/intl.dart';
 import 'package:meta/meta.dart';
 
 import '../../../bills/domain/entities/bill_with_status.dart';
+import 'bill_reminder_override.dart';
 import 'notification_channel.dart';
 import 'reminder_preferences.dart';
 import 'reminder_time.dart';
@@ -158,9 +159,11 @@ abstract final class BillNoticeSchedule {
   /// would be the app insisting rather than informing. The bill is still there,
   /// still red, still at the top of the list.
   ///
-  /// Fixed rather than a setting. `reminder_preferences.days_before` covers the
-  /// days *before* a due date and has no column for after; inventing one before
-  /// Sprint 42 has a screen to edit it would be a preference nobody can reach.
+  /// Fixed rather than a setting, and deliberately still so after Sprint 42 gave
+  /// the other offsets a screen. Neither `reminder_preferences` nor
+  /// `bill_reminders` has a column for the days *after* a due date, and a
+  /// setting for how often to be told a bill is late is a setting for how much
+  /// to be nagged — the answer to which is nobody's but the app's.
   static const List<int> overdueDays = <int>[1, 3, 7, 14];
 
   /// The notifications that should be scheduled, soonest first.
@@ -170,16 +173,9 @@ abstract final class BillNoticeSchedule {
     List<BillWithStatus> bills, {
     required ReminderPreferences preferences,
     required DateTime now,
+    Map<String, BillReminderOverride> overrides =
+        const <String, BillReminderOverride>{},
   }) {
-    // One switch for both kinds. It reads "reminders", but it is the user
-    // asking PayPaw not to notify them about bills, and honouring that for the
-    // gentler message while overriding it for the blunter one would be the app
-    // deciding it knows better. Android's per-channel toggles are the finer
-    // control for someone who wants only one of the two.
-    if (!preferences.isEnabled) {
-      return const <BillNotice>[];
-    }
-
     final List<BillNotice> notices = <BillNotice>[];
 
     for (final BillWithStatus item in bills) {
@@ -187,13 +183,32 @@ abstract final class BillNoticeSchedule {
         continue;
       }
 
-      for (final int days in preferences.orderedOffsets) {
+      // Resolved per bill, because a bill can carry its own rules. Absent an
+      // override this is the defaults themselves, which is the common case and
+      // costs one map lookup.
+      final ReminderPreferences rules =
+          overrides[item.bill.id]?.resolve(preferences) ?? preferences;
+
+      // One switch for both kinds. It reads "reminders", but it is the user
+      // asking PayPaw not to notify them about this — and honouring that for
+      // the gentler message while overriding it for the blunter one would be
+      // the app deciding it knows better. Android's per-channel toggles are the
+      // finer control for someone who wants only one of the two.
+      //
+      // Checked inside the loop now rather than once at the top: with per-bill
+      // overrides "off" is no longer all-or-nothing, and a bill can be silenced
+      // while the rest of them are not.
+      if (!rules.isEnabled) {
+        continue;
+      }
+
+      for (final int days in rules.orderedOffsets) {
         _add(
           notices,
           item: item,
           kind: BillNoticeKind.reminder,
           days: days,
-          firesAt: _at(item.bill.dueOn, -days, preferences.timeOfDay),
+          firesAt: _at(item.bill.dueOn, -days, rules.timeOfDay),
           now: now,
         );
       }
@@ -204,7 +219,7 @@ abstract final class BillNoticeSchedule {
           item: item,
           kind: BillNoticeKind.overdue,
           days: days,
-          firesAt: _at(item.bill.dueOn, days, preferences.timeOfDay),
+          firesAt: _at(item.bill.dueOn, days, rules.timeOfDay),
           now: now,
         );
       }

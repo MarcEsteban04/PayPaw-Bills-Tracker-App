@@ -33,11 +33,39 @@ class ProfileScreen extends StatelessWidget {
         children: <Widget>[
           AccountSummary(),
           SizedBox(height: AppSpacing.sectionGap),
+          _NotificationsSection(),
+          SizedBox(height: AppSpacing.sectionGap),
           _AppearanceSection(),
           SizedBox(height: AppSpacing.sectionGap),
           _DeveloperTools(),
         ],
       ),
+    );
+  }
+}
+
+/// Where onboarding has always said to look.
+///
+/// "You can change this any time in Profile" has been on the onboarding screen
+/// since Sprint 11B, and until Sprint 42 there was nothing here to change. This
+/// row is that sentence becoming true.
+class _NotificationsSection extends StatelessWidget {
+  const _NotificationsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text('Notifications', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: AppSpacing.md),
+        const _SettingsTile(
+          icon: Icons.notifications_outlined,
+          title: 'Reminders',
+          subtitle: 'When to be warned a bill is due, and whether at all',
+          route: AppRoutes.reminderSettings,
+        ),
+      ],
     );
   }
 }
@@ -95,14 +123,14 @@ class _DeveloperTools extends StatelessWidget {
       children: <Widget>[
         Text('Developer', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: AppSpacing.md),
-        const _DeveloperTile(
+        const _SettingsTile(
           icon: Icons.palette_outlined,
           title: 'Design system',
           subtitle: 'Every colour, type size, radius and shadow',
           route: AppRoutes.designSystem,
         ),
         const SizedBox(height: AppSpacing.sm),
-        const _DeveloperTile(
+        const _SettingsTile(
           icon: Icons.widgets_outlined,
           title: 'Components',
           subtitle: 'Buttons, cards, inputs, chips, sheets and states',
@@ -113,8 +141,8 @@ class _DeveloperTools extends StatelessWidget {
   }
 }
 
-class _DeveloperTile extends StatelessWidget {
-  const _DeveloperTile({
+class _SettingsTile extends StatelessWidget {
+  const _SettingsTile({
     required this.icon,
     required this.title,
     required this.subtitle,

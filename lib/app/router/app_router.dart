@@ -16,6 +16,7 @@ import '../../features/calendar/presentation/screens/calendar_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/design_system/presentation/screens/components_screen.dart';
 import '../../features/design_system/presentation/screens/design_system_screen.dart';
+import '../../features/notifications/presentation/screens/reminder_settings_screen.dart';
 import '../../features/onboarding/presentation/controllers/onboarding_providers.dart';
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/onboarding/presentation/screens/welcome_screen.dart';
@@ -164,6 +165,14 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>(
           // rather than a user-facing case — hence the assertion rather than a
           // fallback screen.
           child: EditBillScreen(billId: state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.reminderSettings.path,
+        name: AppRoutes.reminderSettings.routeName,
+        pageBuilder: (_, GoRouterState state) => AppPageTransitions.forward(
+          state: state,
+          child: const ReminderSettingsScreen(),
         ),
       ),
       GoRoute(

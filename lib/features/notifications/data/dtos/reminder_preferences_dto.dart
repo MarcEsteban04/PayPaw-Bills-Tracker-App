@@ -18,6 +18,25 @@ abstract final class ReminderPreferencesDto {
   static const String selectColumns =
       '$columnUserId, $columnDaysBefore, $columnTimeOfDay, $columnIsEnabled';
 
+  /// Values for an upsert.
+  ///
+  /// An upsert rather than an update: nothing seeds this table at sign-up, so
+  /// the first time a user changes a setting there is no row to update. That is
+  /// also why `user_id` is included — it is the conflict target, and on an
+  /// insert the row cannot be attributed without it.
+  static Map<String, dynamic> toUpsert(
+    ReminderPreferences preferences, {
+    required String userId,
+  }) => <String, dynamic>{
+    columnUserId: userId,
+    // Stored in the order they fire, furthest warning first. Postgres preserves
+    // array order, so this is a real property of the row rather than a
+    // convention the reader has to know about.
+    columnDaysBefore: preferences.orderedOffsets,
+    columnTimeOfDay: preferences.timeOfDay.toWireValue(),
+    columnIsEnabled: preferences.isEnabled,
+  };
+
   /// Reads a row into [ReminderPreferences].
   ///
   /// ## Every field falls back rather than throwing

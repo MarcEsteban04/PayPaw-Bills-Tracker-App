@@ -6,6 +6,7 @@ import '../../../../core/providers/supabase_providers.dart';
 import '../../../auth/presentation/controllers/current_user_provider.dart';
 import '../../data/repositories/supabase_reminder_preferences_repository.dart';
 import '../../data/services/local_notification_service.dart';
+import '../../domain/entities/bill_reminder_override.dart';
 import '../../domain/entities/notification_permission.dart';
 import '../../domain/entities/reminder_preferences.dart';
 import '../../domain/repositories/reminder_preferences_repository.dart';
@@ -58,3 +59,19 @@ final FutureProvider<NotificationPermission> notificationPermissionProvider =
     FutureProvider<NotificationPermission>(
       (Ref ref) => ref.watch(notificationServiceProvider).permission(),
     );
+
+/// Every per-bill reminder override, by bill id.
+///
+/// Separate from [reminderPreferencesProvider] so a screen editing one bill's
+/// rules does not invalidate the defaults, and so the common case — a user with
+/// no overrides at all — costs one query returning nothing rather than being
+/// folded into every read of the defaults.
+final FutureProvider<Map<String, BillReminderOverride>>
+billReminderOverridesProvider =
+    FutureProvider<Map<String, BillReminderOverride>>((Ref ref) async {
+      if (ref.watch(currentUserProvider).value == null) {
+        return const <String, BillReminderOverride>{};
+      }
+
+      return ref.watch(reminderPreferencesRepositoryProvider).fetchOverrides();
+    });

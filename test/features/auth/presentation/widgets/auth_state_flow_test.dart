@@ -113,7 +113,13 @@ void main() {
 
       await tester.tap(find.bySemanticsLabel(AppDestination.profile.label));
       await tester.pumpAndSettle();
-      await tester.drag(find.byType(ListView), const Offset(0, -2000));
+      // Scrolled to, not by a fixed amount. A magic -2000 clamped at the old
+      // list's max extent and happened to leave the button on screen; once
+      // Profile gained another section it scrolled straight past it, and the
+      // tap landed on the app bar instead.
+      await tester.ensureVisible(
+        find.widgetWithText(OutlinedButton, 'Sign out'),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.widgetWithText(OutlinedButton, 'Sign out'));
@@ -138,7 +144,13 @@ void main() {
 
       await tester.tap(find.bySemanticsLabel(AppDestination.profile.label));
       await tester.pumpAndSettle();
-      await tester.drag(find.byType(ListView), const Offset(0, -2000));
+      // Scrolled to, not by a fixed amount. A magic -2000 clamped at the old
+      // list's max extent and happened to leave the button on screen; once
+      // Profile gained another section it scrolled straight past it, and the
+      // tap landed on the app bar instead.
+      await tester.ensureVisible(
+        find.widgetWithText(OutlinedButton, 'Sign out'),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.widgetWithText(OutlinedButton, 'Sign out'));

@@ -4,6 +4,7 @@ import 'package:paypaw/features/bills/domain/entities/bill.dart';
 import 'package:paypaw/features/bills/domain/entities/bill_status.dart';
 import 'package:paypaw/features/bills/domain/entities/bill_with_status.dart';
 import 'package:paypaw/features/notifications/domain/entities/bill_notice.dart';
+import 'package:paypaw/features/notifications/domain/entities/bill_reminder_override.dart';
 import 'package:paypaw/features/notifications/domain/entities/notification_channel.dart';
 import 'package:paypaw/features/notifications/domain/entities/reminder_preferences.dart';
 import 'package:paypaw/features/notifications/domain/entities/reminder_time.dart';
@@ -472,6 +473,144 @@ void main() {
       );
       expect(const ReminderPreferences(daysBefore: <int>[-1]).isValid, isFalse);
       expect(const ReminderPreferences(daysBefore: <int>[61]).isValid, isFalse);
+    });
+  });
+
+  group('per-bill overrides', () {
+    Map<String, BillReminderOverride> only(BillReminderOverride override) =>
+        <String, BillReminderOverride>{override.billId: override};
+
+    /// Everything scheduled for [bills] with one bill overridden.
+    List<BillNotice> withOverride(
+      List<BillWithStatus> bills,
+      BillReminderOverride override, {
+      ReminderPreferences preferences = const ReminderPreferences(),
+    }) => BillNoticeSchedule.of(
+      bills,
+      preferences: preferences,
+      now: now,
+      overrides: only(override),
+    );
+
+    /// The reminders only. An upcoming bill also carries the overdue notices it
+    /// will earn if it goes unpaid, and they are not what these tests are about.
+    List<DateTime> reminderTimes(
+      List<BillWithStatus> bills,
+      BillReminderOverride override, {
+      ReminderPreferences preferences = const ReminderPreferences(),
+    }) => ofKind(
+      withOverride(bills, override, preferences: preferences),
+      BillNoticeKind.reminder,
+    ).map((BillNotice n) => n.firesAt).toList();
+
+    test('a bill with no override follows the defaults', () {
+      expect(
+        reminderTimes(<BillWithStatus>[
+          bill(),
+        ], const BillReminderOverride(billId: 'other-bill', isEnabled: false)),
+        <DateTime>[
+          DateTime(2026, 9, 7, 9),
+          DateTime(2026, 9, 9, 9),
+          DateTime(2026, 9, 10, 9),
+        ],
+      );
+    });
+
+    test('silencing one bill leaves the rest alone', () {
+      final List<BillNotice> notices = BillNoticeSchedule.of(
+        <BillWithStatus>[bill(), bill(id: 'bill-2', name: 'Globe')],
+        preferences: const ReminderPreferences(),
+        now: now,
+        overrides: only(
+          const BillReminderOverride(billId: 'bill-1', isEnabled: false),
+        ),
+      );
+
+      expect(notices.map((BillNotice n) => n.billId).toSet(), <String>{
+        'bill-2',
+      });
+    });
+
+    test('and silences its overdue alerts too, not just its reminders', () {
+      // The switch reads as "remind me about it", and a user who turns it off
+      // for a bill on auto-debit does not expect to be told it is late four
+      // times anyway.
+      expect(
+        withOverride(<BillWithStatus>[
+          bill(dueOn: DateTime(2026, 8, 24), status: BillStatus.overdue),
+        ], const BillReminderOverride(billId: 'bill-1', isEnabled: false)),
+        isEmpty,
+      );
+    });
+
+    test('a different set of days replaces the defaults for that bill', () {
+      expect(
+        reminderTimes(<BillWithStatus>[
+          bill(),
+        ], const BillReminderOverride(billId: 'bill-1', daysBefore: <int>[7])),
+        <DateTime>[DateTime(2026, 9, 3, 9)],
+      );
+    });
+
+    test('a different time moves them without touching the days', () {
+      expect(
+        reminderTimes(
+          <BillWithStatus>[bill()],
+          const BillReminderOverride(
+            billId: 'bill-1',
+            timeOfDay: ReminderTime(hour: 18, minute: 30),
+          ),
+        ),
+        <DateTime>[
+          DateTime(2026, 9, 7, 18, 30),
+          DateTime(2026, 9, 9, 18, 30),
+          DateTime(2026, 9, 10, 18, 30),
+        ],
+      );
+    });
+
+    test('an override can bring back a bill the defaults switched off', () {
+      // Inheritance is field by field, so "off for everything, on for this one"
+      // has to work — otherwise the master switch is a trap for anyone who
+      // wants reminders about a single bill.
+      expect(
+        reminderTimes(
+          <BillWithStatus>[bill()],
+          const BillReminderOverride(billId: 'bill-1', isEnabled: true),
+          preferences: const ReminderPreferences(isEnabled: false),
+        ).length,
+        3,
+      );
+    });
+
+    test('an override that sets nothing changes nothing', () {
+      expect(
+        reminderTimes(<BillWithStatus>[
+          bill(),
+        ], const BillReminderOverride(billId: 'bill-1')),
+        remindersFor(<BillWithStatus>[bill()])
+            .map((BillNotice n) => n.firesAt)
+            .toList(),
+      );
+    });
+
+    test('the overdue offsets are not something a bill can change', () {
+      // Deliberately: {1, 3, 7, 14} and then stop is the anti-spam rule, and it
+      // is stated on the settings screen rather than offered.
+      expect(
+        ofKind(
+          withOverride(
+            <BillWithStatus>[
+              bill(dueOn: DateTime(2026, 8, 24), status: BillStatus.overdue),
+            ],
+            const BillReminderOverride(billId: 'bill-1', daysBefore: <int>[7]),
+          ),
+          BillNoticeKind.overdue,
+        ).map((BillNotice n) => n.days).toList(),
+        // Not day one: that one fired at 09:00 this morning, an hour before
+        // now, and the schedule never carries a time already past.
+        <int>[3, 7, 14],
+      );
     });
   });
 }
