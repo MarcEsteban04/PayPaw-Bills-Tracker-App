@@ -2277,16 +2277,85 @@ rather than added.
 
 # 🤝 Phase 11 — Debt / Utang Management
 
-## Sprint 52 — Debt Model
+## Sprint 52 — Debt Model — done
 
-Support:
+### Five of the six bullets already had a table
 
-* Person/company
-* Amount
-* Due date
-* Interest
-* Notes
-* Direction
+`public.debts` has existed since Sprint 18 and nothing in `lib/` had ever read or
+written it. Person, amount, due date, notes and direction are all columns in
+`0008_debts.sql`, along with `settled_at`, the RLS policy and two indexes. So
+this sprint is the client half, and **no migration**.
+
+### Interest is not here, by decision
+
+The sixth bullet has no column, and the honest options were a flat fee — "borrowed
+₱5,000, paying back ₱5,500", one extra amount — or a rate, which needs a period,
+a compounding rule and an accrual date before it means anything, and which turns
+the balance into a figure that moves on its own. That second one makes Sprint
+53's "track balance" a different and much harder problem.
+
+Marc chose neither: **no interest at all.** The cost is worth writing down rather
+than discovering later — PayPaw cannot record a debt whose repayment differs from
+what was borrowed. `Debt.principal` is the whole of what is owed, and the class
+says so.
+
+### One table, one enum
+
+The migration stores both directions in one table with a `direction` column
+because the fields are identical and every query is the same shape; two tables
+would mean writing every debt feature twice. The same argument holds up here, so
+`Debt` carries a `DebtDirection` rather than there being a `DebtIOwe` and a
+`DebtOwedToMe`. The screens branch on it where the *wording* differs, which is
+the only place it actually does.
+
+**An unreadable direction is refused, not defaulted.** `RecurringBillKind.parse`
+falls back to `bill`, because a template the app cannot classify is still a
+template that has to appear in a list. A debt is the opposite case: telling
+somebody they owe ₱5,000 when they are in fact owed ₱5,000 is a two-way error on
+the single fact the feature exists to record, and a row that cannot say which way
+the money goes is better refused than guessed at.
+
+### What a debt is not: a bill
+
+Two differences drove most of the code.
+
+**A debt may have no agreed date.** The column is nullable, deliberately — plenty
+of utang has no deadline, and forcing one would mean inventing a promise the user
+never made and then nagging about it. So `isOverdue` answers **false** for an
+undated debt rather than treating the absence as "late since day one", which
+would paint half of somebody's informal lending red.
+
+**A debt of zero is not a debt.** `principal_minor > 0` in the column, unlike a
+bill's amount, which may be zero so a placeholder for a varying charge can exist.
+There is no version of a ₱0 debt anybody would record.
+
+### Sorting, and the null that would have buried everything
+
+`fetchDebts` orders by the agreed date ascending — and passes `nullsFirst: false`
+explicitly. Postgres sorts nulls last in an ascending order by default, but
+postgrest-dart sends `nullsfirst` unless told otherwise, so every debt nobody
+agreed a date for would have sat *above* every debt that has one. The deadlines
+would have been buried under the things with no deadline at all.
+
+It is the same class of mistake as the `ascending: true` that Sprint 27 needed on
+the bills query, and it is invisible except in a test that asserts the ordering.
+
+### Settling is not deleting
+
+`payments.debt_id` is `on delete restrict`, so the database itself refuses to
+erase a debt that has repayments against it. `settleDebt` and `reopenDebt` are
+their own methods rather than callers assembling an update, so the timestamp is
+stamped in one place — and `Debt.clearing` exists because reopening is a *null*
+and `copyWith` reads a null as "leave it alone".
+
+`deleteDebt` stays, for something entered by mistake. The restrict is the
+intended behaviour rather than a limitation: once a payment exists the record is
+history, and settling is the operation being reached for.
+
+### No UI
+
+Sprint 53. Nothing on screen uses any of this yet, which is the honest shape of a
+sprint called "Debt Model".
 
 ## Sprint 53 — Money You Owe
 
