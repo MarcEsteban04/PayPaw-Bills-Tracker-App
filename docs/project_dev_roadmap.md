@@ -1604,13 +1604,89 @@ still open and a calendar you cannot tap is half a feature. What is left is
 adding a bill from a chosen date, which needs the add form to accept a due date
 it did not collect — a different piece of work from any of the above.
 
-## Sprint 47 — Calendar Optimization
+## Sprint 47 — Calendar Optimization — done
 
-* Smooth navigation
-* Large dataset support
-* Performance optimization
+A polish sprint, so it started with a measurement rather than a guess — the same
+way Sprint 38 did, and for the same reason: an optimisation nobody can show a
+number for is a change with all of the risk and none of the benefit.
 
----
+### The number
+
+A test pumps the calendar against two hundred bills in one month, on a 392×800
+window, and counts how many rows the list under the grid builds.
+
+**Two hundred.** On a screen where four fit, on every rebuild — including every
+tap on a date, because picking a day rebuilds the screen.
+
+That is the thing that stops scaling first, and nothing in a normal test run said
+so: the account this was built against has two bills, and at two bills a column
+that builds everything is indistinguishable from one that does not.
+
+### The fix: slivers
+
+The screen was a `SingleChildScrollView` holding a `Column`, and a column builds
+every child whether or not any of them can be seen. It is now a
+`CustomScrollView`: the navigator, the grid and the summary in one
+`SliverToBoxAdapter`, and the bills in a `SliverList`.
+
+That forced the list into one **flat sequence** — a sliver can only be lazy over
+a flat sequence, so the date groupings became entries in a list rather than
+nested columns. `calendarListEntries` is that flattening, pure and tested on its
+own: which dates appear, in what order, and when a date is worth naming at all.
+
+**Two hundred became one.** The grid and the summary fill the first screen, so
+the list starts just below the fold.
+
+The same test pumps two thousand bills across four years — one month on screen,
+forty-seven others costing nothing — and steps a month to prove it stays that
+way.
+
+### The other allocation
+
+`inMonth` was computed in `build`, so picking a day walked every bill the account
+had ever had to produce the answer it already had a moment ago. It is
+`billsInDisplayedMonthProvider` now, which recomputes when the month or the bills
+change and not when a selection does.
+
+### Smooth navigation: a swipe, and a direction
+
+Arrows were the only way through a year, on a 40dp target. **Swiping the grid**
+changes the month, which is the gesture every calendar has.
+
+A **fling**, not a drag: `onHorizontalDragEnd` with a velocity floor rather than a
+distance one, because the grid sits inside a vertically scrolling list and a
+thumb travelling mostly downward can wander a long way sideways. Changing the
+month underneath somebody who was reading would be worse than not having the
+gesture. There is a test for the drift case.
+
+And the grid now **slides in from the side it came from** — September to October
+one way, October to September the other. That is what `CalendarMonth.monthsFrom`
+was built for in Sprint 44 and never used. A jump to today's month fades instead:
+there is no meaningful direction to travel in.
+
+### A bug the restructure exposed
+
+Moving the grid inside a sliver and a gesture detector took **seven column
+headings out of the accessibility tree**. A bare label annotation has no property
+that forces a semantics node of its own, so it folds into whatever ancestor
+happens to be a boundary — and which ancestor that is changed. `container: true`
+makes them nodes rather than leaving it to luck.
+
+It was caught because a test asserted on the spoken label rather than on the
+visible "Sun", which is the only reason it was visible at all: nothing about the
+rendered screen changed.
+
+### Not verified on a device
+
+The build was made and installed, but the emulator is signed out — the release
+APK built the same day is signed with a different key, so installing it meant
+uninstalling the debug build and taking the session with it. A calendar with no
+bills demonstrates nothing.
+
+What that costs is a judgement of *feel*: whether the 220ms transition is the
+right length, and whether the swipe fights the vertical scroll on a real thumb.
+The behaviour is covered by tests; the feel is not, and this entry should not
+pretend otherwise.
 
 ---
 

@@ -686,4 +686,74 @@ void main() {
       expect(find.text('1 settled'), findsNothing);
     });
   });
+
+  group('swiping the grid', () {
+    /// A fling across the grid. Negative goes left, which is forward.
+    Future<void> fling(WidgetTester tester, double dx) async {
+      await tester.fling(find.bySemanticsLabel('Sunday'), Offset(dx, 0), 600);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('left goes forward a month', (WidgetTester tester) async {
+      // The gesture every calendar has. Stepping through a year on a 40dp arrow
+      // is a chore, and nobody tries it twice.
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[bill(dueOn: DateTime(2026, 9, 18))],
+      );
+
+      await fling(tester, -300);
+
+      expect(find.text('October 2026'), findsOneWidget);
+    });
+
+    testWidgets('and right goes back', (WidgetTester tester) async {
+      // Dragging right reveals what is to the left, which is the earlier month —
+      // the direction a page turns, not the direction of travel.
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[bill(dueOn: DateTime(2026, 9, 18))],
+      );
+
+      await fling(tester, 300);
+
+      expect(find.text('August 2026'), findsOneWidget);
+    });
+
+    testWidgets('a drift is not a swipe', (WidgetTester tester) async {
+      // The grid sits inside a vertically scrolling list, so a thumb travelling
+      // mostly downward can wander a long way sideways. Changing the month
+      // underneath somebody who was reading would be worse than not having the
+      // gesture at all.
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[bill(dueOn: DateTime(2026, 9, 18))],
+      );
+
+      await tester.timedDrag(
+        find.bySemanticsLabel('Sunday'),
+        const Offset(-120, 0),
+        const Duration(milliseconds: 1200),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('September 2026'), findsOneWidget);
+    });
+
+    testWidgets('and it lets the day go, like the arrows do', (
+      WidgetTester tester,
+    ) async {
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[bill(dueOn: DateTime(2026, 9, 18))],
+      );
+
+      await tester.tap(square('Friday, September 18'));
+      await tester.pumpAndSettle();
+      await fling(tester, -300);
+
+      expect(find.text('Due in October'), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('selected')), findsNothing);
+    });
+  });
 }

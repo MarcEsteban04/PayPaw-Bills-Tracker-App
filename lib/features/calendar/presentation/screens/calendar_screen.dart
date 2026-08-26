@@ -56,49 +56,190 @@ class CalendarScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Calendar')),
       body: SafeArea(
         child: AppContentWidth(
-          // Scrolls, because the list under the grid is as long as the month is
-          // busy. A fixed column fit until the day detail landed under it and
-          // then overflowed by 146 pixels on a 2400px screen — which the widget
-          // tests missed entirely, since they pump a 1200dp-tall view.
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.screenInset,
-              AppSpacing.lg,
-              AppSpacing.screenInset,
-              AppSpacing.bottomNavClearance,
-            ),
-            child: switch (byDate) {
-              // Matched before the loading case, not after. The grid is already
-              // on screen and correct during a refresh, and replacing it with a
-              // skeleton would flash the whole month away every time a bill is
-              // written.
-              AsyncValue<Map<DateTime, List<BillWithStatus>>>(
-                value: final Map<DateTime, List<BillWithStatus>> value?,
-              ) =>
-                _Calendar(byDate: value),
-              AsyncError<Map<DateTime, List<BillWithStatus>>>(
-                error: final Object error,
-              ) =>
-                AppErrorState(
+          // Slivers, not a `SingleChildScrollView` with a Column.
+          //
+          // The list under the grid is as long as the month is busy, and a
+          // column builds every child whether or not any of them can be seen.
+          // Measured before this changed: a month with two hundred bills built
+          // two hundred rows on a screen where four fit — on every rebuild,
+          // including every tap on a date.
+          child: switch (byDate) {
+            // Matched before the loading case, not after. The grid is already
+            // on screen and correct during a refresh, and replacing it with a
+            // skeleton would flash the whole month away every time a bill is
+            // written.
+            AsyncValue<Map<DateTime, List<BillWithStatus>>>(
+              value: final Map<DateTime, List<BillWithStatus>> value?,
+            ) =>
+              _Calendar(byDate: value),
+            AsyncError<Map<DateTime, List<BillWithStatus>>>(
+              error: final Object error,
+            ) =>
+              _Padded(
+                child: AppErrorState(
                   error: error,
                   onRetry: () => ref.invalidate(billsProvider),
                 ),
-              _ => const _CalendarSkeleton(),
-            },
-          ),
+              ),
+            _ => const _Padded(child: _CalendarSkeleton()),
+          },
         ),
       ),
     );
   }
 }
 
-class _Calendar extends ConsumerWidget {
+/// Swiping the grid sideways to change month.
+///
+/// The gesture every calendar has, and the reason the arrows were not enough:
+/// stepping through a year with a thumb on a 40dp target is a chore, and nobody
+/// tries it twice.
+///
+/// **A fling, not a drag.** `onHorizontalDragEnd` with a velocity floor rather
+/// than a distance one, because the grid sits inside a vertically scrolling
+/// list — a thumb travelling mostly downward can wander a long way sideways, and
+/// a distance test would change the month underneath somebody who was reading.
+class _SwipeableMonth extends StatelessWidget {
+  const _SwipeableMonth({
+    required this.onPrevious,
+    required this.onNext,
+    required this.velocityThreshold,
+    required this.child,
+  });
+
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+  final double velocityThreshold;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      // Opaque so the gesture is caught over the whole panel, including the gaps
+      // between squares. `deferToChild` would let a fling that started on a gap
+      // fall through to nothing.
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragEnd: (DragEndDetails details) {
+        final double velocity = details.velocity.pixelsPerSecond.dx;
+
+        if (velocity.abs() < velocityThreshold) {
+          return;
+        }
+
+        // Dragging right reveals what is to the left, which is the earlier
+        // month — the direction a page turns, not the direction of travel.
+        velocity > 0 ? onPrevious() : onNext();
+      },
+      child: child,
+    );
+  }
+}
+
+/// The grid, sliding in from the side it came from.
+///
+/// A transition rather than an instant swap, so stepping through months reads as
+/// movement along a year instead of the screen redrawing. It is short on
+/// purpose: this is feedback on a tap, and anything long enough to notice is
+/// long enough to wait for.
+class _AnimatedMonth extends StatelessWidget {
+  const _AnimatedMonth({
+    required this.direction,
+    required this.month,
+    required this.child,
+  });
+
+  /// -1 going back, 1 going forward, 0 for a change that is not a step — the
+  /// first build, or a jump to today's month, which fades rather than slides
+  /// because there is no meaningful direction to travel in.
+  final int direction;
+
+  final CalendarMonth month;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      // The outgoing grid is laid out on top of the incoming one for a moment.
+      // Aligned at the top so the taller of the two does not shove the summary
+      // card down and back mid-transition.
+      layoutBuilder: (Widget? current, List<Widget> previous) => Stack(
+        alignment: Alignment.topCenter,
+        children: <Widget>[...previous, ?current],
+      ),
+      transitionBuilder: (Widget child, Animation<double> animation) {
+        final bool isIncoming = child.key == ValueKey<CalendarMonth>(month);
+
+        // The one leaving goes the way the one arriving came from.
+        final double from = isIncoming
+            ? direction.toDouble()
+            : -direction.toDouble();
+
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: Offset(from * 0.12, 0),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+/// The screen's own margins, for the states that are a single box rather than a
+/// scrolling list.
+class _Padded extends StatelessWidget {
+  const _Padded({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screenInset,
+        AppSpacing.lg,
+        AppSpacing.screenInset,
+        AppSpacing.bottomNavClearance,
+      ),
+      child: child,
+    );
+  }
+}
+
+class _Calendar extends ConsumerStatefulWidget {
   const _Calendar({required this.byDate});
 
   final Map<DateTime, List<BillWithStatus>> byDate;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_Calendar> createState() => _CalendarState();
+}
+
+class _CalendarState extends ConsumerState<_Calendar> {
+  /// The month the grid was showing last build.
+  ///
+  /// Kept so a change can be given a *direction*: September to October slides
+  /// one way and October to September the other. Without it the transition would
+  /// be the same both ways, which reads as the screen redrawing rather than as
+  /// moving through a year.
+  CalendarMonth? _previous;
+
+  /// How far a horizontal fling has to travel to count as a month.
+  ///
+  /// Low enough for a flick and high enough that a thumb drifting sideways while
+  /// scrolling the list does not change the month underneath it.
+  static const double _swipeVelocity = 240;
+
+  @override
+  Widget build(BuildContext context) {
     final CalendarMonth month = ref.watch(calendarMonthProvider);
 
     // The database's today where there is one. An account with no bills has no
@@ -109,46 +250,87 @@ class _Calendar extends ConsumerWidget {
     );
 
     final DateTime? selectedDay = ref.watch(selectedCalendarDayProvider);
+    final List<BillWithStatus> inMonth = ref.watch(
+      billsInDisplayedMonthProvider,
+    );
 
-    final List<BillWithStatus> inMonth = <BillWithStatus>[
-      for (final MapEntry<DateTime, List<BillWithStatus>> entry
-          in byDate.entries)
-        if (month.contains(entry.key)) ...entry.value,
-    ];
+    final int direction = month.monthsFrom(_previous ?? month).sign;
+    _previous = month;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        MonthNavigator(
-          month: month,
-          isOnToday: month.contains(today),
-          onPrevious: () => ref.read(calendarMonthProvider.notifier).previous(),
-          onNext: () => ref.read(calendarMonthProvider.notifier).next(),
-          onToday: () => _showToday(ref, today),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        _Panel(
-          child: MonthGrid(
-            month: month,
-            today: today,
-            selectedDay: selectedDay,
-            billsFor: (DateTime day) => byDate[day] ?? const <BillWithStatus>[],
-            onDayTap: (DateTime day) => _pickDay(ref, month, day),
+    final List<CalendarListEntry> entries = calendarListEntries(
+      month: month,
+      selectedDay: selectedDay,
+      byDate: widget.byDate,
+    );
+
+    return CustomScrollView(
+      slivers: <Widget>[
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenInset,
+            AppSpacing.lg,
+            AppSpacing.screenInset,
+            0,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                MonthNavigator(
+                  month: month,
+                  isOnToday: month.contains(today),
+                  onPrevious: () =>
+                      ref.read(calendarMonthProvider.notifier).previous(),
+                  onNext: () => ref.read(calendarMonthProvider.notifier).next(),
+                  onToday: () => _showToday(ref, today),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                _SwipeableMonth(
+                  onPrevious: () =>
+                      ref.read(calendarMonthProvider.notifier).previous(),
+                  onNext: () => ref.read(calendarMonthProvider.notifier).next(),
+                  velocityThreshold: _swipeVelocity,
+                  child: _Panel(
+                    child: _AnimatedMonth(
+                      direction: direction,
+                      month: month,
+                      child: MonthGrid(
+                        key: ValueKey<CalendarMonth>(month),
+                        month: month,
+                        today: today,
+                        selectedDay: selectedDay,
+                        billsFor: (DateTime day) =>
+                            widget.byDate[day] ?? const <BillWithStatus>[],
+                        onDayTap: (DateTime day) => _pickDay(ref, month, day),
+                      ),
+                    ),
+                  ),
+                ),
+                // Left out entirely for a month with nothing in it. A panel
+                // reading "0 bills · TOTAL ₱0.00" is three ways of saying what
+                // the line below already says in words.
+                if (inMonth.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: AppSpacing.lg),
+                  _MonthSummary(inMonth: inMonth),
+                ],
+                const SizedBox(height: AppSpacing.sectionGap),
+                CalendarBillsHeading(month: month, selectedDay: selectedDay),
+              ],
+            ),
           ),
         ),
-        // Left out entirely for a month with nothing in it. A panel reading
-        // "0 bills · TOTAL ₱0.00" is three ways of saying what the line below
-        // already says in words.
-        if (inMonth.isNotEmpty) ...<Widget>[
-          const SizedBox(height: AppSpacing.lg),
-          _MonthSummary(inMonth: inMonth),
-        ],
-        const SizedBox(height: AppSpacing.sectionGap),
-        CalendarDayBills(
-          month: month,
-          selectedDay: selectedDay,
-          byDate: byDate,
-          onBillTap: (BillWithStatus item) => _openBill(context, ref, item),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenInset,
+            0,
+            AppSpacing.screenInset,
+            AppSpacing.bottomNavClearance,
+          ),
+          sliver: CalendarBillsSliver(
+            entries: entries,
+            selectedDay: selectedDay,
+            onBillTap: (BillWithStatus item) => _openBill(context, ref, item),
+          ),
         ),
       ],
     );

@@ -67,6 +67,27 @@ calendarMonthProvider =
       CalendarMonthController.new,
     );
 
+/// The bills falling in the month on screen, soonest first.
+///
+/// A provider rather than a line in `build` so it survives the rebuilds that
+/// have nothing to do with it. Picking a day rebuilds the screen; without this
+/// it would also walk every bill the account has ever had, to produce the answer
+/// it already had a moment ago.
+final Provider<List<BillWithStatus>> billsInDisplayedMonthProvider =
+    Provider<List<BillWithStatus>>((Ref ref) {
+      final CalendarMonth month = ref.watch(calendarMonthProvider);
+      final Map<DateTime, List<BillWithStatus>> byDate =
+          ref.watch(billsByDueDateProvider).value ??
+          const <DateTime, List<BillWithStatus>>{};
+
+      final List<DateTime> dates = byDate.keys.where(month.contains).toList()
+        ..sort();
+
+      return <BillWithStatus>[
+        for (final DateTime date in dates) ...byDate[date]!,
+      ];
+    });
+
 /// The day whose bills are listed under the grid, or null for the whole month.
 ///
 /// ## Null is a state worth having

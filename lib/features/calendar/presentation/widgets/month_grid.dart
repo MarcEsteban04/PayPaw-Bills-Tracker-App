@@ -107,6 +107,12 @@ class _WeekdayHeadings extends StatelessWidget {
               // spells out. The full name is what it should say.
               label: DateFormat.EEEE().format(DateTime(2024, 1, weekday)),
               excludeSemantics: true,
+              // A node of its own. A bare label annotation has no property that
+              // forces one, so it folds into whatever ancestor happens to be a
+              // boundary — which changed the moment this grid moved inside a
+              // sliver and a gesture detector, and took seven column headings
+              // out of the accessibility tree with it.
+              container: true,
               child: Text(
                 format.format(DateTime(2024, 1, weekday)),
                 textAlign: TextAlign.center,
