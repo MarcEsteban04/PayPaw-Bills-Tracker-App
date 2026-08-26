@@ -75,8 +75,8 @@ class _ActionButton extends StatelessWidget {
 
   static const double _circle = DashboardQuickActions.itemCircle;
 
-  /// Wide enough for two short words without wrapping, which is what keeps the
-  /// row's height from changing as actions are added.
+  /// Wide enough for two short words at full size. See [_Label] for the word
+  /// that is neither.
   static const double _labelWidth = DashboardQuickActions.itemWidth;
 
   @override
@@ -112,18 +112,50 @@ class _ActionButton extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              Text(
-                action.label,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: colors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              _Label(action.label),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One shortcut's caption, on one line, whatever it says.
+///
+/// ## Why it scales instead of wrapping
+///
+/// Every label here used to be two short words, and two short words wrap
+/// gracefully. "Subscriptions" is one long word: there is nowhere to break it,
+/// so a wrapping label rendered it as "Subscription" over a lone "s" — which
+/// looks like a bug because it is one.
+///
+/// Shrinking to fit keeps it whole. Only the labels that overflow are touched,
+/// so the short ones stay at their designed size and the long one gives up a
+/// point rather than its last letter. It also makes the row's height constant,
+/// which is what the two-line version was reaching for and never guaranteed.
+///
+/// The alternative was renaming the destination to something that fits, and no
+/// shorter word means "subscriptions" — "Subs" is a sandwich.
+class _Label extends StatelessWidget {
+  const _Label(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        softWrap: false,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: colors.textSecondary,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

@@ -267,6 +267,12 @@ class _SubscriptionFormState extends ConsumerState<SubscriptionForm> {
                   RecurrenceField(
                     value: _recurrence,
                     today: today,
+                    // Not "Repeat / Does not repeat". A subscription that does
+                    // not repeat is a purchase, and this form refuses to save
+                    // one — so resting on the single answer it will not accept
+                    // would be the field lying about the form it is in.
+                    label: 'Billing cycle',
+                    emptyLabel: 'Choose how often',
                     enabled: !isBusy,
                     onChanged: (Recurrence? value) =>
                         setState(() => _recurrence = value),

@@ -21,6 +21,8 @@ class RecurrenceField extends StatelessWidget {
     required this.today,
     required this.onChanged,
     this.startFrom,
+    this.label = 'Repeat',
+    this.emptyLabel = 'Does not repeat',
     this.enabled = true,
     super.key,
   });
@@ -43,6 +45,18 @@ class RecurrenceField extends StatelessWidget {
   /// [showRecurrenceEditor].
   final DateTime? startFrom;
 
+  /// What the field is called. 'Repeat' on a bill, 'Billing cycle' on a
+  /// subscription.
+  final String label;
+
+  /// What it reads before a rule is set.
+  ///
+  /// A parameter because "Does not repeat" is a *true statement about a bill*
+  /// and a false one about a subscription: the subscription form will not accept
+  /// a draft without a cycle, so resting on the one answer it refuses would be
+  /// the field lying about the form it is in.
+  final String emptyLabel;
+
   final bool enabled;
 
   @override
@@ -53,8 +67,8 @@ class RecurrenceField extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: 'Repeat',
-      value: rule?.describe() ?? 'Does not repeat',
+      label: label,
+      value: rule?.describe() ?? emptyLabel,
       child: Material(
         color: colors.surfaceInput,
         borderRadius: const BorderRadius.all(Radius.circular(AppRadii.sm)),
@@ -79,14 +93,14 @@ class RecurrenceField extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        'Repeat',
+                        label,
                         style: textTheme.bodySmall?.copyWith(
                           color: colors.textTertiary,
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xxs),
                       Text(
-                        rule?.describe() ?? 'Does not repeat',
+                        rule?.describe() ?? emptyLabel,
                         style: textTheme.bodyLarge?.copyWith(
                           color: rule == null
                               ? colors.textSecondary
