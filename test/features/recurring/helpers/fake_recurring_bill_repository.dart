@@ -31,6 +31,13 @@ class FakeRecurringBillRepository implements RecurringBillRepository {
   /// Set to make generation fail, independently of the write.
   AppException? generateFailure;
 
+  /// Set to make deletion fail, independently of the other writes.
+  ///
+  /// Its own flag because the case worth testing is a create that succeeds and
+  /// a cleanup that does not — see the subscription repository's compensating
+  /// delete.
+  AppException? deleteFailure;
+
   @override
   Future<List<RecurringBill>> fetchRecurringBills({
     bool includeInactive = true,
@@ -76,6 +83,9 @@ class FakeRecurringBillRepository implements RecurringBillRepository {
 
   @override
   Future<void> deleteRecurringBill(String id) async {
+    if (deleteFailure case final AppException exception) {
+      throw exception;
+    }
     _throwIfFailing();
     deleted = id;
     _templates.removeWhere((RecurringBill t) => t.id == id);

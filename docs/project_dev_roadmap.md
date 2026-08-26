@@ -1909,15 +1909,94 @@ say what it will do.
 
 # 📺 Phase 10 — Subscription Manager
 
-## Sprint 48 — Subscription Model
+## Sprint 48 — Subscription Model — done
 
-Add:
+### Four of the five bullets already existed
 
-* Subscription name
-* Provider
-* Amount
-* Billing frequency
-* Next billing date
+The roadmap asked for a subscription name, an amount, a billing frequency and a
+next billing date. All four have been on `recurring_bills` since Sprint 18, along
+with `kind in ('bill', 'subscription')` — because the schema decided then that a
+subscription **is** a repeating obligation with extra fields, not a parallel
+thing that happens to look like one.
+
+Building them again would have been two tables disagreeing about what Netflix
+costs, and a generated bill that appeared on the bills list under one amount and
+in the subscriptions list under another.
+
+So the sprint is the fifth bullet and the part that had no client code at all:
+`public.subscriptions`, which has existed since Sprint 18 and which nothing in
+`lib/` had ever read or written. **No migration** — the table, its RLS and its
+index are already there.
+
+### What a subscription actually is
+
+`SubscriptionDetails` is the extension row: **provider**, plan name, trial end,
+auto-renew, and where to cancel. Every one of those is a thing a schedule cannot
+express.
+
+`Subscription` composes a `RecurringBill` with it, the way `BillWithStatus`
+composes a `Bill`. `subscription.template.amount` is a fact about the schedule
+and `subscription.details.provider` is a fact about the service, and keeping the
+line visible is what stops a later `copyWith` writing one through the other.
+
+Two rules are worth naming:
+
+* **A trial runs through its last day.** A trial ending on the 20th is free *on*
+  the 20th, which is how every provider words it and how the user will read it.
+* **Renewing needs both halves to agree.** A paused template does not renew
+  whatever the service's own setting says, and a finished one does not either.
+
+The **provider becomes the payee** on the template. It is who the money goes to,
+which is what that column means — and it keeps a generated bill saying "Netflix"
+on the bills list without the bills list knowing subscriptions exist.
+
+### The two-row write, and what happens when half of it lands
+
+Creating a subscription writes a template and then an extension. PostgREST gives
+the client no transaction, so a failure between them leaves a
+`kind = 'subscription'` template with **no provider** — invisible to the
+subscriptions list, still generating bills, and nothing to ever clean it up.
+
+The alternative was a database function taking every column of both tables, which
+would put the `recurring_bills` column list in a second place that has to be kept
+in step with the first. That is the duplication this project has spent forty
+sprints avoiding.
+
+So: **compensate**. If the extension write fails, the template is deleted again
+before the error is rethrown. It is seconds old and has generated nothing, so
+removing it costs nothing. The cleanup's own failure is swallowed on purpose —
+the caller is about to be told the create failed, which is true and is the useful
+half, and a second error about the cleanup would replace a message they can act
+on with one they cannot.
+
+If the compensation *also* fails, what is left behaves as an ordinary recurring
+bill. `fetchSubscriptions` requires both the kind and the extension row, so a
+half-written record is never shown as a subscription with a blank provider.
+
+### The split that made that testable
+
+The compensation is the only logic in this feature that prevents corrupt data,
+and against a live PostgREST client it could only be reasoned about. So
+`SubscriptionDetailsStore` is its own interface with a Supabase implementation,
+and `CompositeSubscriptionRepository` is built from that plus
+`RecurringBillRepository` — two interfaces, no Supabase import, and a test that
+makes the extension write fail and checks the template is gone.
+
+It also borrows the recurring repository rather than reimplementing "insert a
+template", which would have been a second place for the `next_due_on` derivation
+to be got wrong.
+
+### Reads are two queries, not an embed
+
+A PostgREST embed would tie this to a foreign-key relationship name that lives in
+the database and appears in no Dart file: rename the constraint and the app
+breaks at runtime with a message about a relationship. Two reads cost one extra
+round trip on a table holding a handful of rows per user.
+
+### No UI
+
+Sprint 49. There is nothing on screen that uses any of this yet, which is the
+honest shape of a sprint called "Subscription Model".
 
 ## Sprint 49 — Subscription UI
 
