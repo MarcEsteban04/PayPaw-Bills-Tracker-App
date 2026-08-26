@@ -12,6 +12,7 @@ import 'package:paypaw/features/bills/presentation/controllers/bill_repository_p
 import 'package:paypaw/features/notifications/domain/entities/bill_notice.dart';
 import 'package:paypaw/features/notifications/domain/entities/bill_reminder_override.dart';
 import 'package:paypaw/features/notifications/domain/entities/reminder_preferences.dart';
+import 'package:paypaw/features/notifications/domain/entities/scheduled_notice.dart';
 import 'package:paypaw/features/notifications/presentation/controllers/notification_providers.dart';
 import 'package:paypaw/features/notifications/presentation/controllers/reminder_sync.dart';
 
@@ -116,7 +117,7 @@ void main() {
     // reset would wipe the very rebuild they exist to observe.
     if (absorbSetup) {
       notifications.rebuilds.clear();
-      notifications.scheduled = const <BillNotice>[];
+      notifications.scheduled = const <ScheduledNotice>[];
     }
 
     return container;
@@ -135,14 +136,14 @@ void main() {
       // The bill is thirty days out, so every one of the seven is still ahead.
       expect(notifications.scheduled, hasLength(7));
       expect(
-        notifications.scheduled
+        notifications.billNotices
             .where((BillNotice n) => n.kind == BillNoticeKind.reminder)
             .map((BillNotice n) => n.days)
             .toList(),
         <int>[3, 1, 0],
       );
       expect(
-        notifications.scheduled
+        notifications.billNotices
             .where((BillNotice n) => n.kind == BillNoticeKind.overdue)
             .map((BillNotice n) => n.days)
             .toList(),
@@ -362,7 +363,7 @@ void main() {
 
       expect(notifications.rebuilds, isNotEmpty);
       expect(
-        notifications.scheduled.map((BillNotice n) => n.billId).toSet(),
+        notifications.billNotices.map((BillNotice n) => n.billId).toSet(),
         <String>{'generated-1'},
       );
     });
@@ -384,7 +385,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(
-        notifications.scheduled.map((BillNotice n) => n.billId).toSet(),
+        notifications.billNotices.map((BillNotice n) => n.billId).toSet(),
         <String>{'occurrence-2'},
       );
     });

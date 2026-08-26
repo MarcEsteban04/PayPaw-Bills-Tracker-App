@@ -9,14 +9,34 @@ import 'package:paypaw/features/notifications/domain/entities/notification_permi
 /// in this app does anything at all.
 void main() {
   group('the channels', () {
-    test('are the two kinds of interruption, not one per reminder', () {
+    test('are one per kind of interruption, not one per reminder', () {
       // "7 days before" and "1 day before" are the same kind of message. Four
       // toggles for one decision makes turning reminders off a four-tap job;
       // which offsets fire is PayPaw's own setting, not Android's.
-      expect(NotificationChannel.values, hasLength(2));
+      //
+      // Three since Sprint 51, and the count is asserted so that a fourth has
+      // to be argued for rather than added. Each one is a row in the user's
+      // system settings, and a screen of near-identical toggles is a screen
+      // nobody reads.
+      expect(NotificationChannel.values, hasLength(3));
       expect(
         NotificationChannel.values.map((NotificationChannel c) => c.id),
-        containsAll(<String>['bill_reminders', 'overdue_bills']),
+        containsAll(<String>[
+          'bill_reminders',
+          'overdue_bills',
+          'subscription_notices',
+        ]),
+      );
+    });
+
+    test('and a subscription notice is separate from a bill reminder', () {
+      // Different decisions. A bill reminder says *pay this*; a subscription
+      // notice says *cancel this if you do not want it*, and it is worth
+      // arriving even for somebody who silenced their bill reminders because
+      // they pay by standing order and do not need chasing.
+      expect(
+        NotificationChannel.subscriptionNotices.id,
+        isNot(NotificationChannel.billReminders.id),
       );
     });
 

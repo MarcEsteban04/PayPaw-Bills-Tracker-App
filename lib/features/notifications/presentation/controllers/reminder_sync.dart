@@ -6,9 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../auth/presentation/controllers/current_user_provider.dart';
 import '../../../bills/domain/entities/bill_with_status.dart';
 import '../../../bills/presentation/controllers/bill_detail_provider.dart';
+import '../../../subscriptions/domain/entities/subscription.dart';
+import '../../../subscriptions/domain/entities/subscription_notice.dart';
+import '../../../subscriptions/presentation/controllers/subscription_providers.dart';
 import '../../domain/entities/bill_notice.dart';
 import '../../domain/entities/bill_reminder_override.dart';
 import '../../domain/entities/reminder_preferences.dart';
+import '../../domain/entities/scheduled_notice.dart';
 import 'notification_providers.dart';
 
 /// Keeps the device's scheduled reminders matching the bills.
@@ -59,21 +63,40 @@ class ReminderSync {
         billReminderOverridesProvider.future,
       );
 
-      await _ref
-          .read(notificationServiceProvider)
-          .replaceScheduledNotices(
-            BillNoticeSchedule.of(
-              bills,
-              preferences: preferences,
-              overrides: overrides,
-              // The device clock, and here it is the right source. Every other
-              // date in this app comes from the database because a wrong phone
-              // clock would disagree with the statuses beside it — but the
-              // scheduler *is* the device clock, so a reminder has to be placed
-              // against the same one it will be woken by.
-              now: DateTime.now(),
-            ),
-          );
+      // The device clock, and here it is the right source. Every other date in
+      // this app comes from the database because a wrong phone clock would
+      // disagree with the statuses beside it — but the scheduler *is* the device
+      // clock, so a notice has to be placed against the same one it will be
+      // woken by.
+      final DateTime now = DateTime.now();
+
+      // Subscriptions may not have loaded, and that is not a reason to stop:
+      // this rebuild fires off `billsProvider`, which changes far more often
+      // than the subscription list does. An empty read here costs the
+      // subscription notices until the next rebuild; refusing to schedule the
+      // bill reminders as well would cost both.
+      final List<Subscription> subscriptions =
+          _ref.read(subscriptionsProvider).value ?? const <Subscription>[];
+
+      await _ref.read(notificationServiceProvider).replaceScheduledNotices(
+        <ScheduledNotice>[
+          ...BillNoticeSchedule.of(
+            bills,
+            preferences: preferences,
+            overrides: overrides,
+            now: now,
+          ),
+          // One call, one schedule. `replaceScheduledNotices` cancels
+          // everything pending before it lays down what it is given, so a
+          // second call would wipe the first — silently, and discovered days
+          // later by a reminder that never arrived.
+          ...SubscriptionNoticeSchedule.of(
+            subscriptions,
+            preferences: preferences,
+            now: now,
+          ),
+        ],
+      );
     } on Object catch (error) {
       debugPrint('PayPaw: could not rebuild the reminder schedule ($error)');
     }

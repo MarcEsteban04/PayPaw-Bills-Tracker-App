@@ -9,7 +9,7 @@ import '../core/theme/theme_mode_controller.dart';
 import '../features/auth/presentation/widgets/password_recovery_listener.dart';
 import '../features/auth/presentation/widgets/session_expiry_listener.dart';
 import '../features/notifications/presentation/controllers/reminder_sync.dart';
-import '../features/notifications/presentation/widgets/bill_reminder_listener.dart';
+import '../features/notifications/presentation/widgets/notice_listener.dart';
 import 'router/app_router.dart';
 
 /// The root widget.
@@ -93,9 +93,7 @@ class PayPawApp extends ConsumerWidget {
               // Above the router for the same reason as the two around it: a
               // tapped reminder can arrive on any screen, or before there is
               // one at all when the notification is what started the app.
-              child: BillReminderListener(
-                child: child ?? const SizedBox.shrink(),
-              ),
+              child: NoticeListener(child: child ?? const SizedBox.shrink()),
             ),
           ),
         ),

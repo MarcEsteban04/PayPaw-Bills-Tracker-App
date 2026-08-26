@@ -42,6 +42,21 @@ enum NotificationChannel {
     id: 'overdue_bills',
     name: 'Overdue bills',
     description: 'Alerts when a bill is past its due date.',
+  ),
+
+  /// Money is about to leave for a subscription — a trial converting, or a
+  /// plan renewing.
+  ///
+  /// Its own row rather than a third use of the bill channel, because these ask
+  /// for a different decision. A bill reminder says *pay this*; a subscription
+  /// notice says *cancel this if you do not want it*, and it is worth arriving
+  /// even for somebody who has silenced their bill reminders because they pay by
+  /// standing order and do not need chasing.
+  subscriptionNotices(
+    id: 'subscription_notices',
+    name: 'Subscription renewals',
+    description:
+        'Warnings before a free trial converts or a subscription renews.',
   );
 
   const NotificationChannel({

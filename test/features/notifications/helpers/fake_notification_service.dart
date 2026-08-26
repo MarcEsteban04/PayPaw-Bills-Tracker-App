@@ -1,6 +1,8 @@
 import 'package:paypaw/features/notifications/domain/entities/bill_notice.dart';
 import 'package:paypaw/features/notifications/domain/entities/notification_permission.dart';
+import 'package:paypaw/features/notifications/domain/entities/scheduled_notice.dart';
 import 'package:paypaw/features/notifications/domain/services/notification_service.dart';
+import 'package:paypaw/features/subscriptions/domain/entities/subscription_notice.dart';
 
 /// An in-memory [NotificationService].
 ///
@@ -27,20 +29,34 @@ class FakeNotificationService implements NotificationService {
   String? launchedWithBillId;
 
   /// The most recent set handed to [replaceScheduledNotices].
-  List<BillNotice> scheduled = const <BillNotice>[];
+  List<ScheduledNotice> scheduled = const <ScheduledNotice>[];
 
   /// Every set it has been given, in order. Lets a test assert that a write
   /// rebuilt the schedule *once*, rather than three times on the way.
-  final List<List<BillNotice>> rebuilds = <List<BillNotice>>[];
+  final List<List<ScheduledNotice>> rebuilds = <List<ScheduledNotice>>[];
+
+  /// Just the bill half of [scheduled].
+  ///
+  /// The schedule holds two kinds since Sprint 51 — subscription notices share
+  /// the call, because it replaces everything pending and a second call would
+  /// wipe the first. Most assertions are about one kind, so they say which.
+  List<BillNotice> get billNotices =>
+      scheduled.whereType<BillNotice>().toList();
+
+  /// Just the subscription half of [scheduled].
+  List<SubscriptionNotice> get subscriptionNotices =>
+      scheduled.whereType<SubscriptionNotice>().toList();
 
   int initialiseCalls = 0;
   int requestCalls = 0;
   int settingsCalls = 0;
 
   @override
-  Future<void> initialize({void Function(String billId)? onBillTapped}) async {
+  Future<void> initialize({
+    void Function(String payload)? onNoticeTapped,
+  }) async {
     initialiseCalls++;
-    tapHandler = onBillTapped;
+    tapHandler = onNoticeTapped;
   }
 
   /// The handler the app registered. Calling it is how a test taps a
@@ -48,7 +64,7 @@ class FakeNotificationService implements NotificationService {
   void Function(String billId)? tapHandler;
 
   @override
-  Future<String?> billThatLaunchedTheApp() async => launchedWithBillId;
+  Future<String?> noticeThatLaunchedTheApp() async => launchedWithBillId;
 
   @override
   Future<bool> refreshTimezone() async {
@@ -77,14 +93,14 @@ class FakeNotificationService implements NotificationService {
   bool failTimezoneRead = false;
 
   @override
-  Future<void> replaceScheduledNotices(List<BillNotice> reminders) async {
-    scheduled = reminders;
-    rebuilds.add(reminders);
+  Future<void> replaceScheduledNotices(List<ScheduledNotice> notices) async {
+    scheduled = notices;
+    rebuilds.add(notices);
   }
 
   @override
   Future<Set<int>> scheduledNoticeIds() async =>
-      scheduled.map((BillNotice r) => r.notificationId).toSet();
+      scheduled.map((ScheduledNotice r) => r.notificationId).toSet();
 
   @override
   Future<NotificationPermission> permission() async => permissionState;

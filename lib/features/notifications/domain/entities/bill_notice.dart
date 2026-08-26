@@ -6,6 +6,7 @@ import 'bill_reminder_override.dart';
 import 'notification_channel.dart';
 import 'reminder_preferences.dart';
 import 'reminder_time.dart';
+import 'scheduled_notice.dart';
 
 /// The two things PayPaw has to say about a bill, and when.
 ///
@@ -27,7 +28,7 @@ enum BillNoticeKind {
 
 /// One notification, resolved to a moment.
 @immutable
-class BillNotice {
+class BillNotice implements ScheduledNotice {
   const BillNotice({
     required this.kind,
     required this.billId,
@@ -53,6 +54,7 @@ class BillNotice {
   /// Local wall-clock time it should arrive. Not a UTC instant: the scheduler
   /// wants "9am where the user is", and the zone is applied by the layer that
   /// talks to the platform.
+  @override
   final DateTime firesAt;
 
   final DateTime dueOn;
@@ -66,6 +68,7 @@ class BillNotice {
   /// The bill's name leads in both kinds. That is what the reader is scanning
   /// for among a dozen other notifications; "PayPaw reminder" would tell them
   /// which app and nothing they need.
+  @override
   String get title => switch (kind) {
     BillNoticeKind.reminder => switch (days) {
       0 => '$billName is due today',
@@ -82,6 +85,7 @@ class BillNotice {
   };
 
   /// The amount and the date — the two things that decide whether to act now.
+  @override
   String get body => switch (kind) {
     BillNoticeKind.reminder =>
       '$amount · due ${DateFormat.MMMEd().format(dueOn)}',
@@ -91,31 +95,18 @@ class BillNotice {
 
   /// A unique id for the platform scheduler.
   ///
-  /// Android notification ids are 32-bit ints and a bill id is a UUID, so it has
-  /// to be hashed. The kind is in the key as well as the offset: without it a
-  /// reminder three days before and an overdue notice three days after the same
-  /// bill would collide, and the second would silently replace the first.
-  ///
-  /// FNV-1a rather than `String.hashCode`, which Dart does not promise is stable
-  /// across releases. Stability is not load-bearing — the scheduler cancels
-  /// every pending notification before laying down a new set, so an id only has
-  /// to be unique within one pass — but a specified hash is reproducible in a
-  /// test, and a collision would drop a notice with no sign that it happened.
-  int get notificationId => _fnv1a('$billId:${kind.name}:$days') & 0x7FFFFFFF;
+  /// The kind is in the key as well as the offset: without it a reminder three
+  /// days before and an overdue notice three days after the same bill would
+  /// collide, and the second would silently replace the first. See
+  /// [noticeIdFor] for the hash and why it is specified rather than borrowed.
+  @override
+  int get notificationId => noticeIdFor('$billId:${kind.name}:$days');
 
-  static int _fnv1a(String value) {
-    int hash = 0x811C9DC5;
+  @override
+  NotificationChannel get channel => kind.channel;
 
-    for (final int unit in value.codeUnits) {
-      hash ^= unit;
-      // Multiply by the FNV prime, kept inside 32 bits. Dart ints are 64-bit,
-      // so the mask is what makes this the specified algorithm rather than
-      // something that merely resembles it.
-      hash = (hash * 0x01000193) & 0xFFFFFFFF;
-    }
-
-    return hash;
-  }
+  @override
+  String get payload => NoticeTarget.encode(NoticeTargetKind.bill, billId);
 
   @override
   bool operator ==(Object other) =>

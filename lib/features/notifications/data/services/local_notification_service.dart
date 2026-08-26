@@ -5,9 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
-import '../../domain/entities/bill_notice.dart';
 import '../../domain/entities/notification_channel.dart';
 import '../../domain/entities/notification_permission.dart';
+import '../../domain/entities/scheduled_notice.dart';
 import '../../domain/services/notification_service.dart';
 
 /// [NotificationService] over `flutter_local_notifications`.
@@ -42,7 +42,9 @@ class LocalNotificationService implements NotificationService {
   bool _initialised = false;
 
   @override
-  Future<void> initialize({void Function(String billId)? onBillTapped}) async {
+  Future<void> initialize({
+    void Function(String payload)? onNoticeTapped,
+  }) async {
     if (_initialised) {
       return;
     }
@@ -62,8 +64,9 @@ class LocalNotificationService implements NotificationService {
       // worth doing when there is a designed one to use.
       settings: const AndroidInitializationSettings('@mipmap/ic_launcher'),
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        if (response.payload case final String billId when billId.isNotEmpty) {
-          onBillTapped?.call(billId);
+        if (response.payload case final String payload
+            when payload.isNotEmpty) {
+          onNoticeTapped?.call(payload);
         }
       },
     );
@@ -84,7 +87,7 @@ class LocalNotificationService implements NotificationService {
   }
 
   @override
-  Future<String?> billThatLaunchedTheApp() async {
+  Future<String?> noticeThatLaunchedTheApp() async {
     final NotificationAppLaunchDetails? details = await _android
         ?.getNotificationAppLaunchDetails();
 
@@ -98,7 +101,7 @@ class LocalNotificationService implements NotificationService {
   }
 
   @override
-  Future<void> replaceScheduledNotices(List<BillNotice> notices) async {
+  Future<void> replaceScheduledNotices(List<ScheduledNotice> notices) async {
     final AndroidFlutterLocalNotificationsPlugin? android = _android;
     if (android == null) {
       return;
@@ -109,12 +112,12 @@ class LocalNotificationService implements NotificationService {
     // tomorrow" should not have it swept away because they opened the app.
     await android.cancelAllPendingNotifications();
 
-    for (final BillNotice notice in notices) {
+    for (final ScheduledNotice notice in notices) {
       // Each notice names *its own* channel. Posting an overdue alert on the
       // reminders channel would put it behind the wrong toggle: someone who
       // switched reminders off would stop being told their bills are late,
       // which is the one message they did not ask to silence.
-      final NotificationChannel channel = notice.kind.channel;
+      final NotificationChannel channel = notice.channel;
 
       await android.zonedSchedule(
         id: notice.notificationId,
@@ -151,7 +154,7 @@ class LocalNotificationService implements NotificationService {
         // calendars — see the manifest. `allowWhileIdle` is what keeps Doze from
         // holding a reminder until the phone is next picked up.
         scheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        payload: notice.billId,
+        payload: notice.payload,
       );
     }
   }

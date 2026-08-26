@@ -1,5 +1,5 @@
-import '../entities/bill_notice.dart';
 import '../entities/notification_permission.dart';
+import '../entities/scheduled_notice.dart';
 
 /// The device's notification machinery, as PayPaw needs it.
 ///
@@ -24,11 +24,11 @@ abstract interface class NotificationService {
   /// permission: a permission dialog on first launch, before the user has seen
   /// what the app is for, is the one most reliably refused.
   ///
-  /// [onBillTapped] receives the id of the bill whose reminder was tapped. It is
-  /// wired here rather than exposed as a stream because a notification can
-  /// launch the app from cold, and the handler has to be in place before the
-  /// plugin reports that.
-  Future<void> initialize({void Function(String billId)? onBillTapped});
+  /// [onNoticeTapped] receives the tapped notification's payload, which names
+  /// what to open — see NoticeTarget. It is wired here rather than exposed as a
+  /// stream because a notification can launch the app from cold, and the handler
+  /// has to be in place before the plugin reports that.
+  Future<void> initialize({void Function(String payload)? onNoticeTapped});
 
   /// Re-reads the device's timezone. True if it moved.
   ///
@@ -44,16 +44,16 @@ abstract interface class NotificationService {
   /// answers a question rather than doing the work unconditionally.
   Future<bool> refreshTimezone();
 
-  /// The bill whose reminder started the app, if one did.
+  /// The payload of the notification that started the app, if one did.
   ///
   /// A tap on a notification while the app is dead does not reach
-  /// `onBillTapped` — the process did not exist to receive it. The plugin holds
+  /// `onNoticeTapped` — the process did not exist to receive it. The plugin holds
   /// the launch details instead, and this is the only way to find out. Returns
   /// null on a normal launch, and answers once: it reflects how the process
   /// started, not what has been tapped since.
-  Future<String?> billThatLaunchedTheApp();
+  Future<String?> noticeThatLaunchedTheApp();
 
-  /// Replaces every scheduled reminder with [reminders].
+  /// Replaces every scheduled notice with [notices].
   ///
   /// ## Replace, never merge
   ///
@@ -66,7 +66,7 @@ abstract interface class NotificationService {
   /// The failure that avoids is the one that matters: a reminder left scheduled
   /// for a bill that was paid, deleted, or moved. It fires anyway, it is right
   /// about nothing, and the user cannot make it stop.
-  Future<void> replaceScheduledNotices(List<BillNotice> reminders);
+  Future<void> replaceScheduledNotices(List<ScheduledNotice> notices);
 
   /// Everything currently scheduled, by notification id.
   ///

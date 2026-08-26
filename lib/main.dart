@@ -8,7 +8,7 @@ import 'core/config/app_config.dart';
 import 'core/providers/storage_providers.dart';
 import 'features/notifications/domain/services/notification_service.dart';
 import 'features/notifications/presentation/controllers/notification_providers.dart';
-import 'features/notifications/presentation/controllers/pending_bill_notification.dart';
+import 'features/notifications/presentation/controllers/pending_notice.dart';
 
 /// Application entry point.
 ///
@@ -52,16 +52,16 @@ Future<void> _initialiseNotifications(ProviderContainer container) async {
 
   try {
     await service.initialize(
-      onBillTapped: (String billId) =>
-          container.read(pendingBillNotificationProvider.notifier).open(billId),
+      onNoticeTapped: (String payload) =>
+          container.read(pendingNoticeProvider.notifier).open(payload),
     );
 
     // A tap that started the app from cold never reaches the callback above —
     // there was no process to receive it. The plugin holds it as launch details
     // instead, and this is the only way to find out. Read after `initialize`,
     // because before it there is nothing to ask.
-    if (await service.billThatLaunchedTheApp() case final String billId) {
-      container.read(pendingBillNotificationProvider.notifier).open(billId);
+    if (await service.noticeThatLaunchedTheApp() case final String payload) {
+      container.read(pendingNoticeProvider.notifier).open(payload);
     }
   } on Object catch (error, stackTrace) {
     debugPrint('PayPaw: notifications unavailable ($error)\n$stackTrace');

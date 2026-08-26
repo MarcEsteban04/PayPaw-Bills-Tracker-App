@@ -2177,11 +2177,101 @@ scrolling.
 It is absent entirely when everything is stopped: "₱0.00 a month · 0
 subscriptions" says nothing the list below does not say more clearly.
 
-## Sprint 51 — Subscription Alerts
+## Sprint 51 — Subscription Alerts — done, two of three
 
-* Upcoming renewal
-* Price changes
-* Cancellation reminders
+### One bullet could not be built honestly
+
+The roadmap asked for **upcoming renewal**, **price changes** and
+**cancellation reminders**. Two of those are here. Price changes is not, and the
+reason is worth writing down rather than working around.
+
+PayPaw learns a subscription's price **only when the user types it.** There is
+no billing feed, no email parsing, no provider API — so the only moment a price
+change could be detected is the moment somebody edits the amount themselves, and
+notifying a person about a change they just made is not an alert, it is an echo.
+
+Detecting it for real needs price history the schema does not have, and a
+*useful* version of the feature would be a record — "was ₱499, now ₱549 since
+September" on the detail sheet — which is a history, not an alert, and belongs to
+whichever sprint decides to add the table. Building an alert that can only ever
+fire on the user's own keystroke would have been a feature-shaped thing that
+never fires.
+
+### Upcoming renewal was already half-built
+
+A subscription generates bills. The generator materialises them **45 days
+ahead**, and `BillNoticeSchedule` has scheduled reminders against bills since
+Sprint 41. So "Netflix is due in 3 days" *already arrives* — the roadmap's first
+bullet, delivered two sprints ago by something that has never heard of
+subscriptions.
+
+Adding "Netflix renews in 3 days" beside it would be two notifications for one
+charge, and the way people respond to that is by silencing a channel.
+
+So renewals are announced **only for plans that do not charge monthly**. A
+monthly plan renewing is not news: it happened last month, it will happen next
+month, and the amount is one the user has already absorbed. What ambushes
+somebody is the **annual** subscription they forgot they had, which takes ₱6,000
+out of an account eleven months after the last time they thought about it.
+
+They also warn **further ahead than a bill reminder** — a week, then two days. A
+bill can be paid on the day it is due; a subscription often cannot be cancelled
+on the day it renews, because providers want notice and the cancel page is never
+where it was last year. That lead time is what makes this a *cancellation*
+reminder, which is the third bullet.
+
+### Trials were the real gap
+
+A trial has **no bill at all**. `trial_ends_on` is a date on the subscription row
+with nothing in `bills` corresponding to it, so nothing was ever scheduled
+against it — and a trial converting silently is the single way subscriptions
+most reliably take money nobody meant to spend.
+
+Three days out, then the day before. The wording says what will *happen* rather
+than what is ending: "Apple TV+ starts charging tomorrow" is a fact about money,
+where "your trial ends tomorrow" is a fact about a calendar, and only one of them
+makes somebody open the app.
+
+A trial suppresses the renewal notice for the same subscription. The end of a
+free period and the first charge that follows it are one event to the person
+being charged, and saying it twice in two wordings is how a useful channel earns
+itself a mute.
+
+### One schedule, not two
+
+`replaceScheduledNotices` cancels every pending notification and lays down what
+it is given — it *is* the whole schedule. A second call for subscription notices
+would have wiped the bill reminders silently, and the failure would surface days
+later as a reminder that never arrived.
+
+So there is one call and it takes a `ScheduledNotice`. `BillNotice` implements
+it, `SubscriptionNotice` implements it, and neither knows the other exists.
+
+### The payload had to grow a type
+
+It was a bare bill id, which was unambiguous while bills were the only thing
+that notified. Subscription ids are UUIDs too, and routing to the wrong screen
+because a string could be either is a bug with no signature.
+
+An unprefixed payload still reads as a bill — not out of politeness to old data
+but to **pending** data: a notification scheduled by the previous build is
+sitting in Android's alarm table right now and it will fire. The schedule is
+rebuilt at every launch, so this heals itself — but it heals *after* that
+notification, not before.
+
+`BillReminderListener` became `NoticeListener` and `PendingBillNotification`
+became `PendingNotice`, because both now handle two kinds and a name that lies is
+worse than a rename.
+
+### The third channel
+
+`subscription_notices`, its own row in Android's settings. A bill reminder says
+*pay this*; these say *cancel this if you do not want it* — and that is worth
+arriving even for somebody who silenced their bill reminders because they pay by
+standing order and do not need chasing.
+
+The channel count is asserted in a test so that a fourth has to be argued for
+rather than added.
 
 ---
 

@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// The bill a tapped reminder wants opened, until something opens it.
+/// What a tapped notification wants opened, until something opens it.
 ///
 /// ## Why a hand-off and not a route
 ///
@@ -20,27 +20,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Left set, it would reopen the drawer every time the user returned to Bills,
 /// days after the reminder — which is the same class of bug that made a bill
 /// form fail to close in Sprint 25, and it is avoided the same way.
-class PendingBillNotification extends Notifier<String?> {
+class PendingNotice extends Notifier<String?> {
   @override
   String? build() => null;
 
-  /// Records that a reminder for [billId] was tapped.
-  void open(String billId) => state = billId;
+  /// Records that a notification carrying [payload] was tapped.
+  ///
+  /// The raw payload rather than an id, because since Sprint 51 it can name a
+  /// bill or a subscription — see [NoticeTarget]. Decoding it here would put the
+  /// knowledge of which screens exist inside a value holder.
+  void open(String payload) => state = payload;
 
-  /// Takes the pending id, leaving nothing behind.
+  /// Takes the pending payload, leaving nothing behind.
   ///
   /// Read-and-clear in one call rather than two, so a caller cannot read it,
   /// fail partway, and leave it set for the next screen that looks.
   String? take() {
-    final String? billId = state;
+    final String? payload = state;
     state = null;
 
-    return billId;
+    return payload;
   }
 }
 
-final NotifierProvider<PendingBillNotification, String?>
-pendingBillNotificationProvider =
-    NotifierProvider<PendingBillNotification, String?>(
-      PendingBillNotification.new,
-    );
+final NotifierProvider<PendingNotice, String?> pendingNoticeProvider =
+    NotifierProvider<PendingNotice, String?>(PendingNotice.new);
