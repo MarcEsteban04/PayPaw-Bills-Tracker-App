@@ -12,6 +12,7 @@ import 'package:paypaw/features/subscriptions/domain/entities/subscription.dart'
 import 'package:paypaw/features/subscriptions/domain/entities/subscription_details.dart';
 import 'package:paypaw/features/subscriptions/presentation/controllers/subscription_providers.dart';
 import 'package:paypaw/features/subscriptions/presentation/screens/subscriptions_screen.dart';
+import 'package:paypaw/features/subscriptions/presentation/widgets/subscription_share_bar.dart';
 import 'package:paypaw/features/subscriptions/presentation/widgets/subscription_spend_card.dart';
 import 'package:paypaw/features/subscriptions/presentation/widgets/subscription_tile.dart';
 
@@ -183,9 +184,12 @@ void main() {
 
       expect(find.text('EVERY MONTH'), findsOneWidget);
       expect(find.text('₱748.00'), findsOneWidget);
-      // The year is the number that changes minds, and the count says what the
-      // figure is *of*.
-      expect(find.text('₱8,976.00 a year · 2 subscriptions'), findsOneWidget);
+      // The year is the number that changes minds, so it sits beside the
+      // headline rather than buried in a sentence under it. The count says what
+      // the figures are *of*.
+      expect(find.text('A YEAR'), findsOneWidget);
+      expect(find.text('₱8,976.00'), findsOneWidget);
+      expect(find.text('2 services'), findsOneWidget);
     });
 
     testWidgets('names the dearest by its monthly equivalent', (
@@ -203,7 +207,10 @@ void main() {
         subscription(id: 'sub-2', provider: 'Spotify', amountMinor: 14900),
       ]);
 
-      expect(find.text('Dearest is Spotify'), findsOneWidget);
+      // ₱149 of a ₱249 monthly total. Stated as a share rather than as a name,
+      // because "dearest" alone left the reader to divide — and drawn as one
+      // too, by the bar above it.
+      expect(find.text('Spotify is 60% of it'), findsOneWidget);
     });
 
     testWidgets('spells out the monthly equivalent on a non-monthly row', (
@@ -217,7 +224,15 @@ void main() {
         ),
       ]);
 
-      expect(find.text('₱1,200.00'), findsOneWidget);
+      // Scoped to the row: a lone yearly subscription makes the card's annual
+      // figure the same number.
+      expect(
+        find.descendant(
+          of: find.byType(SubscriptionTile),
+          matching: find.text('₱1,200.00'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('₱100.00/mo'), findsOneWidget);
     });
 
@@ -258,6 +273,34 @@ void main() {
         find.text('+₱249.00 a month when this trial ends'),
         findsOneWidget,
       );
+    });
+
+    testWidgets('draws the split, and the bar has actual height', (
+      WidgetTester tester,
+    ) async {
+      // The height is the assertion. `ColoredBox` with no child has no
+      // intrinsic height, so the first version of this bar centred three
+      // zero-height segments and rendered as a gap — invisible to every test
+      // that only asked whether the widget was in the tree.
+      await pumpScreen(tester, <Subscription>[
+        subscription(),
+        subscription(id: 'sub-2', provider: 'Spotify', amountMinor: 19900),
+      ]);
+
+      expect(find.byType(SubscriptionShareBar), findsOneWidget);
+      expect(
+        tester.getSize(find.byType(SubscriptionShareBar)).height,
+        greaterThan(0),
+      );
+    });
+
+    testWidgets('and draws no split for a single subscription', (
+      WidgetTester tester,
+    ) async {
+      // A bar of one colour says less than the figure above it already did.
+      await pumpScreen(tester, <Subscription>[subscription()]);
+
+      expect(find.byType(SubscriptionShareBar), findsNothing);
     });
 
     testWidgets('has nothing to say when everything is stopped', (

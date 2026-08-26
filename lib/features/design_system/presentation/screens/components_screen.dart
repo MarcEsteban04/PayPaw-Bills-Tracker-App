@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/domain/money.dart';
 import '../../../../core/error/app_exception.dart';
 import '../../../../core/presentation/widgets/app_amount_field.dart';
 import '../../../../core/presentation/widgets/app_bottom_sheet.dart';
@@ -19,7 +20,14 @@ import '../../../../core/presentation/widgets/app_text_field.dart';
 import '../../../../core/presentation/widgets/app_toast.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../recurring/domain/entities/recurrence.dart';
+import '../../../recurring/domain/entities/recurrence_frequency.dart';
+import '../../../recurring/domain/entities/recurring_bill.dart';
 import '../../../recurring/presentation/widgets/recurrence_field.dart';
+import '../../../subscriptions/domain/entities/subscription.dart';
+import '../../../subscriptions/domain/entities/subscription_details.dart';
+import '../../../subscriptions/domain/entities/subscription_spend.dart';
+import '../../../subscriptions/presentation/widgets/subscription_spend_card.dart';
+import '../../../subscriptions/presentation/widgets/subscription_tile.dart';
 
 /// A gallery of every reusable component, live.
 ///
@@ -178,6 +186,31 @@ class _ComponentsScreenState extends State<ComponentsScreen> {
               today: DateTime(2026, 8, 25),
               onChanged: (Recurrence? value) =>
                   setState(() => _recurrence = value),
+            ),
+          ),
+          _Section(
+            title: 'Subscriptions',
+            note:
+                'The mark is generated from the service name — a stable colour '
+                'and a monogram — so a list of a dozen can be scanned rather '
+                'than read. No logo service, no bundled trademarks, and it '
+                'recognises every provider rather than the forty somebody '
+                'thought of.',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                SubscriptionSpendCard(spend: _sampleSpend),
+                const SizedBox(height: AppSpacing.cardGap),
+                for (final Subscription each
+                    in _sampleSubscriptions) ...<Widget>[
+                  SubscriptionTile(
+                    subscription: each,
+                    today: _galleryToday,
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: AppSpacing.cardGap),
+                ],
+              ],
             ),
           ),
           _Section(
@@ -439,3 +472,67 @@ enum _SampleCategory {
 
   final String label;
 }
+
+/// A fixed date, not the device clock.
+///
+/// A gallery that renders differently every day is a gallery nobody can compare
+/// against yesterday's screenshot.
+final DateTime _galleryToday = DateTime(2026, 8, 25);
+
+/// Four services covering the states a subscription row can be in: an ordinary
+/// monthly one, a yearly plan whose face value is not comparable with it, a
+/// running trial, and one that has been stopped.
+final List<Subscription> _sampleSubscriptions = <Subscription>[
+  _sampleSubscription(provider: 'Netflix', planName: 'Premium', amount: 54900),
+  _sampleSubscription(
+    provider: 'Adobe',
+    planName: 'Photography',
+    amount: 720000,
+    frequency: RecurrenceFrequency.yearly,
+  ),
+  _sampleSubscription(
+    provider: 'Apple TV+',
+    amount: 24900,
+    trialEndsOn: DateTime(2026, 8, 28),
+  ),
+  _sampleSubscription(provider: 'Spotify', amount: 19900, isActive: false),
+];
+
+final SubscriptionSpend _sampleSpend = SubscriptionSpend.of(
+  _sampleSubscriptions,
+  today: _galleryToday,
+);
+
+Subscription _sampleSubscription({
+  required String provider,
+  required int amount,
+  String? planName,
+  RecurrenceFrequency frequency = RecurrenceFrequency.monthly,
+  bool isActive = true,
+  DateTime? trialEndsOn,
+}) => Subscription(
+  template: RecurringBill(
+    id: provider,
+    userId: 'gallery',
+    kind: RecurringBillKind.subscription,
+    name: provider,
+    payee: provider,
+    amount: Money.php(amount),
+    recurrence: Recurrence(
+      frequency: frequency,
+      startsOn: DateTime(2026, 1, 18),
+      dayOfMonth: 18,
+      monthOfYear: frequency == RecurrenceFrequency.yearly ? 1 : null,
+    ),
+    nextDueOn: DateTime(2026, 9, 18),
+    isActive: isActive,
+    createdAt: DateTime(2026, 1, 2),
+    updatedAt: DateTime(2026, 1, 2),
+  ),
+  details: SubscriptionDetails(
+    recurringBillId: provider,
+    provider: provider,
+    planName: planName,
+    trialEndsOn: trialEndsOn,
+  ),
+);

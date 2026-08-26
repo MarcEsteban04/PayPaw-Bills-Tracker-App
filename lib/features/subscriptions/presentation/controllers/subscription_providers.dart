@@ -7,6 +7,7 @@ import '../../../recurring/presentation/controllers/recurring_bill_providers.dar
 import '../../data/repositories/composite_subscription_repository.dart';
 import '../../data/repositories/supabase_subscription_details_store.dart';
 import '../../domain/entities/subscription.dart';
+import '../../domain/entities/subscription_group.dart';
 import '../../domain/entities/subscription_sort.dart';
 import '../../domain/entities/subscription_spend.dart';
 import '../../domain/repositories/subscription_details_store.dart';
@@ -124,3 +125,17 @@ sortedSubscriptionsProvider = Provider<List<Subscription>>((Ref ref) {
     ],
   };
 });
+
+/// The list, in the chosen order, split into sections.
+///
+/// Grouped here rather than in the screen for the same reason the sort is: what
+/// kind of thing a row is, and therefore where it sits, is a fact about the data
+/// — and a list arranged inside a `build` is one no test can reach without
+/// pumping a widget.
+final Provider<List<SubscriptionSection>> subscriptionSectionsProvider =
+    Provider<List<SubscriptionSection>>(
+      (Ref ref) => groupSubscriptions(
+        ref.watch(sortedSubscriptionsProvider),
+        today: ref.watch(subscriptionTodayProvider),
+      ),
+    );

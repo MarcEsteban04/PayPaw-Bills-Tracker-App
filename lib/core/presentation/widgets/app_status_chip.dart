@@ -55,10 +55,23 @@ class AppStatusChip extends StatelessWidget {
               Icon(iconData, size: 12, color: foreground),
               const SizedBox(width: AppSpacing.xs),
             ],
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelMedium
-                  ?.copyWith(color: foreground),
+            // Flexible, so a long label in a narrow column truncates instead of
+            // overflowing the row it is in.
+            //
+            // `mainAxisSize.min` means the chip normally takes exactly the width
+            // of its own text and this never fires. It fires where the parent
+            // has less width than that to give — a "WILL NOT RENEW" beside a
+            // price on a 320dp phone at double text scale — and the choice there
+            // is between a clipped word and a chip painting over the amount
+            // next to it.
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelMedium
+                    ?.copyWith(color: foreground),
+              ),
             ),
           ],
         ),

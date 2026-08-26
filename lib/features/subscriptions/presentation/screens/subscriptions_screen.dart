@@ -12,6 +12,7 @@ import '../../../../core/presentation/widgets/app_toast.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/subscription.dart';
+import '../../domain/entities/subscription_group.dart';
 import '../../domain/entities/subscription_sort.dart';
 import '../../domain/entities/subscription_spend.dart';
 import '../controllers/subscription_providers.dart';
@@ -176,44 +177,97 @@ class _List extends ConsumerWidget {
     // against a wrong phone clock would disagree with the due dates beside it.
     final DateTime today = ref.watch(subscriptionTodayProvider);
     final SubscriptionSpend spend = ref.watch(subscriptionSpendProvider);
-    final List<Subscription> ordered = ref.watch(sortedSubscriptionsProvider);
+    final List<SubscriptionSection> sections = ref.watch(
+      subscriptionSectionsProvider,
+    );
 
-    return ListView.separated(
+    // Headings only where there is more than one kind of thing to tell apart.
+    // A user with four plain subscriptions and no trials would otherwise get a
+    // heading reading "Active" above every row they have, which labels nothing.
+    final bool showHeadings = sections.length > 1;
+
+    final List<Widget> children = <Widget>[
+      // Inside the scroll rather than pinned above it, so the figures scroll
+      // away and the rows get the whole screen — on a phone holding a dozen
+      // subscriptions, a header that never moves costs a third of the list
+      // forever.
+      //
+      // Absent when every subscription is stopped: a card reading "₱0.00 a
+      // month · 0 services" says nothing the list below does not say better.
+      if (spend.hasAnything) ...<Widget>[
+        SubscriptionSpendCard(spend: spend),
+        const SizedBox(height: AppSpacing.sectionGap),
+      ],
+
+      for (final (int index, SubscriptionSection section)
+          in sections.indexed) ...<Widget>[
+        if (showHeadings) ...<Widget>[
+          if (index > 0) const SizedBox(height: AppSpacing.sectionGap),
+          _SectionHeading(section: section),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        for (final Subscription subscription in section.subscriptions) ...[
+          SubscriptionTile(
+            subscription: subscription,
+            today: today,
+            onTap: () => showSubscriptionDetailSheet(
+              context: context,
+              ref: ref,
+              subscription: subscription,
+              today: today,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.cardGap),
+        ],
+      ],
+    ];
+
+    return ListView.builder(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screenInset,
         AppSpacing.lg,
         AppSpacing.screenInset,
         AppSpacing.bottomNavClearance,
       ),
-      // One extra for the card at the top. Inside the list rather than pinned
-      // above it, so the figures scroll away and the rows get the whole screen —
-      // on a phone holding a dozen subscriptions, a header that never moves
-      // costs a third of the list forever.
-      itemCount: ordered.length + 1,
-      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.cardGap),
-      itemBuilder: (BuildContext context, int index) {
-        if (index == 0) {
-          // Absent when every subscription is stopped: a card reading "₱0.00 a
-          // month · 0 subscriptions" is a card that says nothing the list below
-          // does not already say more clearly.
-          return spend.hasAnything
-              ? SubscriptionSpendCard(spend: spend)
-              : const SizedBox.shrink();
-        }
+      itemCount: children.length,
+      itemBuilder: (BuildContext context, int index) => children[index],
+    );
+  }
+}
 
-        final Subscription subscription = ordered[index - 1];
+/// A heading over one group of rows.
+///
+/// Carries its own count, because the number is half of what the heading is
+/// worth: "Stopped 4" answers a question that "Stopped" only raises.
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading({required this.section});
 
-        return SubscriptionTile(
-          subscription: subscription,
-          today: today,
-          onTap: () => showSubscriptionDetailSheet(
-            context: context,
-            ref: ref,
-            subscription: subscription,
-            today: today,
+  final SubscriptionSection section;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
+    return Row(
+      children: <Widget>[
+        Text(
+          section.group.label.toUpperCase(),
+          style: textTheme.labelSmall?.copyWith(
+            color: colors.textTertiary,
+            letterSpacing: 1.2,
+            fontWeight: FontWeight.w700,
           ),
-        );
-      },
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Text(
+          '${section.subscriptions.length}',
+          style: textTheme.labelSmall?.copyWith(
+            color: colors.textTertiary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     );
   }
 }

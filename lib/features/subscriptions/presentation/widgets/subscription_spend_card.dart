@@ -6,6 +6,7 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/subscription.dart';
 import '../../domain/entities/subscription_spend.dart';
+import 'subscription_share_bar.dart';
 
 /// What the subscriptions cost, above the list of them.
 ///
@@ -16,8 +17,14 @@ import '../../domain/entities/subscription_spend.dart';
 /// to be worked out by reading twelve rows and doing arithmetic on mixed units.
 ///
 /// The monthly figure leads because it is the one people budget in. The annual
-/// one sits under it because it is the one that changes minds: ₱549 a month and
+/// one sits beside it because it is the one that changes minds: ₱549 a month and
 /// ₱6,588 a year are the same fact and only one of them sounds like a decision.
+///
+/// ## And then it shows where the money goes
+///
+/// The first version of this card said "Dearest is Adobe" and left the reader to
+/// divide. [SubscriptionShareBar] draws the split instead, so "one service is
+/// most of this" is something you see rather than something you work out.
 class SubscriptionSpendCard extends StatelessWidget {
   const SubscriptionSpendCard({required this.spend, super.key});
 
@@ -34,47 +41,159 @@ class SubscriptionSpendCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(
-            'EVERY MONTH',
-            style: textTheme.labelSmall?.copyWith(
-              color: colors.textTertiary,
-              letterSpacing: 1.2,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: <Widget>[
+              // Both halves flex, in a fixed ratio. A right-hand column laid out
+              // at its natural width overflows a 320dp phone at text scale 2 —
+              // the two figures simply do not fit side by side there — and a
+              // loose `Flexible` would fix that at the cost of unpinning the
+              // aside from the card's right edge at every ordinary size.
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'EVERY MONTH',
+                      style: textTheme.labelSmall?.copyWith(
+                        color: colors.textTertiary,
+                        letterSpacing: 1.2,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      spend.perMonth.format(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.displaySmall?.copyWith(
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        height: 1.05,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              // The year, on its own and to the side rather than buried in a
+              // sentence under the figure. It is the number that changes minds,
+              // and it was previously the smallest thing on the card.
+              Expanded(
+                flex: 2,
+                child: _Aside(
+                  label: 'A YEAR',
+                  value: spend.perYear.format(),
+                  caption:
+                      '${spend.activeCount} '
+                      '${spend.activeCount == 1 ? 'service' : 'services'}',
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            spend.perMonth.format(),
-            style: textTheme.displaySmall?.copyWith(
-              color: colors.textPrimary,
-              fontWeight: FontWeight.w700,
-              height: 1.05,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            // The count says what the figure is *of*. Without it a reader who
-            // has paused three subscriptions cannot tell whether they are in
-            // the number or not — and they are not.
-            '${spend.perYear.format()} a year · '
-            '${spend.activeCount} ${spend.activeCount == 1 ? 'subscription' : 'subscriptions'}',
-            style: textTheme.bodyMedium?.copyWith(color: colors.textSecondary),
-          ),
+
+          if (spend.ranked.length > 1) ...<Widget>[
+            const SizedBox(height: AppSpacing.lg),
+            SubscriptionShareBar(spend: spend),
+            if (spend.costliest case final Subscription dearest) ...<Widget>[
+              const SizedBox(height: AppSpacing.sm),
+              _DearestLine(dearest: dearest, spend: spend),
+            ],
+          ],
 
           if (spend.hasPendingTrials) ...<Widget>[
             const SizedBox(height: AppSpacing.lg),
             _TrialNote(spend: spend),
           ],
-
-          if (spend.costliest case final Subscription dearest
-              when spend.activeCount + spend.trialCount > 1) ...<Widget>[
-            const SizedBox(height: AppSpacing.lg),
-            Divider(height: 1, color: colors.border),
-            const SizedBox(height: AppSpacing.lg),
-            _Dearest(subscription: dearest),
-          ],
         ],
       ),
+    );
+  }
+}
+
+/// A secondary figure, right-aligned beside the headline.
+class _Aside extends StatelessWidget {
+  const _Aside({
+    required this.label,
+    required this.value,
+    required this.caption,
+  });
+
+  final String label;
+  final String value;
+  final String caption;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: <Widget>[
+        Text(
+          label,
+          style: textTheme.labelSmall?.copyWith(
+            color: colors.textTertiary,
+            letterSpacing: 1.2,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xxs),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: textTheme.titleMedium?.copyWith(
+            color: colors.textSecondary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        Text(
+          caption,
+          style: textTheme.bodySmall?.copyWith(color: colors.textTertiary),
+        ),
+      ],
+    );
+  }
+}
+
+/// Which slice of the bar is the big one, in words.
+///
+/// The bar shows the shape and this names it. Neither is enough alone: a bar
+/// with no labels is a decoration, and a label with no bar is the sentence this
+/// card used to carry, which made the reader do the division.
+class _DearestLine extends StatelessWidget {
+  const _DearestLine({required this.dearest, required this.spend});
+
+  final Subscription dearest;
+  final SubscriptionSpend spend;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
+    final int total = spend.ranked.fold<int>(
+      0,
+      (int sum, Subscription each) =>
+          sum + SubscriptionSpend.monthlyCostOf(each).minorUnits,
+    );
+
+    if (total <= 0) {
+      return const SizedBox.shrink();
+    }
+
+    final int percent =
+        (SubscriptionSpend.monthlyCostOf(dearest).minorUnits * 100 / total)
+            .round();
+
+    return Text(
+      '${dearest.details.provider} is $percent% of it',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: textTheme.bodySmall?.copyWith(color: colors.textSecondary),
     );
   }
 }
@@ -121,51 +240,6 @@ class _TrialNote extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// The single biggest one.
-///
-/// "What is the expensive one" is the next question after "how much", and it is
-/// the question the roadmap's *most expensive subscriptions* is really asking.
-/// One name here rather than a ranked block of three, because the full ranking
-/// is the list below under its Cost order — printing the top three twice on one
-/// screen would be a table of contents for a page you can already see.
-class _Dearest extends StatelessWidget {
-  const _Dearest({required this.subscription});
-
-  final Subscription subscription;
-
-  @override
-  Widget build(BuildContext context) {
-    final AppPalette colors = context.colors;
-    final TextTheme textTheme = Theme.of(context).textTheme;
-
-    return Row(
-      children: <Widget>[
-        Icon(Icons.trending_up_rounded, size: 18, color: colors.textSecondary),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Text(
-            'Dearest is ${subscription.details.provider}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: textTheme.bodySmall?.copyWith(color: colors.textSecondary),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Text(
-          // The normalised figure, not the row's own. Comparing a yearly plan
-          // with a monthly one on their face values is what makes the wrong one
-          // look dearest.
-          '${SubscriptionSpend.monthlyCostOf(subscription).format()}/mo',
-          style: textTheme.bodySmall?.copyWith(
-            color: colors.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
     );
   }
 }

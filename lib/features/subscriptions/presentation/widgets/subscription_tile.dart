@@ -7,6 +7,7 @@ import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/subscription.dart';
 import '../../domain/entities/subscription_spend.dart';
+import 'subscription_mark.dart';
 
 /// One subscription in the list.
 ///
@@ -44,6 +45,15 @@ class SubscriptionTile extends StatelessWidget {
       onTap: onTap,
       child: Row(
         children: <Widget>[
+          // The service's own mark. Before it, the list was a column of
+          // left-aligned text in one weight and one colour — legible, and
+          // impossible to scan. A reader looking for Spotify was reading names
+          // rather than recognising one.
+          SubscriptionMark(
+            provider: subscription.details.provider,
+            isMuted: isPaused,
+          ),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -77,33 +87,43 @@ class SubscriptionTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.md),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: <Widget>[
-              Text(
-                subscription.amount.format(),
-                style: textTheme.titleSmall?.copyWith(
-                  color: isPaused ? colors.textSecondary : colors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              // The monthly equivalent, but only where the two differ.
-              //
-              // "₱549" and "₱1,200" in one column tell the reader nothing when
-              // the first is monthly and the second is yearly — and a reader
-              // deciding what to cancel is comparing exactly those two numbers.
-              // On a plain monthly plan it would be the same figure twice, so
-              // it is left off.
-              if (!SubscriptionSpend.isMonthly(subscription)) ...<Widget>[
-                const SizedBox(height: AppSpacing.xxs),
+          // Flexible, not a bare Column. At its natural width a two-line price
+          // column — "₱7,200.00" over "₱600.00/mo" — is wider than a 320dp
+          // phone has left at double text scale, and the row overflowed rather
+          // than the price giving way.
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: <Widget>[
                 Text(
-                  '${SubscriptionSpend.monthlyCostOf(subscription).format()}/mo',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: colors.textTertiary,
+                  subscription.amount.format(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleSmall?.copyWith(
+                    color: isPaused ? colors.textSecondary : colors.textPrimary,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
+                // The monthly equivalent, but only where the two differ.
+                //
+                // "₱549" and "₱1,200" in one column tell the reader nothing
+                // when the first is monthly and the second is yearly — and a
+                // reader deciding what to cancel is comparing exactly those two
+                // numbers. On a plain monthly plan it would be the same figure
+                // twice, so it is left off.
+                if (!SubscriptionSpend.isMonthly(subscription)) ...<Widget>[
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text(
+                    '${SubscriptionSpend.monthlyCostOf(subscription).format()}/mo',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colors.textTertiary,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ],
       ),

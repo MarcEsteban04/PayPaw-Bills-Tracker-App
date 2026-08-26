@@ -1,32 +1,16 @@
+import '../../../../core/domain/stable_hash.dart';
 import 'notification_channel.dart';
 
-/// A scheduler id for [key], stable across releases.
+/// A scheduler id for [key].
 ///
 /// Android notification ids are 32-bit ints and the things PayPaw notifies about
-/// are UUIDs, so the key has to be hashed. FNV-1a rather than `String.hashCode`,
-/// which Dart does not promise is stable between releases.
-///
-/// Stability is not load-bearing — the scheduler cancels every pending
-/// notification before laying down a new set, so an id only has to be unique
-/// within one pass — but a specified hash is reproducible in a test, and a
-/// collision would drop a notice with no sign that it happened.
+/// are UUIDs, so the key has to be hashed. See [stableHash] for why the hash is
+/// specified rather than borrowed from the language.
 ///
 /// **The key must name the kind as well as the subject.** Without it, a bill
 /// reminder three days out and an overdue notice three days late would collide
 /// on the same bill, and one of them would vanish.
-int noticeIdFor(String key) {
-  int hash = 0x811C9DC5;
-
-  for (final int unit in key.codeUnits) {
-    hash ^= unit;
-    // Multiply by the FNV prime, kept inside 32 bits. Dart ints are 64-bit, so
-    // the mask is what makes this the specified algorithm rather than something
-    // that merely resembles it.
-    hash = (hash * 0x01000193) & 0xFFFFFFFF;
-  }
-
-  return hash & 0x7FFFFFFF;
-}
+int noticeIdFor(String key) => stableHash(key);
 
 /// Everything the platform scheduler needs to lay down one notification.
 ///
