@@ -10,6 +10,7 @@ import 'package:paypaw/features/bills/domain/entities/bill.dart';
 import 'package:paypaw/features/bills/domain/entities/bill_status.dart';
 import 'package:paypaw/features/bills/domain/entities/bill_with_status.dart';
 import 'package:paypaw/features/bills/presentation/controllers/bill_detail_provider.dart';
+import 'package:paypaw/features/bills/presentation/controllers/bill_filter_controller.dart';
 import 'package:paypaw/features/bills/presentation/controllers/bill_repository_provider.dart';
 import 'package:paypaw/features/bills/presentation/screens/bills_screen.dart';
 import 'package:paypaw/features/bills/presentation/widgets/bill_list_tile.dart';
@@ -67,6 +68,7 @@ void main() {
     WidgetTester tester, {
     List<BillWithStatus> bills = const <BillWithStatus>[],
     bool holdFirstFetch = false,
+    Size size = const Size(392, 900),
   }) async {
     repository = FakeBillRepository(bills: bills);
     if (holdFirstFetch) {
@@ -74,7 +76,7 @@ void main() {
     }
 
     tester.view
-      ..physicalSize = const Size(392 * 3, 900 * 3)
+      ..physicalSize = Size(size.width * 3, size.height * 3)
       ..devicePixelRatio = 3;
     addTearDown(tester.view.reset);
 
@@ -106,6 +108,12 @@ void main() {
                 name: AppRoutes.editBill.routeName,
                 builder: (_, GoRouterState state) =>
                     Scaffold(body: Text('edit ${state.pathParameters['id']}')),
+              ),
+              GoRoute(
+                path: AppRoutes.subscriptions.path,
+                name: AppRoutes.subscriptions.routeName,
+                builder: (_, _) =>
+                    const Scaffold(body: Text('subscriptions stub')),
               ),
             ],
           ),
@@ -318,6 +326,48 @@ void main() {
       repository.releaseFetch();
       await tester.pumpAndSettle();
       expect(find.byType(AppLoadingIndicator), findsNothing);
+    });
+  });
+
+  group('the way through to subscriptions', () {
+    testWidgets('is in the header, because this is where their charges land', (
+      WidgetTester tester,
+    ) async {
+      // The dashboard tile was the only door. Somebody who lives on this tab
+      // could go a long time without meeting the screen at all.
+      await pumpList(tester, bills: <BillWithStatus>[item()]);
+
+      await tester.tap(find.byTooltip('Subscriptions'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('subscriptions stub'), findsOneWidget);
+    });
+
+    testWidgets('and the header still fits at 320dp with a filter applied', (
+      WidgetTester tester,
+    ) async {
+      // The crowded case, and the reason this test exists. The header now
+      // carries four controls, and "Clear (n)" only appears once something is
+      // narrowed — so the widest it ever gets is a state no default pump
+      // reaches. A fourth icon was exactly the sort of addition that overflows
+      // here and nowhere else.
+      await pumpList(
+        tester,
+        bills: <BillWithStatus>[item()],
+        size: const Size(320, 640),
+      );
+
+      final ProviderContainer container = ProviderScope.containerOf(
+        tester.element(find.byType(BillsScreen)),
+      );
+      container.read(billFilterProvider.notifier).setStatuses(<BillStatus>{
+        BillStatus.overdue,
+      });
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Clear ('), findsOneWidget);
+      expect(find.byTooltip('Subscriptions'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
   });
 }

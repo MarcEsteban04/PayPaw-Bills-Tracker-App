@@ -97,6 +97,22 @@ class BillsScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Bills'),
         actions: <Widget>[
+          // Subscriptions, from the screen its charges land on.
+          //
+          // The dashboard tile was the only way in, and somebody who lives on
+          // this tab could go a long time without meeting it. Here because the
+          // adjacency is already true: a subscription generates the bills in the
+          // list below, and every one of them carries the repeat marker.
+          //
+          // Leftmost, and furthest from the filled circle on the right. That one
+          // creates, and keeping the "leave this screen" control away from it
+          // stops a thumb reaching for one and finding the other.
+          IconButton(
+            onPressed: () =>
+                context.pushNamed(AppRoutes.subscriptions.routeName),
+            tooltip: 'Subscriptions',
+            icon: const Icon(Icons.subscriptions_outlined),
+          ),
           // Only when there is something to clear. A permanently visible
           // "Clear filters" on an unfiltered screen is a button that does
           // nothing, and the pill row already shows what is applied.
