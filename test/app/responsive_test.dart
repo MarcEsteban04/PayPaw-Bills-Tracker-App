@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:paypaw/app/paypaw_app.dart';
+import 'package:paypaw/app/router/app_routes.dart';
 import 'package:paypaw/app/shell/app_destination.dart';
 import 'package:paypaw/app/shell/paypaw_bottom_nav.dart';
 import 'package:paypaw/core/presentation/layout/app_breakpoints.dart';
@@ -101,26 +105,23 @@ void main() {
     // These two are the densest screens in the app, so they are the most likely
     // to overflow — and they are also where a regression would be spotted last,
     // since nobody ships them.
-    for (final String gallery in <String>['Design system', 'Components']) {
+    for (final (String gallery, AppRoutes route) in <(String, AppRoutes)>[
+      ('Design system', AppRoutes.designSystem),
+      ('Components', AppRoutes.components),
+    ]) {
       testWidgets('$gallery at 320dp and text scale 2', (
         WidgetTester tester,
       ) async {
         useWindow(tester, const Size(320, 640), 2);
         await pumpApp(tester);
 
-        await tester.tap(find.bySemanticsLabel(AppDestination.profile.label));
-        await tester.pumpAndSettle();
-
-        // At this size and font scale the developer tiles sit below the fold, so
-        // scroll to the entry rather than assuming it is on screen.
-        await tester.scrollUntilVisible(
-          find.text(gallery),
-          200,
-          scrollable: find.byType(Scrollable).first,
+        // Pushed by route. These lost their entry on the settings screen when
+        // the developer section went — they are dev tools reachable by URL now —
+        // and what this test is about is whether they fit, not how to reach them.
+        unawaited(
+          GoRouter.of(tester.element(find.byType(PayPawBottomNav)))
+              .pushNamed(route.routeName),
         );
-        await tester.pumpAndSettle();
-
-        await tester.tap(find.text(gallery));
         // Explicit pumps rather than pumpAndSettle: the components gallery
         // contains a spinner and pulsing skeletons, and a tree with a repeating
         // animation never goes quiet, so pumpAndSettle would time out instead of
@@ -131,7 +132,7 @@ void main() {
 
         // Walk the whole list. An overflow further down would otherwise never be
         // laid out, and so never be caught.
-        // .last, not just byType: the Profile screen behind this pushed route
+        // .last, not just byType: the settings screen behind this pushed route
         // has a ListView of its own, and the gallery is the one on top.
         final Finder galleryList = find.byType(ListView).last;
 

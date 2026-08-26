@@ -389,7 +389,7 @@ class _Scaffold extends StatelessWidget {
           email: ref.watch(currentUserProvider).value?.email,
           name: ref.watch(displayNameProvider),
           now: DateTime.now(),
-          onAvatarPressed: () => context.goNamed(AppRoutes.profile.routeName),
+          onAvatarPressed: () => context.goNamed(AppRoutes.settings.routeName),
         ),
         const SizedBox(height: AppSpacing.sectionGap),
         // One switcher over the whole body rather than a stagger down the list.

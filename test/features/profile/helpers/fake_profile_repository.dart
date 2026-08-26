@@ -31,6 +31,9 @@ class FakeProfileRepository implements ProfileRepository {
   /// Every zone written, in order.
   final List<String> savedZones = <String>[];
 
+  /// Every avatar path written, in order. Removing one appears as null.
+  final List<String?> savedAvatarPaths = <String?>[];
+
   @override
   Future<UserProfile> fetch() async {
     _failIfAsked();
@@ -52,6 +55,22 @@ class FakeProfileRepository implements ProfileRepository {
     profile = name == null
         ? profile.copyWith(clearDisplayName: true)
         : profile.copyWith(displayName: name);
+  }
+
+  @override
+  Future<void> saveAvatarPath(String? path) async {
+    _failIfAsked();
+
+    savedAvatarPaths.add(path);
+    profile = path == null
+        ? UserProfile(
+            id: profile.id,
+            displayName: profile.displayName,
+            currency: profile.currency,
+            locale: profile.locale,
+            timeZone: profile.timeZone,
+          )
+        : profile.copyWith(avatarUrl: path);
   }
 
   @override

@@ -23,6 +23,7 @@ schema looks like this.
 | `0015_bill_status_due_today.sql` | 24 | Splits `due_today` out of `due_soon` |
 | `0016_generate_recurring_bills.sql` | 33 | Turns templates into bills, and the nightly job that does it |
 | `0017_display_name_is_chosen.sql` | Profile UI | Stops seeding `display_name` from the address, and clears the seeds |
+| `0018_avatar_storage.sql` | Profile UI | Private `avatars` bucket, one object per account, owner-scoped policies |
 
 ## Verifying an apply
 

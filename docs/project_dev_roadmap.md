@@ -1706,6 +1706,96 @@ fail is worse than an initial.
 keep its number and quietly change meaning. That is a data migration wearing a
 dropdown, and it does not belong on a settings screen.
 
+## Amended: Settings, not Profile — and a picture
+
+Three things asked for once the screen was on a device.
+
+### The tab is Settings
+
+It was called Profile because it started as one, and it stopped being one the
+moment reminders, appearance and the time zone moved in. A tab labelled Profile
+that opens a page of switches is a label arguing with its own content, and an
+identity card at the top is what a settings screen leads with everywhere else.
+
+`/profile` is `/settings`, the destination is a gear, and the screen moved to
+`lib/features/settings/`. The `profile` feature keeps its name and its data — a
+`UserProfile` really is a profile, and this screen composes it.
+
+### The developer section is gone
+
+Design system and Components were entry points for building the app, on a screen
+users read. The **routes still exist** and are reachable by URL, which is the
+right shape for a dev tool: available when wanted, absent from the product.
+
+Three tests reached those galleries by tapping the tiles. They push the route
+directly now, which is what they were always actually about — whether the
+galleries render, not how somebody gets to them.
+
+### Profile pictures
+
+**Migration 0018** adds a private `avatars` bucket with owner-scoped policies,
+the same shape as 0013's for receipts. Private, not public: most apps make
+profile pictures public because most apps show them to other people, and PayPaw
+shows yours to you. A public bucket would put a photograph of somebody's face
+behind a guessable URL for no benefit.
+
+The cost is that `profiles.avatar_url` holds a **path**, not a URL — a signed URL
+stored in a column is a value that stops working while sitting there. The column
+name is 0002's and was left alone rather than churning a migration over it.
+
+**One object per account**, at `{user_id}/avatar` with no extension. Uploading
+with `upsert` replaces it, so changing a picture never leaves the old one behind
+and there is nothing to garbage-collect. The MIME type rides on the object's
+content type, which is what the bucket checks — an extension would be decoration
+that could disagree with it.
+
+**Downscaled to 512px at quality 85 before it leaves the phone.** An avatar is
+drawn at 64dp; uploading four megapixels for it spends the user's data allowance
+and nothing else. The bucket's 2 MB limit is a backstop against a bug, not a
+size anything is meant to be.
+
+**No permissions.** `image_picker` reaches the gallery through Android's photo
+picker and the camera through an intent to the camera app, so neither needs a
+runtime permission or a manifest entry. Declaring `CAMERA` would put a permission
+on the Play listing for a capability the app never uses directly.
+
+#### The order the two stores are written in
+
+Uploading: **object first, row second.** The other way round leaves a row
+pointing at a picture that does not exist, which reads as a *broken* avatar
+rather than as no avatar, and there is nothing the user could do about it.
+
+Removing: **row first, object second.** If the delete fails the row already says
+there is no picture, which is the state that was asked for — the leftover object
+is invisible and the next upload overwrites it.
+
+#### The initial is the ground state, not a placeholder
+
+It shows while the URL is being minted, when there is no picture, and when a
+picture fails to load. A signed URL can expire mid-session and an object can be
+gone; neither is something the reader can act on, so neither gets a
+broken-image glyph. One widget draws it in both places it appears, so the
+dashboard and the settings screen cannot disagree about whose face it is.
+
+The camera badge appears **only** where the tap changes the picture. The
+dashboard's avatar is tappable too and it opens Settings — a badge there would
+advertise an action the tap does not perform, which is worse than no affordance
+because the badge then means nothing.
+
+### And the address stopped being said twice
+
+Adding an identity card above a section headed "Account" left the same email on
+screen twice, which makes a reader stop and look for a difference that is not
+there. The Account section is the way out now. The one thing its card said that
+nothing else does is kept: an unconfirmed address, shown only when it is true
+rather than as a green chip reporting that everything is fine.
+
+### Not applied
+
+Migrations **0017 and 0018** are both unapplied. Until 0018 is, choosing a photo
+fails with a toast and the avatar stays a letter — which is the same thing it
+does for an account that has never set one.
+
 # 📺 Phase 10 — Subscription Manager
 
 ## Sprint 48 — Subscription Model

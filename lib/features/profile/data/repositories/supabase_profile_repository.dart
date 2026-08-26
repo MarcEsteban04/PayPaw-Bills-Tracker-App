@@ -53,6 +53,18 @@ class SupabaseProfileRepository implements ProfileRepository {
   }
 
   @override
+  Future<void> saveAvatarPath(String? path) async {
+    final String id = _requireUserId('saveAvatarPath');
+
+    return _guard(() async {
+      await _client
+          .from(UserProfileDto.tableName)
+          .update(UserProfileDto.toAvatarUpdate(path))
+          .eq(UserProfileDto.columnId, id);
+    });
+  }
+
+  @override
   Future<void> saveTimeZone(String zone) async {
     final String id = _requireUserId('saveTimeZone');
 

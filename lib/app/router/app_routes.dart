@@ -19,7 +19,7 @@ enum AppRoutes {
   calendar(path: '/calendar', routeName: 'calendar'),
 
   /// Account, settings, and the occasionally-used feature areas.
-  profile(path: '/profile', routeName: 'profile'),
+  settings(path: '/settings', routeName: 'settings'),
 
   // --- First run ------------------------------------------------------------
 

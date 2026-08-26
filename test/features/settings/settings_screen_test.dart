@@ -9,11 +9,11 @@ import 'package:paypaw/features/auth/domain/entities/authenticated_user.dart';
 import 'package:paypaw/features/auth/presentation/controllers/current_user_provider.dart';
 import 'package:paypaw/features/profile/domain/entities/user_profile.dart';
 import 'package:paypaw/features/profile/presentation/controllers/profile_providers.dart';
-import 'package:paypaw/features/profile/presentation/screens/profile_screen.dart';
 import 'package:paypaw/features/profile/presentation/widgets/time_zone_row.dart';
+import 'package:paypaw/features/settings/presentation/screens/settings_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'helpers/fake_profile_repository.dart';
+import '../profile/helpers/fake_profile_repository.dart';
 
 /// The screen that stopped being a placeholder.
 ///
@@ -60,7 +60,7 @@ void main() {
           isBackendConfiguredProvider.overrideWithValue(true),
           sharedPreferencesProvider.overrideWithValue(preferences),
         ],
-        child: MaterialApp(theme: AppTheme.light, home: const ProfileScreen()),
+        child: MaterialApp(theme: AppTheme.light, home: const SettingsScreen()),
       ),
     );
     await tester.pumpAndSettle();
@@ -229,6 +229,18 @@ void main() {
     expect(find.textContaining('categories, reminders'), findsNothing);
   });
 
+  testWidgets('and so are the developer galleries', (
+    WidgetTester tester,
+  ) async {
+    // They are dev tools. The routes still exist and are reachable by URL, but
+    // a user's settings screen should not offer them a component gallery.
+    await pumpProfile(tester);
+
+    expect(find.text('Developer'), findsNothing);
+    expect(find.text('Design system'), findsNothing);
+    expect(find.text('Components'), findsNothing);
+  });
+
   testWidgets('sign out is the last thing on the screen', (
     WidgetTester tester,
   ) async {
@@ -239,7 +251,7 @@ void main() {
         .getTopLeft(find.widgetWithText(OutlinedButton, 'Sign out'))
         .dy;
 
-    for (final String above in <String>['Appearance', 'Dates', 'Developer']) {
+    for (final String above in <String>['Appearance', 'Dates']) {
       expect(
         tester.getTopLeft(find.text(above)).dy,
         lessThan(signOut),

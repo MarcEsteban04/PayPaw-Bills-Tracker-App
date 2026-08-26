@@ -85,7 +85,7 @@ void main() {
         AppRoutes.dashboard,
         AppRoutes.bills,
         AppRoutes.calendar,
-        AppRoutes.profile,
+        AppRoutes.settings,
         AppRoutes.designSystem,
         AppRoutes.components,
       ]) {
@@ -155,7 +155,7 @@ void main() {
     test('the app is reachable', () {
       expect(redirect(session: signedIn, to: AppRoutes.dashboard), isNull);
       expect(redirect(session: signedIn, to: AppRoutes.bills), isNull);
-      expect(redirect(session: signedIn, to: AppRoutes.profile), isNull);
+      expect(redirect(session: signedIn, to: AppRoutes.settings), isNull);
     });
 
     test('the auth screens bounce back to the dashboard', () {
@@ -187,7 +187,7 @@ void main() {
       for (final AppRoutes route in <AppRoutes>[
         AppRoutes.dashboard,
         AppRoutes.bills,
-        AppRoutes.profile,
+        AppRoutes.settings,
         AppRoutes.signIn,
       ]) {
         expect(

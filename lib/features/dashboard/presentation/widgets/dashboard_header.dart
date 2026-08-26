@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../profile/domain/entities/user_profile.dart';
+import '../../../profile/presentation/widgets/profile_avatar.dart';
 
 /// Who is looking, and roughly when.
 ///
 /// The reference design's header is "Welcome Back 👋" over a name, with an avatar
-/// on the right. PayPaw has an email and no display name — Sprint 54 adds the
-/// profile that would carry one — so the greeting does the work the name would
-/// have, and the avatar is an initial rather than a photo.
+/// on the right, and that is what this is now: the profile carries a real name
+/// and a real picture. Both have fallbacks that are visibly fallbacks — the local
+/// part of the address, and the initial of it — because most accounts have given
+/// neither.
 ///
 /// **The greeting is the one place the device clock is the right source.** Every
 /// date in this app comes from the database, because a phone with the wrong date
@@ -38,6 +39,8 @@ class DashboardHeader extends StatelessWidget {
 
   final VoidCallback? onAvatarPressed;
 
+  static const double _avatarSize = 48;
+
   @override
   Widget build(BuildContext context) {
     final AppPalette colors = context.colors;
@@ -57,9 +60,6 @@ class DashboardHeader extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.xxs),
               Text(
-                // The local part of the address. Not the whole thing: a header is
-                // an identity, not a credential, and "marc@gmail.com" wrapping
-                // across two lines reads as a form field.
                 nameOrAddress(name: name, email: email),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -72,9 +72,13 @@ class DashboardHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppSpacing.md),
-        _Avatar(
-          initial: UserProfile.initialFor(name: name, email: email),
-          onPressed: onAvatarPressed,
+        // The same widget the settings screen draws, so the picture and the
+        // letter that stands in for it cannot differ between the two places
+        // somebody sees their own face.
+        Semantics(
+          button: onAvatarPressed != null,
+          label: 'Settings',
+          child: ProfileAvatar(size: _avatarSize, onTap: onAvatarPressed),
         ),
       ],
     );
@@ -113,45 +117,5 @@ class DashboardHeader extends StatelessWidget {
     final String local = email.split('@').first;
 
     return local.isEmpty ? 'Welcome back' : local;
-  }
-}
-
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.initial, required this.onPressed});
-
-  final String initial;
-  final VoidCallback? onPressed;
-
-  static const double _size = 48;
-
-  @override
-  Widget build(BuildContext context) {
-    final AppPalette colors = context.colors;
-
-    return Semantics(
-      button: onPressed != null,
-      label: 'Profile',
-      child: Material(
-        color: colors.primarySoft,
-        shape: const CircleBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onPressed,
-          child: SizedBox(
-            width: _size,
-            height: _size,
-            child: Center(
-              child: Text(
-                initial,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: colors.primaryText,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

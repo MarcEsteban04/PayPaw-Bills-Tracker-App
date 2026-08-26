@@ -10,19 +10,21 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_mode_controller.dart';
 import '../../../auth/presentation/widgets/account_summary.dart';
-import '../widgets/profile_identity_card.dart';
-import '../widgets/time_zone_row.dart';
+import '../../../profile/presentation/widgets/profile_identity_card.dart';
+import '../../../profile/presentation/widgets/time_zone_row.dart';
 
 /// Who you are, and everything about PayPaw you can change.
 ///
-/// ## It stopped being a placeholder
+/// ## It is Settings, not Profile
 ///
-/// For forty-odd sprints this was a `ScreenPlaceholder` promising "account,
-/// categories, reminders, security and app settings... built in Sprints 54 and
-/// 78-80" — with the real controls bolted underneath it. Two of those things now
-/// exist, the sprint numbers pointed at debt and security work that has nothing
-/// to do with this screen, and a card explaining what a screen will one day be
-/// is furniture on a screen that already is.
+/// It was called Profile because it started as one, and it stopped being one the
+/// moment reminders, appearance and the time zone moved in. A tab labelled
+/// Profile that opens a page of switches is a label arguing with its own
+/// content, and the identity card at the top is what a settings screen leads
+/// with everywhere else.
+///
+/// The `profile` feature keeps its name and its data — a `UserProfile` really is
+/// a profile. This screen composes it.
 ///
 /// ## The order is: who, then what you'd change, then leaving
 ///
@@ -35,13 +37,13 @@ import '../widgets/time_zone_row.dart';
 /// Categories are not here. They are edited where they are used — on the bill
 /// form — and a second place to manage them would be a second place for the two
 /// to disagree.
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+class SettingsScreen extends StatelessWidget {
+  const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(title: const Text('Settings')),
       body: SafeArea(
         child: AppContentWidth(
           child: ListView(
@@ -59,8 +61,6 @@ class ProfileScreen extends StatelessWidget {
               _AppearanceSection(),
               SizedBox(height: AppSpacing.sectionGap),
               _DatesSection(),
-              SizedBox(height: AppSpacing.sectionGap),
-              _DeveloperTools(),
               SizedBox(height: AppSpacing.sectionGap),
               AccountSummary(),
             ],
@@ -156,37 +156,6 @@ class _AppearanceSection extends ConsumerWidget {
     ThemeMode.light => 'Light',
     ThemeMode.dark => 'Dark',
   };
-}
-
-/// Entry points that exist for development, not for users.
-///
-/// Removed, or moved behind a debug-only flag, before release.
-class _DeveloperTools extends StatelessWidget {
-  const _DeveloperTools();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text('Developer', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: AppSpacing.md),
-        const _SettingsTile(
-          icon: Icons.palette_outlined,
-          title: 'Design system',
-          subtitle: 'Every colour, type size, radius and shadow',
-          route: AppRoutes.designSystem,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        const _SettingsTile(
-          icon: Icons.widgets_outlined,
-          title: 'Components',
-          subtitle: 'Buttons, cards, inputs, chips, sheets and states',
-          route: AppRoutes.components,
-        ),
-      ],
-    );
-  }
 }
 
 class _SettingsTile extends StatelessWidget {

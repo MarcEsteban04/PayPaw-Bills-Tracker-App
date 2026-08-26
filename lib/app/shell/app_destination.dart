@@ -38,11 +38,11 @@ enum AppDestination {
     icon: Icons.calendar_month_outlined,
     selectedIcon: Icons.calendar_month_rounded,
   ),
-  profile(
-    route: AppRoutes.profile,
-    label: 'Profile',
-    icon: Icons.person_outline_rounded,
-    selectedIcon: Icons.person_rounded,
+  settings(
+    route: AppRoutes.settings,
+    label: 'Settings',
+    icon: Icons.settings_outlined,
+    selectedIcon: Icons.settings_rounded,
   );
 
   const AppDestination({

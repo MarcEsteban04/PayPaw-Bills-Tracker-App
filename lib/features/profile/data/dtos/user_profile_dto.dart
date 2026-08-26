@@ -46,6 +46,16 @@ abstract final class UserProfileDto {
   static Map<String, dynamic> toTimeZoneUpdate(String zone) =>
       <String, dynamic>{columnTimeZone: zone};
 
+  /// The object **path** of the picture, or null to say there is none.
+  ///
+  /// Not a URL, despite the column's name. The avatars bucket is private, so the
+  /// only URL that would work is a signed one — and a signed URL stored in a
+  /// column is a value that stops working while sitting there. See migration
+  /// 0018.
+  static Map<String, dynamic> toAvatarUpdate(String? path) => <String, dynamic>{
+    columnAvatarUrl: _text(path),
+  };
+
   /// A trimmed string, or null if there is nothing left of it.
   static String? _text(Object? value) {
     if (value is! String) {

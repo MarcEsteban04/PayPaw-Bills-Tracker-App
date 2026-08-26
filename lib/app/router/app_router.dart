@@ -20,7 +20,7 @@ import '../../features/notifications/presentation/screens/reminder_settings_scre
 import '../../features/onboarding/presentation/controllers/onboarding_providers.dart';
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/onboarding/presentation/screens/welcome_screen.dart';
-import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../shell/app_destination.dart';
 import '../shell/app_shell.dart';
 import 'app_page_transitions.dart';
@@ -40,7 +40,7 @@ import 'auth_guard.dart';
 ///   /            dashboard
 ///   /bills       bills
 ///   /calendar    calendar
-///   /profile     profile
+///   /settings    settings
 /// /sign-in /sign-up /forgot-password     above the shell, public
 /// /reset-password                        above the shell, reached by deep link
 /// /design-system /components             above the shell, developer galleries
@@ -97,7 +97,7 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>(
           _branch(AppDestination.dashboard, const DashboardScreen()),
           _branch(AppDestination.bills, const BillsScreen()),
           _branch(AppDestination.calendar, const CalendarScreen()),
-          _branch(AppDestination.profile, const ProfileScreen()),
+          _branch(AppDestination.settings, const SettingsScreen()),
         ],
       ),
       GoRoute(

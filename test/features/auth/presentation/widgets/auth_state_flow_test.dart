@@ -111,7 +111,7 @@ void main() {
       );
       await pumpApp(tester, repository);
 
-      await tester.tap(find.bySemanticsLabel(AppDestination.profile.label));
+      await tester.tap(find.bySemanticsLabel(AppDestination.settings.label));
       await tester.pumpAndSettle();
       // Scrolled to, not by a fixed amount. A magic -2000 clamped at the old
       // list's max extent and happened to leave the button on screen; once
@@ -143,7 +143,7 @@ void main() {
       );
       await pumpApp(tester, repository);
 
-      await tester.tap(find.bySemanticsLabel(AppDestination.profile.label));
+      await tester.tap(find.bySemanticsLabel(AppDestination.settings.label));
       await tester.pumpAndSettle();
       // Scrolled to, not by a fixed amount. A magic -2000 clamped at the old
       // list's max extent and happened to leave the button on screen; once

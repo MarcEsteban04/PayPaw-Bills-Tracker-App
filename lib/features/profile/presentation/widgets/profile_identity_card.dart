@@ -8,7 +8,9 @@ import '../../../auth/domain/entities/authenticated_user.dart';
 import '../../../auth/presentation/controllers/current_user_provider.dart';
 import '../../domain/entities/user_profile.dart';
 import '../controllers/profile_providers.dart';
+import 'avatar_picker_sheet.dart';
 import 'edit_display_name_sheet.dart';
+import 'profile_avatar.dart';
 
 /// Who this is, at the top of the screen.
 ///
@@ -24,6 +26,8 @@ import 'edit_display_name_sheet.dart';
 /// worth more than one that quietly makes do.
 class ProfileIdentityCard extends ConsumerWidget {
   const ProfileIdentityCard({super.key});
+
+  static const double _avatarSize = 64;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -52,8 +56,16 @@ class ProfileIdentityCard extends ConsumerWidget {
           ),
           child: Row(
             children: <Widget>[
-              _Avatar(
-                initial: UserProfile.initialFor(name: name, email: email),
+              // Its own tap target inside a tappable card. Two things can be
+              // changed here and they are not the same thing — the picture is on
+              // the picture, the name is on the words.
+              ProfileAvatar(
+                size: _avatarSize,
+                showEditBadge: true,
+                onTap: () => showAvatarPickerSheet(
+                  context: context,
+                  hasPicture: profile?.avatarUrl != null,
+                ),
               ),
               const SizedBox(width: AppSpacing.lg),
               Expanded(
@@ -92,39 +104,6 @@ class ProfileIdentityCard extends ConsumerWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// An initial in a circle.
-///
-/// Not a photograph. `profiles.avatar_url` has been in the schema since
-/// migration 0002 and there is nowhere to upload one to until Storage lands in
-/// Sprint 57 — a picker that could only fail is worse than an initial.
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.initial});
-
-  final String initial;
-
-  static const double _size = 56;
-
-  @override
-  Widget build(BuildContext context) {
-    final AppPalette colors = context.colors;
-
-    return Container(
-      width: _size,
-      height: _size,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: colors.primarySoft,
-        shape: BoxShape.circle,
-      ),
-      child: Text(
-        initial,
-        style: Theme.of(context).textTheme.titleLarge
-            ?.copyWith(color: colors.primaryText, fontWeight: FontWeight.w700),
       ),
     );
   }

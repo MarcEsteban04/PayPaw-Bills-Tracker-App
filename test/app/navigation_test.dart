@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:paypaw/app/paypaw_app.dart';
+import 'package:paypaw/app/router/app_routes.dart';
 import 'package:paypaw/app/shell/app_destination.dart';
 import 'package:paypaw/app/shell/paypaw_bottom_nav.dart';
 import 'package:paypaw/core/providers/storage_providers.dart';
@@ -97,15 +101,14 @@ void main() {
   ) async {
     await pumpApp(tester);
 
-    await tester.tap(find.bySemanticsLabel(AppDestination.profile.label));
-    await tester.pumpAndSettle();
-
-    // Scroll to the end of Profile first: the developer rows sit low enough to
-    // be under the floating navigation bar until the list is scrolled.
-    await tester.drag(find.byType(ListView), const Offset(0, -2000));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.widgetWithText(ListTile, 'Design system'));
+    // Pushed by route rather than tapped. The developer galleries lost their
+    // entry on the settings screen — they are dev tools, reachable by URL — and
+    // what this test is about is what a route above the shell does to the
+    // navigation bar, not how anybody gets there.
+    unawaited(
+      GoRouter.of(tester.element(find.byType(PayPawBottomNav)))
+          .pushNamed(AppRoutes.designSystem.routeName),
+    );
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(AppBar, 'Design System'), findsOneWidget);

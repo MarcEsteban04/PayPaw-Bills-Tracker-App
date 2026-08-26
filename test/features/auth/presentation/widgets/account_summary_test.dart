@@ -67,14 +67,19 @@ void main() {
     );
   });
 
-  testWidgets('shows the signed-in address', (WidgetTester tester) async {
+  testWidgets('offers the way out, and nothing else', (
+    WidgetTester tester,
+  ) async {
+    // The address is not repeated here. The settings screen leads with an
+    // identity card carrying it, and saying it twice under a heading called
+    // "Account" makes a reader stop and look for the difference.
     await pumpSummary(
       tester,
       repository: FakeAuthRepository(initialUser: confirmed),
     );
 
-    expect(find.text('marc@example.com'), findsOneWidget);
-    expect(find.text('Signed in'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Sign out'), findsOneWidget);
+    expect(find.text('marc@example.com'), findsNothing);
     expect(find.widgetWithText(FilledButton, 'Sign in'), findsNothing);
   });
 
@@ -91,8 +96,12 @@ void main() {
     );
 
     // Signed in but not confirmed is a real state, and the user needs to know
-    // why some things may not work.
-    expect(find.text('Email not confirmed'), findsOneWidget);
+    // why some things may not work. It appears only when it is true — a green
+    // chip saying everything is fine is furniture.
+    expect(
+      find.textContaining('email address is not confirmed'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('follows a session ending while the screen is open', (
@@ -102,12 +111,12 @@ void main() {
       initialUser: confirmed,
     );
     await pumpSummary(tester, repository: repository);
-    expect(find.text('marc@example.com'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Sign out'), findsOneWidget);
 
     repository.emitSession(null);
     await tester.pumpAndSettle();
 
-    expect(find.text('marc@example.com'), findsNothing);
+    expect(find.widgetWithText(OutlinedButton, 'Sign out'), findsNothing);
     expect(find.widgetWithText(FilledButton, 'Sign in'), findsOneWidget);
   });
 }

@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:paypaw/app/paypaw_app.dart';
+import 'package:paypaw/app/router/app_routes.dart';
 import 'package:paypaw/app/shell/app_destination.dart';
 import 'package:paypaw/app/shell/paypaw_bottom_nav.dart';
 import 'package:paypaw/core/providers/storage_providers.dart';
@@ -40,20 +44,13 @@ void main() {
         .extension<AppPalette>()!;
   }
 
-  /// Opens Profile and scrolls to the end of it.
-  ///
-  /// Scrolling all the way rather than using `scrollUntilVisible` on purpose:
-  /// that stops as soon as the target enters the viewport, which can leave it
-  /// underneath the floating navigation bar — and a tap then lands on the bar
-  /// instead of the tile. At the end of the list the bottom padding keeps the
-  /// tiles clear.
-  /// Opens Profile and scrolls [target] into view.
+  /// Opens Settings and scrolls [target] into view.
   ///
   /// Scrolled to rather than by a fixed amount. A magic -2000 happened to land
   /// on the right part of the old screen and stopped meaning anything the moment
   /// the sections were reordered.
-  Future<void> openProfileAt(WidgetTester tester, Finder target) async {
-    await tester.tap(find.bySemanticsLabel(AppDestination.profile.label));
+  Future<void> openSettingsAt(WidgetTester tester, Finder target) async {
+    await tester.tap(find.bySemanticsLabel(AppDestination.settings.label));
     await tester.pumpAndSettle();
 
     // scrollUntilVisible, not ensureVisible: a ListView only lays out what is
@@ -103,21 +100,23 @@ void main() {
     // A fresh app per gallery rather than navigating back between them: a pushed
     // route covers the shell, so there is no navigation bar to return with, and
     // this keeps each case independent anyway.
-    for (final (String tile, String title) in <(String, String)>[
-      ('Design system', 'Design System'),
-      ('Components', 'Components'),
+    for (final (AppRoutes route, String title) in <(AppRoutes, String)>[
+      (AppRoutes.designSystem, 'Design System'),
+      (AppRoutes.components, 'Components'),
     ]) {
-      testWidgets('the $tile gallery renders', (WidgetTester tester) async {
+      testWidgets('the $title gallery renders', (WidgetTester tester) async {
         await pumpApp(
           tester,
           stored: <String, Object>{ThemeModeController.storageKey: 'dark'},
         );
-        await openProfileAt(tester, find.widgetWithText(ListTile, tile));
 
-        // widgetWithText, not find.text: tapping the bare Text can land outside
-        // the row's own gesture area, and "tap the row labelled X" is what this
-        // test actually means.
-        await tester.tap(find.widgetWithText(ListTile, tile));
+        // Pushed by route. These lost their entry on the settings screen when
+        // the developer section went — they are dev tools reachable by URL now —
+        // and what this test is about is whether they render in the dark theme.
+        unawaited(
+          GoRouter.of(tester.element(find.byType(PayPawBottomNav)))
+              .pushNamed(route.routeName),
+        );
         // Several explicit frames rather than pumpAndSettle: the components
         // gallery animates a spinner and skeletons forever, so settling never
         // happens. One big pump is not enough either — the push needs a frame to
@@ -126,21 +125,21 @@ void main() {
           await tester.pump(const Duration(milliseconds: 100));
         }
 
-        // Proves the tap navigated. Without this the test would also pass if the
-        // tap missed and we never left Profile.
+        // Proves the push landed rather than the test passing on a screen that
+        // never changed.
         expect(find.widgetWithText(AppBar, title), findsOneWidget);
 
         expect(
           tester.takeException(),
           isNull,
-          reason: '$tile broke in dark mode',
+          reason: '$title broke in dark mode',
         );
       });
     }
   });
 
   group('switching themes', () {
-    testWidgets('from the Profile screen, and it sticks', (
+    testWidgets('from the Settings screen, and it sticks', (
       WidgetTester tester,
     ) async {
       final SharedPreferences preferences = await pumpApp(tester);
@@ -149,7 +148,7 @@ void main() {
       // reports as light.
       expect(paletteOf(tester).surface, AppPalette.light.surface);
 
-      await openProfileAt(tester, find.text('Dark'));
+      await openSettingsAt(tester, find.text('Dark'));
 
       await tester.tap(find.text('Dark'));
       await tester.pumpAndSettle();

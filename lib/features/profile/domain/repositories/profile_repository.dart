@@ -1,4 +1,5 @@
 import '../entities/user_profile.dart';
+import 'avatar_store.dart';
 
 /// Reads and writes the signed-in account's own row.
 ///
@@ -21,6 +22,13 @@ abstract interface class ProfileRepository {
   /// choice: somebody who deletes their name is asking to be a nameless
   /// account again, not asking for the empty string.
   Future<void> saveDisplayName(String? name);
+
+  /// Records where the profile picture is, or that there is none.
+  ///
+  /// A path into the avatars bucket rather than a URL — the bucket is private,
+  /// so the only URL that works is a signed one and those expire. See
+  /// [AvatarStore].
+  Future<void> saveAvatarPath(String? path);
 
   /// Sets the zone the account's dates are computed in.
   ///

@@ -1,10 +1,14 @@
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/app_exception.dart';
 import '../../../../core/providers/supabase_providers.dart';
 import '../../../auth/presentation/controllers/current_user_provider.dart';
+import '../../data/repositories/supabase_avatar_store.dart';
 import '../../data/repositories/supabase_profile_repository.dart';
 import '../../domain/entities/user_profile.dart';
+import '../../domain/repositories/avatar_store.dart';
 import '../../domain/repositories/profile_repository.dart';
 
 final Provider<ProfileRepository> profileRepositoryProvider =
@@ -36,6 +40,28 @@ final FutureProvider<UserProfile?> userProfileProvider =
 final Provider<String?> displayNameProvider = Provider<String?>(
   (Ref ref) => ref.watch(userProfileProvider).value?.name,
 );
+
+final Provider<AvatarStore> avatarStoreProvider = Provider<AvatarStore>(
+  (Ref ref) => SupabaseAvatarStore(ref.watch(supabaseClientProvider)),
+);
+
+/// A URL that can actually load this account's picture, or null if there is none.
+///
+/// The bucket is private, so what the column holds is a path and this is where
+/// it becomes something an `Image` can fetch. Invalidated on every upload, which
+/// is what makes a replaced picture appear rather than being served from the old
+/// URL's cache entry.
+final FutureProvider<String?> avatarUrlProvider = FutureProvider<String?>((
+  Ref ref,
+) async {
+  final String? path = ref.watch(userProfileProvider).value?.avatarUrl;
+
+  if (path == null) {
+    return null;
+  }
+
+  return ref.watch(avatarStoreProvider).signedUrl(path);
+});
 
 /// Whether a profile write is in flight, and what it said if it failed.
 class ProfileEditState {
@@ -75,6 +101,37 @@ class ProfileController extends Notifier<ProfileEditState> {
   /// Sets the zone this account's dates are computed in. True if it landed.
   Future<bool> saveTimeZone(String zone) => _write(() async {
     await ref.read(profileRepositoryProvider).saveTimeZone(zone);
+  });
+
+  /// Uploads a picture and records where it went. True if it landed.
+  ///
+  /// The object first, the column second. The other order would leave a row
+  /// pointing at a picture that does not exist — which reads as a broken avatar
+  /// rather than as no avatar, and there is nothing the user could do about it.
+  Future<bool> saveAvatar({
+    required Uint8List bytes,
+    required String contentType,
+  }) => _write(() async {
+    final String path = await ref
+        .read(avatarStoreProvider)
+        .upload(bytes: bytes, contentType: contentType);
+
+    await ref.read(profileRepositoryProvider).saveAvatarPath(path);
+  });
+
+  /// Removes the picture. True if it landed.
+  ///
+  /// The column first this time, then the object. If the delete fails the row
+  /// already says there is no picture, which is the state the user asked for —
+  /// the leftover object is invisible and the next upload overwrites it.
+  Future<bool> removeAvatar() => _write(() async {
+    final String? path = ref.read(userProfileProvider).value?.avatarUrl;
+
+    await ref.read(profileRepositoryProvider).saveAvatarPath(null);
+
+    if (path != null) {
+      await ref.read(avatarStoreProvider).remove(path);
+    }
   });
 
   Future<bool> _write(Future<void> Function() action) async {
