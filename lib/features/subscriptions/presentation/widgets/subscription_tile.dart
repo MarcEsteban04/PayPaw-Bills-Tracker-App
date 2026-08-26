@@ -6,6 +6,7 @@ import '../../../../core/presentation/widgets/app_status_chip.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/subscription.dart';
+import '../../domain/entities/subscription_spend.dart';
 
 /// One subscription in the list.
 ///
@@ -76,12 +77,33 @@ class SubscriptionTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.md),
-          Text(
-            subscription.amount.format(),
-            style: textTheme.titleSmall?.copyWith(
-              color: isPaused ? colors.textSecondary : colors.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: <Widget>[
+              Text(
+                subscription.amount.format(),
+                style: textTheme.titleSmall?.copyWith(
+                  color: isPaused ? colors.textSecondary : colors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              // The monthly equivalent, but only where the two differ.
+              //
+              // "₱549" and "₱1,200" in one column tell the reader nothing when
+              // the first is monthly and the second is yearly — and a reader
+              // deciding what to cancel is comparing exactly those two numbers.
+              // On a plain monthly plan it would be the same figure twice, so
+              // it is left off.
+              if (!SubscriptionSpend.isMonthly(subscription)) ...<Widget>[
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  '${SubscriptionSpend.monthlyCostOf(subscription).format()}/mo',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colors.textTertiary,
+                  ),
+                ),
+              ],
+            ],
           ),
         ],
       ),

@@ -97,6 +97,27 @@ class RecurringCommitment {
 
   bool get hasAnything => activeCount > 0 && perMonth.minorUnits > 0;
 
+  /// What one template costs in an average month.
+  ///
+  /// The same arithmetic the total uses, exposed because a *list* of repeating
+  /// obligations needs it per row: "₱549" against "₱1,200" tells the reader
+  /// nothing when the first is monthly and the second is yearly, and a reader
+  /// deciding what to cancel is comparing exactly those two numbers.
+  ///
+  /// Shares [_perYear] rather than repeating it. A second definition of what
+  /// "a month" means for a quarterly bill is a second definition that can
+  /// disagree, and the one that disagrees is always the one on screen.
+  static Money monthlyCostOf(RecurringBill template) => Money(
+    minorUnits: (_perYear(template.recurrence, template.amount) / 12).round(),
+    currency: template.amount.currency,
+  );
+
+  /// What one template costs over twelve months.
+  static Money yearlyCostOf(RecurringBill template) => Money(
+    minorUnits: _perYear(template.recurrence, template.amount).round(),
+    currency: template.amount.currency,
+  );
+
   /// What one template costs a year, in minor units.
   ///
   /// A double rather than [Money]: this is an intermediate, and forcing it to

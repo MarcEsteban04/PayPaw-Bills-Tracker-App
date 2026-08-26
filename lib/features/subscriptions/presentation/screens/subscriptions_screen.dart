@@ -4,33 +4,40 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/presentation/layout/app_content_width.dart';
+import '../../../../core/presentation/widgets/app_bottom_sheet.dart';
 import '../../../../core/presentation/widgets/app_empty_state.dart';
 import '../../../../core/presentation/widgets/app_error_state.dart';
 import '../../../../core/presentation/widgets/app_loading_indicator.dart';
 import '../../../../core/presentation/widgets/app_toast.dart';
+import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../bills/presentation/controllers/bill_detail_provider.dart';
 import '../../domain/entities/subscription.dart';
+import '../../domain/entities/subscription_sort.dart';
+import '../../domain/entities/subscription_spend.dart';
 import '../controllers/subscription_providers.dart';
 import '../controllers/subscription_write_controller.dart';
 import '../widgets/subscription_detail_sheet.dart';
+import '../widgets/subscription_spend_card.dart';
 import '../widgets/subscription_tile.dart';
 
-/// What the user is paying for, and what it costs.
+/// What the user is paying for, what it costs, and what to cancel.
 ///
 /// ## Why this is not a fifth tab
 ///
 /// Four destinations is what the reference design's navigation bar holds and
 /// what fits at 320dp. A subscription list is something people check monthly and
 /// act on twice a year; it does not earn a permanent slot next to the bills they
-/// look at daily. It is reached from the dashboard instead.
+/// look at daily. It is reached from the dashboard and from the Bills header
+/// instead — the latter because this screen's charges are what that list is
+/// full of.
 ///
 /// ## Stopped subscriptions stay on the list
 ///
 /// A subscription somebody cancelled is the record of a decision, and hiding it
 /// would leave them wondering whether it ever existed — or, worse, adding it
-/// again. It is dimmed and labelled rather than removed. Deleting is the way to
-/// make one go away, and that is deliberate friction.
+/// again. It is dimmed and labelled rather than removed, and left out of every
+/// figure above. Deleting is the way to make one go away, and that is deliberate
+/// friction.
 class SubscriptionsScreen extends ConsumerWidget {
   const SubscriptionsScreen({super.key});
 
@@ -39,6 +46,7 @@ class SubscriptionsScreen extends ConsumerWidget {
     final AsyncValue<List<Subscription>> subscriptions = ref.watch(
       subscriptionsProvider,
     );
+    final SubscriptionSort sort = ref.watch(subscriptionSortProvider);
 
     // Failures from every write on this screen, in one place. The sheets and
     // dialogs that started them are gone by the time a request fails.
@@ -56,6 +64,15 @@ class SubscriptionsScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Subscriptions'),
         actions: <Widget>[
+          // Only once there is more than one to order. A sort control over a
+          // single row is a control that cannot change anything.
+          if ((subscriptions.value?.length ?? 0) > 1)
+            IconButton(
+              onPressed: () => _pickSort(context, ref, sort),
+              tooltip: 'Sort: ${sort.label}',
+              isSelected: !sort.isDefault,
+              icon: const Icon(Icons.swap_vert_rounded),
+            ),
           IconButton(
             onPressed: () =>
                 context.pushNamed(AppRoutes.addSubscription.routeName),
@@ -86,6 +103,54 @@ class SubscriptionsScreen extends ConsumerWidget {
       ),
     );
   }
+
+  Future<void> _pickSort(
+    BuildContext context,
+    WidgetRef ref,
+    SubscriptionSort current,
+  ) async {
+    final SubscriptionSort? chosen = await showAppBottomSheet<SubscriptionSort>(
+      context: context,
+      title: 'Sort by',
+      child: _SortOptions(current: current),
+    );
+
+    if (chosen != null) {
+      ref.read(subscriptionSortProvider.notifier).set(chosen);
+    }
+  }
+}
+
+class _SortOptions extends StatelessWidget {
+  const _SortOptions({required this.current});
+
+  final SubscriptionSort current;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        for (final SubscriptionSort option in SubscriptionSort.values)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            onTap: () => Navigator.of(context).pop(option),
+            title: Text(option.label),
+            subtitle: Text(switch (option) {
+              SubscriptionSort.nextCharge => 'Soonest first',
+              // Says which figure it sorts on, because the answer is not the
+              // number printed on the row when a plan is not monthly.
+              SubscriptionSort.cost => 'Dearest first, per month',
+            }, style: TextStyle(color: colors.textSecondary)),
+            trailing: option == current
+                ? Icon(Icons.check_rounded, color: colors.primary)
+                : null,
+          ),
+      ],
+    );
+  }
 }
 
 class _List extends ConsumerWidget {
@@ -109,8 +174,9 @@ class _List extends ConsumerWidget {
 
     // Today from the database, like everywhere else: a trial countdown computed
     // against a wrong phone clock would disagree with the due dates beside it.
-    final DateTime today =
-        ref.watch(billsProvider).value?.firstOrNull?.today ?? DateTime.now();
+    final DateTime today = ref.watch(subscriptionTodayProvider);
+    final SubscriptionSpend spend = ref.watch(subscriptionSpendProvider);
+    final List<Subscription> ordered = ref.watch(sortedSubscriptionsProvider);
 
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(
@@ -119,10 +185,23 @@ class _List extends ConsumerWidget {
         AppSpacing.screenInset,
         AppSpacing.bottomNavClearance,
       ),
-      itemCount: subscriptions.length,
+      // One extra for the card at the top. Inside the list rather than pinned
+      // above it, so the figures scroll away and the rows get the whole screen —
+      // on a phone holding a dozen subscriptions, a header that never moves
+      // costs a third of the list forever.
+      itemCount: ordered.length + 1,
       separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.cardGap),
       itemBuilder: (BuildContext context, int index) {
-        final Subscription subscription = subscriptions[index];
+        if (index == 0) {
+          // Absent when every subscription is stopped: a card reading "₱0.00 a
+          // month · 0 subscriptions" is a card that says nothing the list below
+          // does not already say more clearly.
+          return spend.hasAnything
+              ? SubscriptionSpendCard(spend: spend)
+              : const SizedBox.shrink();
+        }
+
+        final Subscription subscription = ordered[index - 1];
 
         return SubscriptionTile(
           subscription: subscription,

@@ -12,6 +12,8 @@ import 'package:paypaw/features/subscriptions/domain/entities/subscription.dart'
 import 'package:paypaw/features/subscriptions/domain/entities/subscription_details.dart';
 import 'package:paypaw/features/subscriptions/presentation/controllers/subscription_providers.dart';
 import 'package:paypaw/features/subscriptions/presentation/screens/subscriptions_screen.dart';
+import 'package:paypaw/features/subscriptions/presentation/widgets/subscription_spend_card.dart';
+import 'package:paypaw/features/subscriptions/presentation/widgets/subscription_tile.dart';
 
 /// What the subscriptions list says, and about which subscriptions.
 ///
@@ -29,6 +31,7 @@ void main() {
     bool autoRenews = true,
     bool isActive = true,
     int amountMinor = 54900,
+    RecurrenceFrequency frequency = RecurrenceFrequency.monthly,
   }) => Subscription(
     template: RecurringBill(
       id: id,
@@ -38,9 +41,10 @@ void main() {
       payee: provider,
       amount: Money.php(amountMinor),
       recurrence: Recurrence(
-        frequency: RecurrenceFrequency.monthly,
+        frequency: frequency,
         startsOn: DateTime(2026, 1, 18),
         dayOfMonth: 18,
+        monthOfYear: frequency == RecurrenceFrequency.yearly ? 1 : null,
       ),
       nextDueOn: DateTime(2026, 9, 18),
       isActive: isActive,
@@ -99,7 +103,15 @@ void main() {
     await pumpScreen(tester, <Subscription>[subscription(planName: 'Premium')]);
 
     expect(find.text('Netflix · Premium'), findsOneWidget);
-    expect(find.text('₱549.00'), findsOneWidget);
+    // Scoped to the row. With one subscription on screen the card above totals
+    // the same figure, so a bare finder legitimately matches twice.
+    expect(
+      find.descendant(
+        of: find.byType(SubscriptionTile),
+        matching: find.text('₱549.00'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('a stopped subscription stays, and says so', (
@@ -158,5 +170,142 @@ void main() {
     ]);
 
     expect(find.text('TRIAL ENDS TODAY'), findsOneWidget);
+  });
+
+  group('what it all costs', () {
+    testWidgets('leads with the monthly figure and the year beside it', (
+      WidgetTester tester,
+    ) async {
+      await pumpScreen(tester, <Subscription>[
+        subscription(),
+        subscription(id: 'sub-2', provider: 'Spotify', amountMinor: 19900),
+      ]);
+
+      expect(find.text('EVERY MONTH'), findsOneWidget);
+      expect(find.text('₱748.00'), findsOneWidget);
+      // The year is the number that changes minds, and the count says what the
+      // figure is *of*.
+      expect(find.text('₱8,976.00 a year · 2 subscriptions'), findsOneWidget);
+    });
+
+    testWidgets('names the dearest by its monthly equivalent', (
+      WidgetTester tester,
+    ) async {
+      // ₱1,200 a year is ₱100 a month, so Spotify at ₱149 is the dearer of the
+      // two — and the row's own figures say the opposite. This is the case the
+      // ranking exists for.
+      await pumpScreen(tester, <Subscription>[
+        subscription(
+          provider: 'Domain',
+          amountMinor: 120000,
+          frequency: RecurrenceFrequency.yearly,
+        ),
+        subscription(id: 'sub-2', provider: 'Spotify', amountMinor: 14900),
+      ]);
+
+      expect(find.text('Dearest is Spotify'), findsOneWidget);
+    });
+
+    testWidgets('spells out the monthly equivalent on a non-monthly row', (
+      WidgetTester tester,
+    ) async {
+      await pumpScreen(tester, <Subscription>[
+        subscription(
+          provider: 'Domain',
+          amountMinor: 120000,
+          frequency: RecurrenceFrequency.yearly,
+        ),
+      ]);
+
+      expect(find.text('₱1,200.00'), findsOneWidget);
+      expect(find.text('₱100.00/mo'), findsOneWidget);
+    });
+
+    testWidgets('and does not repeat itself on a monthly one', (
+      WidgetTester tester,
+    ) async {
+      await pumpScreen(tester, <Subscription>[subscription()]);
+
+      // The same number twice, one of them with a suffix, is noise.
+      expect(find.text('₱549.00/mo'), findsNothing);
+    });
+
+    testWidgets('says what a trial will add rather than counting it', (
+      WidgetTester tester,
+    ) async {
+      final DateTime today = DateTime.now();
+
+      await pumpScreen(tester, <Subscription>[
+        subscription(),
+        subscription(
+          id: 'sub-2',
+          provider: 'Apple TV+',
+          amountMinor: 24900,
+          trialEndsOn: DateTime(today.year, today.month, today.day + 5),
+        ),
+      ]);
+
+      // The committed figure is Netflix alone — the trial adds nothing to it
+      // yet. Scoped to the card, because the Netflix row shows the same number.
+      expect(
+        find.descendant(
+          of: find.byType(SubscriptionSpendCard),
+          matching: find.text('₱549.00'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('+₱249.00 a month when this trial ends'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('has nothing to say when everything is stopped', (
+      WidgetTester tester,
+    ) async {
+      // A card reading "₱0.00 a month · 0 subscriptions" says nothing the list
+      // below does not say more clearly.
+      await pumpScreen(tester, <Subscription>[subscription(isActive: false)]);
+
+      expect(find.text('EVERY MONTH'), findsNothing);
+      expect(find.text('Netflix'), findsOneWidget);
+    });
+  });
+
+  group('the order', () {
+    testWidgets('is soonest-first, and offers cost instead', (
+      WidgetTester tester,
+    ) async {
+      await pumpScreen(tester, <Subscription>[
+        subscription(
+          provider: 'Domain',
+          amountMinor: 120000,
+          frequency: RecurrenceFrequency.yearly,
+        ),
+        subscription(id: 'sub-2', provider: 'Spotify', amountMinor: 14900),
+      ]);
+
+      await tester.tap(find.byTooltip('Sort: Next charge'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cost'));
+      await tester.pumpAndSettle();
+
+      // Dearest per month first, which puts Spotify above the yearly plan whose
+      // own figure is eight times larger.
+      final List<String> providers = tester
+          .widgetList<SubscriptionTile>(find.byType(SubscriptionTile))
+          .map((SubscriptionTile tile) => tile.subscription.details.provider)
+          .toList();
+
+      expect(providers, <String>['Spotify', 'Domain']);
+    });
+
+    testWidgets('offers no control when there is only one row to order', (
+      WidgetTester tester,
+    ) async {
+      await pumpScreen(tester, <Subscription>[subscription()]);
+
+      expect(find.byTooltip('Sort: Next charge'), findsNothing);
+    });
   });
 }

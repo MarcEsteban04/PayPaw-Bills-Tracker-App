@@ -2104,13 +2104,78 @@ against a `today` that usually carries a time. A trial ending today read as
 finished from one second past midnight, on the one day the answer matters most.
 It now goes through `daysOfTrialLeft`, which was already normalising both sides.
 
-## Sprint 50 — Subscription Analytics
+## Sprint 50 — Subscription Analytics — done
 
-Calculate:
+### The arithmetic already existed
 
-* Monthly subscription cost
-* Annual subscription cost
-* Most expensive subscriptions
+The roadmap asked for a monthly cost, an annual cost and the most expensive
+subscriptions. `RecurringCommitment` has computed the first two since Sprint 39
+— every rule converted to occurrences per year and divided by twelve, weekly on
+365.25 days rather than 52 weeks — and it is what draws "Every month ₱20,800 ·
+from 7 schedules" on the dashboard.
+
+A subscription **is** a recurring bill, so writing the sum again here would have
+been a second definition of what "a month" means for a quarterly plan. The one
+that disagrees is always the one on screen.
+
+So `SubscriptionSpend` hands the subscription templates to the existing
+calculator and keeps its answer. What is genuinely new is the **scope**, the
+**ranking**, and the trial rule.
+
+### Scope: subscriptions, not every schedule
+
+Fed every template, the figure is a slice of somebody's rent. Fed only the
+subscriptions, "₱1,847 a month" is a sentence about a decision they can actually
+make.
+
+Stopped ones are out of it — `RecurringCommitment` already skips paused and
+finished templates, because a schedule somebody stopped is not money they have
+to find. They stay on the list, dimmed, which is why the card prints the count
+beside the figure: without it, a reader who has paused three cannot tell whether
+they are in the number.
+
+### Trials are counted apart, not counted in
+
+A subscription inside its free period charges **nothing**, so folding it into the
+monthly figure overstates what is leaving the account. Leaving it out silently
+would be worse the other way: the total would jump the week it converts with
+nothing on screen having explained why.
+
+So it is excluded from the total and reported as *"+₱249 a month when this trial
+ends"*. That is the number somebody deciding whether to keep a trial actually
+wants. It is still in the **ranking**, though — a trial at the top of the
+expensive list is precisely the one to decide about before it converts.
+
+### "Most expensive" is a sort, not a section
+
+A ranked block above the list would have printed the same three rows twice. The
+list gets a **Cost** order instead, and the ranking is a fact about the data
+rather than an arrangement made inside a `build` that no test can reach.
+
+The card names one — the dearest — because "what is the big one" is the next
+question after "how much", and one name is a headline rather than a table of
+contents for a page you can already see.
+
+### The part that makes the comparison honest
+
+A ₱1,200 yearly plan and a ₱149 monthly one in the same column tell the reader
+nothing, and a reader deciding what to cancel is comparing exactly those two
+numbers. The yearly one *looks* eight times dearer and is actually cheaper.
+
+So a non-monthly row now carries its monthly equivalent under the amount, and
+sorting by cost sorts on that figure rather than on the one printed. A plain
+monthly plan gets no second line, because the same number twice with a suffix is
+noise.
+
+### The card scrolls
+
+It is item zero of the list rather than a header pinned above it. On a phone
+holding a dozen subscriptions, a header that never moves costs a third of the
+list forever — and these figures are read once on arrival, not consulted while
+scrolling.
+
+It is absent entirely when everything is stopped: "₱0.00 a month · 0
+subscriptions" says nothing the list below does not say more clearly.
 
 ## Sprint 51 — Subscription Alerts
 
