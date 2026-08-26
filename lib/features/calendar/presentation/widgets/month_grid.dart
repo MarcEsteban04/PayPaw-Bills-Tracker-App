@@ -4,20 +4,22 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../bills/domain/entities/bill_status.dart';
+import '../../../bills/domain/entities/bill_with_status.dart';
+import '../../../bills/presentation/widgets/bill_status_display.dart';
 import '../../domain/entities/calendar_month.dart';
 
 /// One month, drawn.
 ///
-/// ## What a square says at this sprint
+/// ## What a square says
 ///
-/// The date, whether it is today, and whether anything is due on it. Not yet
-/// *what* is due — the paid/overdue/upcoming colours are Sprint 45, and a marker
-/// that means "something" now becomes a marker that means "something overdue"
-/// then without the grid changing shape.
+/// The date, whether it is today, how many bills fall on it, and what state the
+/// worst of them is in.
 ///
 /// A count rather than one dot per bill. A day with five bills on it would
 /// otherwise be five dots in a square smaller than a fingertip, and the number
-/// is the thing worth reading anyway.
+/// is the thing worth reading anyway. The colour carries the urgency the number
+/// cannot.
 ///
 /// ## The days either side are shown, not blanked
 ///
@@ -28,7 +30,7 @@ class MonthGrid extends StatelessWidget {
   const MonthGrid({
     required this.month,
     required this.today,
-    required this.countFor,
+    required this.billsFor,
     this.selectedDay,
     this.onDayTap,
     super.key,
@@ -42,8 +44,8 @@ class MonthGrid extends StatelessWidget {
   /// The date the user has picked, if any. Already reduced to a day.
   final DateTime? selectedDay;
 
-  /// How many bills fall on a date. Zero for an empty day.
-  final int Function(DateTime day) countFor;
+  /// The bills falling on a date. Empty for a day with none.
+  final List<BillWithStatus> Function(DateTime day) billsFor;
 
   /// Tapping a square.
   final void Function(DateTime day)? onDayTap;
@@ -65,7 +67,7 @@ class MonthGrid extends StatelessWidget {
                     isInMonth: month.contains(day),
                     isToday: day == today,
                     isSelected: day == selectedDay,
-                    count: countFor(day),
+                    bills: billsFor(day),
                     onTap: onDayTap == null ? null : () => onDayTap!(day),
                   ),
                 ),
@@ -128,7 +130,7 @@ class _DayCell extends StatelessWidget {
     required this.isInMonth,
     required this.isToday,
     required this.isSelected,
-    required this.count,
+    required this.bills,
     required this.onTap,
   });
 
@@ -136,8 +138,19 @@ class _DayCell extends StatelessWidget {
   final bool isInMonth;
   final bool isToday;
   final bool isSelected;
-  final int count;
+  final List<BillWithStatus> bills;
   final VoidCallback? onTap;
+
+  int get count => bills.length;
+
+  /// The status the square wears.
+  ///
+  /// The loudest of the day's bills, not a blend of them: a day carrying one
+  /// overdue bill and two settled ones is an overdue day, and a fourth colour
+  /// meaning "mixed" would say nothing anybody could act on. The list under the
+  /// grid is where each bill gets its own.
+  BillStatus? get status =>
+      BillStatus.mostUrgent(bills.map((BillWithStatus item) => item.status));
 
   @override
   Widget build(BuildContext context) {
@@ -204,7 +217,11 @@ class _DayCell extends StatelessWidget {
                     child: count == 0
                         ? null
                         : Center(
-                            child: _DayMarker(count: count, isToday: isToday),
+                            child: _DayMarker(
+                              count: count,
+                              status: status,
+                              isToday: isToday,
+                            ),
                           ),
                   ),
                 ],
@@ -218,29 +235,48 @@ class _DayCell extends StatelessWidget {
 
   static const double _markerHeight = 14;
 
+  /// What a screen reader says, which is also the only place the colour is
+  /// written down in words.
+  ///
+  /// A square that meant "overdue" by being red alone would mean nothing at all
+  /// to anyone who cannot see the difference, and red-green is the most common
+  /// way not to.
   String _spokenLabel() {
     final String date = DateFormat.MMMMEEEEd().format(day);
     final String todayPrefix = isToday ? 'Today, ' : '';
     final String selected = isSelected ? ', selected' : '';
 
-    final String due = switch (count) {
-      0 => 'nothing due',
-      1 => '1 bill due',
-      _ => '$count bills due',
-    };
+    if (count == 0) {
+      return '$todayPrefix$date, nothing due$selected';
+    }
 
-    return '$todayPrefix$date, $due$selected';
+    final String bills = count == 1 ? '1 bill' : '$count bills';
+
+    return '$todayPrefix$date, $bills, '
+        '${BillStatusDisplay.label(status).toLowerCase()}$selected';
   }
 }
 
-/// What is due on a day, before Sprint 45 gives it a colour.
+/// What is due on a day, and how much trouble it is in.
 ///
 /// A pill with a number rather than dots. One dot per bill stops being readable
-/// at three, and "how many" is the question a month view is being asked.
+/// at three, and "how many" is the question a month view is being asked; the
+/// colour answers "how urgent" alongside it.
+///
+/// The tones are the app's own — [BillStatusDisplay.tone] — so a red square here
+/// and a red rail on the bills list mean the same thing, learned once. Colour is
+/// never the only carrier: the count is written on the badge, the square's
+/// spoken label names the status, and the panel below the grid shows every bill
+/// with its status in words.
 class _DayMarker extends StatelessWidget {
-  const _DayMarker({required this.count, required this.isToday});
+  const _DayMarker({
+    required this.count,
+    required this.status,
+    required this.isToday,
+  });
 
   final int count;
+  final BillStatus? status;
   final bool isToday;
 
   @override
@@ -248,21 +284,19 @@ class _DayMarker extends StatelessWidget {
     final AppPalette colors = context.colors;
     final TextTheme textTheme = Theme.of(context).textTheme;
 
-    // The brand tint, not `surfaceMuted`.
-    //
-    // Muted grey on a dark sheet is very nearly the sheet, and on a device this
-    // marker read as a smudge — which is the whole failure, since its one job is
-    // to be the thing the eye lands on. Sprint 45 replaces the tint with one per
-    // status; this is the neutral it starts from.
-    //
-    // On today's square the background is already the brand colour, so the
-    // marker has to invert or it disappears into it.
-    final Color background = isToday
-        ? colors.textOnPrimary.withValues(alpha: 0.18)
-        : colors.primarySoft;
-    final Color foreground = isToday
-        ? colors.textOnPrimary
-        : colors.primaryText;
+    final AppStatusTone tone = BillStatusDisplay.tone(status);
+
+    // On today's square the background is already the brand colour, and a tint
+    // laid over it would be two washes of colour fighting. The card surface
+    // underneath the status text separates them instead.
+    final Color background = isToday ? colors.surface : colors.statusTint(tone);
+
+    // The number is data, not a label. A neutral chip elsewhere in the app can
+    // afford a secondary-grey word on it because the word is furniture; here the
+    // digit is the answer, and on the quietest tone it needs to stay crisp.
+    final Color foreground = tone == AppStatusTone.neutral
+        ? colors.textPrimary
+        : colors.statusText(tone);
 
     // No `alignment`, deliberately. A `Container` given one expands to its
     // constraints rather than hugging its child, which turned this badge into a

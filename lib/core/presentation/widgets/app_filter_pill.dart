@@ -55,6 +55,16 @@ class AppFilterPill extends StatelessWidget {
         onTap: onPressed,
         borderRadius: AppRadii.chip,
         child: Center(
+          // `widthFactor: 1`, or the pill is as wide as it is allowed to be.
+          //
+          // A bare `Center` expands to fill whatever width it is offered. In the
+          // bills filter row that is invisible — the row scrolls horizontally, so
+          // the offer is unbounded and the pill hugs its label. In the Profile
+          // screen's `Wrap` the offer is the screen width, and each pill took a
+          // whole row: System, Light and Dark stacked vertically down the middle
+          // of the page, three full-width tap targets where three small ones were
+          // meant. That is how the theme got switched by a stray tap.
+          widthFactor: 1,
           child: Container(
             height: _pillHeight,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),

@@ -264,12 +264,18 @@ class AppPalette extends ThemeExtension<AppPalette> {
   ];
 
   /// Background for a status chip of [tone].
+  ///
+  /// Neutral is [border] rather than [surfaceMuted], which is what it used to
+  /// be. In the dark theme `surfaceMuted` sits about eleven levels off `surface`
+  /// in every channel — near enough that a neutral chip on a card was a shape
+  /// you had to look for. Every other tint here is tens of levels away from the
+  /// surface it lands on; this one now is too.
   Color statusTint(AppStatusTone tone) => switch (tone) {
     AppStatusTone.paid => paidTint,
     AppStatusTone.dueSoon => dueSoonTint,
     AppStatusTone.overdue => overdueTint,
     AppStatusTone.info => infoTint,
-    AppStatusTone.neutral => surfaceMuted,
+    AppStatusTone.neutral => border,
   };
 
   /// Label colour for a status chip of [tone]. Always paired with

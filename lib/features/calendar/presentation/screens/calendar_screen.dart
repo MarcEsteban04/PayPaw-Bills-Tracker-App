@@ -8,9 +8,11 @@ import '../../../../core/presentation/widgets/app_skeleton.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../bills/domain/entities/bill_status.dart';
 import '../../../bills/domain/entities/bill_with_status.dart';
 import '../../../bills/presentation/controllers/bill_detail_provider.dart';
 import '../../../bills/presentation/widgets/bill_detail_actions.dart';
+import '../../../bills/presentation/widgets/bill_status_display.dart';
 import '../../domain/entities/calendar_month.dart';
 import '../controllers/calendar_providers.dart';
 import '../widgets/calendar_day_bills.dart';
@@ -130,7 +132,7 @@ class _Calendar extends ConsumerWidget {
             month: month,
             today: today,
             selectedDay: selectedDay,
-            countFor: (DateTime day) => byDate[day]?.length ?? 0,
+            billsFor: (DateTime day) => byDate[day] ?? const <BillWithStatus>[],
             onDayTap: (DateTime day) => _pickDay(ref, month, day),
           ),
         ),
@@ -240,6 +242,7 @@ class _MonthSummary extends StatelessWidget {
     final bool isSettled = outstanding.minorUnits == 0;
 
     return _Panel(
+      footer: _StatusBreakdown(inMonth: inMonth),
       child: Row(
         children: <Widget>[
           Expanded(
@@ -297,9 +300,13 @@ class _MonthSummary extends StatelessWidget {
 
 /// The white sheet everything on this screen sits on.
 class _Panel extends StatelessWidget {
-  const _Panel({required this.child});
+  const _Panel({required this.child, this.footer});
 
   final Widget child;
+
+  /// A second row, under a hairline. For content that belongs to the panel but
+  /// answers a different question from the figures above it.
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -312,7 +319,80 @@ class _Panel extends StatelessWidget {
         borderRadius: AppRadii.panel,
         border: colors.surfaceBorder,
       ),
-      child: child,
+      child: footer == null
+          ? child
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                child,
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                  child: Divider(height: 1, color: colors.border),
+                ),
+                footer!,
+              ],
+            ),
+    );
+  }
+}
+
+/// How the month's bills are doing, counted by state.
+///
+/// ## It is the legend as well as the count
+///
+/// The squares above are coloured by the loudest bill on each day, and colour on
+/// its own teaches nobody what it means. These chips name every colour that is
+/// actually on the grid and say how many days' worth of it there is — so the key
+/// is not a separate row of decoration nobody reads, it is the answer to "what
+/// is this month made of".
+///
+/// Only the states present appear. A month with nothing overdue should not have
+/// a chip reading "0 overdue"; that is a reassurance the absence already gives.
+class _StatusBreakdown extends StatelessWidget {
+  const _StatusBreakdown({required this.inMonth});
+
+  final List<BillWithStatus> inMonth;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppPalette colors = context.colors;
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
+    final Map<BillStatus?, int> counts = <BillStatus?, int>{};
+    for (final BillWithStatus item in inMonth) {
+      counts[item.status] = (counts[item.status] ?? 0) + 1;
+    }
+
+    // Loudest first, so the thing worth acting on is the first chip read.
+    final List<BillStatus?> ordered = counts.keys.toList()
+      ..sort(
+        (BillStatus? a, BillStatus? b) =>
+            (a?.urgency ?? 99).compareTo(b?.urgency ?? 99),
+      );
+
+    return Wrap(
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
+      children: <Widget>[
+        for (final BillStatus? status in ordered)
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.xxs,
+            ),
+            decoration: BoxDecoration(
+              color: colors.statusTint(BillStatusDisplay.tone(status)),
+              borderRadius: AppRadii.round,
+            ),
+            child: Text(
+              '${counts[status]} ${BillStatusDisplay.label(status).toLowerCase()}',
+              style: textTheme.labelSmall?.copyWith(
+                color: colors.statusText(BillStatusDisplay.tone(status)),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

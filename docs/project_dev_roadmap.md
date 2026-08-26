@@ -1506,14 +1506,91 @@ the last of those hung 146 pixels off the bottom. Every widget test here missed
 it, because they pump a view tall enough to hide the problem — there is now one
 that pumps 392×800 and asserts nothing overflows.
 
-## Sprint 45 — Payment Indicators
+## Sprint 45 — Payment Indicators — done
 
-Display:
+The count badge on a calendar square meant "something is due here". It now says
+what state that something is in.
 
-* Paid
-* Upcoming
-* Overdue
-* Partially paid
+### One badge, the loudest bill
+
+A day can hold bills in different states, and the square takes the **most urgent**
+of them: a day carrying one overdue bill and two settled ones is an overdue day.
+A fourth colour meaning "mixed" would say nothing anybody could act on, and one
+dot per bill stops being countable at three in a square smaller than a fingertip.
+
+The list under the grid is where each bill gets its own status — the grid gives
+the headline, the panel gives the detail.
+
+`BillStatus.urgency` and `BillStatus.mostUrgent` are on the enum rather than in
+the calendar, because the ranking is a judgement about **bills** and two screens
+now depend on it agreeing with itself. It is the order the bills list groups in
+and the `bill_status` view ranks by: overdue, due today, due soon, partly paid,
+upcoming, settled, archived.
+
+### The colours are the app's own
+
+`BillStatusDisplay.tone` — the same mapping the list row's rail and the drawer's
+chip already use, so a red square here and a red rail there mean the same thing,
+learned once. Nothing new was invented for the calendar, and Sprint 45 added no
+colours to the palette.
+
+### Colour is never the only carrier
+
+Red-green is the most common way not to see a difference, and a square that meant
+"overdue" by being red alone would mean nothing to a good number of people. So:
+
+* the **count** is written on the badge;
+* the square's **spoken label** names the status — "Friday, September 18, 2
+  bills, overdue";
+* the **panel below** lists every bill with its status in words;
+* and the **month breakdown** names each colour that is on the grid.
+
+### The breakdown is the legend
+
+Under the month summary, a row of tinted chips: "1 overdue", "2 upcoming". Only
+the states actually present — a month with nothing overdue should not carry a
+chip reading "0 overdue", which is a reassurance the absence already gives.
+
+It doubles as the key. A separate legend row would be decoration nobody reads;
+this one earns its place by answering "what is this month made of" and naming
+the colours on the way past.
+
+### A palette fix this forced
+
+`AppStatusTone.neutral` tinted with `surfaceMuted`, which in the dark theme sits
+about **eleven levels** off `surface` in every channel. Every other tint is tens
+of levels away from the surface it lands on. A neutral chip was a shape you had
+to look for, and "upcoming" is the majority state — the indicator most people
+would see most of the time was the one that could not be seen.
+
+Neutral is `border` now, in both themes. That is the fifth time this pair has
+been too faint on a dark surface, and it is fixed at the token rather than
+patched at the call site.
+
+The badge's *number* takes `textPrimary` on the neutral tone rather than the
+tone's own secondary grey. A neutral chip elsewhere can afford a grey word
+because the word is furniture; here the digit is the answer.
+
+### And a bug three sprints of notes had not fixed
+
+The Profile screen's System / Light / Dark selector rendered stacked vertically
+down the middle of the page. `AppFilterPill` wraps its content in a bare
+`Center`, which expands to whatever width it is offered — invisible in the bills
+filter row, where the row scrolls horizontally and the offer is unbounded, and
+fatal in a `Wrap`, where the offer is the screen. Three small toggles became
+three full-width tap targets.
+
+Found the honest way: a stray tap during device testing switched the app to light
+mode, and it took a screenshot of the Profile screen to work out how. `Center`
+takes `widthFactor: 1` now, and the fix is in the shared widget rather than at
+the one call site that showed it.
+
+### What is not verified on a device
+
+The red, amber, green and blue squares. The account this was tested against has
+two upcoming bills and nothing else, and the alternative was writing invented
+overdue rows into real data to photograph them. The mapping is covered by widget
+tests; the neutral path and both themes were checked on the emulator.
 
 ## Sprint 46 — Calendar Interaction
 

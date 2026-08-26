@@ -60,11 +60,20 @@ class CalendarDayBills extends ConsumerWidget {
       children: <Widget>[
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-          child: Text(
-            _heading(),
-            style: textTheme.titleSmall?.copyWith(
-              color: colors.textPrimary,
-              fontWeight: FontWeight.w700,
+          child: Semantics(
+            header: true,
+            // Spoken as what it heads rather than as a bare date. The visible
+            // text is "Friday, September 18", which read aloud on its own is
+            // indistinguishable from the grid square of the same name — and a
+            // heading that announces itself as one is more use anyway.
+            label: 'Bills ${_heading().toLowerCase()}',
+            excludeSemantics: true,
+            child: Text(
+              _heading(),
+              style: textTheme.titleSmall?.copyWith(
+                color: colors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ),
@@ -128,7 +137,7 @@ class CalendarDayBills extends ConsumerWidget {
 
   String _heading() {
     if (selectedDay case final DateTime day) {
-      return DateFormat.MMMMEEEEd().format(day);
+      return 'Due ${DateFormat.MMMMEEEEd().format(day)}';
     }
 
     return 'Due in ${DateFormat.MMMM().format(month.first)}';

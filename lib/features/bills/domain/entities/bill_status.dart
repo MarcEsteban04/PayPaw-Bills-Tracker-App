@@ -79,4 +79,42 @@ enum BillStatus {
     BillStatus.dueSoon || BillStatus.dueToday || BillStatus.overdue => true,
     _ => false,
   };
+
+  /// How loudly this status asks to be dealt with. Lower is louder.
+  ///
+  /// The same order the bills list groups in and the same one the `bill_status`
+  /// view ranks by — date pressure first, then a part payment, then the things
+  /// that are simply waiting or finished. Written down here because it is a
+  /// judgement about *bills*, not about any one screen, and two screens now need
+  /// to agree on it.
+  int get urgency => switch (this) {
+    BillStatus.overdue => 0,
+    BillStatus.dueToday => 1,
+    BillStatus.dueSoon => 2,
+    BillStatus.partiallyPaid => 3,
+    BillStatus.upcoming => 4,
+    BillStatus.paid => 5,
+    BillStatus.archived => 6,
+  };
+
+  /// The loudest of [statuses], or null if there are none.
+  ///
+  /// What a calendar square shows when several bills fall on one day: a day with
+  /// one overdue bill and two settled ones is an overdue day. An unrecognised
+  /// status — null, from a view this build has not been taught — is skipped
+  /// rather than ranked, since there is nothing to rank it by.
+  static BillStatus? mostUrgent(Iterable<BillStatus?> statuses) {
+    BillStatus? loudest;
+
+    for (final BillStatus? status in statuses) {
+      if (status == null) {
+        continue;
+      }
+      if (loudest == null || status.urgency < loudest.urgency) {
+        loudest = status;
+      }
+    }
+
+    return loudest;
+  }
 }

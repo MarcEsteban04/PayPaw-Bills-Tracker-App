@@ -84,11 +84,8 @@ void main() {
   /// Found by its spoken label rather than by its number, because a grid shows
   /// the same number twice whenever a month leads or trails into another.
   ///
-  /// The lookahead keeps it off the panel heading below the grid, which names
-  /// the selected day in exactly the same words and would otherwise make every
-  /// tap ambiguous.
   Finder square(String semanticLabel) =>
-      find.bySemanticsLabel(RegExp('^(?=.*due)$semanticLabel'));
+      find.bySemanticsLabel(RegExp('^$semanticLabel'));
 
   group('the month it opens on', () {
     testWidgets('is the one today falls in', (WidgetTester tester) async {
@@ -163,8 +160,8 @@ void main() {
         ],
       );
 
-      expect(square('Friday, September 18, 2 bills due'), findsOneWidget);
-      expect(square('Sunday, September 20, 1 bill due'), findsOneWidget);
+      expect(square('Friday, September 18, 2 bills, upcoming'), findsOneWidget);
+      expect(square('Sunday, September 20, 1 bill, upcoming'), findsOneWidget);
     });
 
     testWidgets('a day with nothing on it says so', (
@@ -210,7 +207,7 @@ void main() {
         ],
       );
 
-      expect(square('Friday, September 18, 1 bill due'), findsOneWidget);
+      expect(square('Friday, September 18, 1 bill, settled'), findsOneWidget);
     });
   });
 
@@ -418,7 +415,7 @@ void main() {
       await tester.tap(square('Friday, September 18'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Friday, September 18'), findsOneWidget);
+      expect(find.text('Due Friday, September 18'), findsOneWidget);
       expect(find.text('Meralco'), findsOneWidget);
       expect(find.text('Converge'), findsNothing);
     });
@@ -485,7 +482,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('August 2026'), findsOneWidget);
-      expect(find.text('Sunday, August 30'), findsOneWidget);
+      expect(find.text('Due Sunday, August 30'), findsOneWidget);
       expect(find.text('Meralco'), findsOneWidget);
     });
 
@@ -519,7 +516,7 @@ void main() {
       await tester.tap(find.text('Today'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Thursday, September 3'), findsOneWidget);
+      expect(find.text('Due Thursday, September 3'), findsOneWidget);
       expect(find.text('Meralco'), findsOneWidget);
     });
 
@@ -560,5 +557,133 @@ void main() {
     // And the rows below the fold are reachable rather than clipped away.
     await tester.scrollUntilVisible(find.text('Converge'), 200);
     expect(find.text('Converge'), findsOneWidget);
+  });
+
+  group('what a square says about state', () {
+    testWidgets('names the status, so colour is never the only carrier', (
+      WidgetTester tester,
+    ) async {
+      // A square that meant "overdue" by being red alone would mean nothing to
+      // anyone who cannot see the difference, and red-green is the most common
+      // way not to.
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[
+          bill(id: 'a', dueOn: DateTime(2026, 9), status: BillStatus.overdue),
+        ],
+      );
+
+      expect(square('Tuesday, September 1, 1 bill, overdue'), findsOneWidget);
+    });
+
+    testWidgets('takes the loudest when a day holds several', (
+      WidgetTester tester,
+    ) async {
+      // A day carrying one overdue bill and two settled ones is an overdue day.
+      // A fourth colour meaning "mixed" would say nothing anybody could act on.
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[
+          bill(
+            id: 'a',
+            dueOn: DateTime(2026, 9),
+            status: BillStatus.paid,
+            paid: 150000,
+          ),
+          bill(id: 'b', dueOn: DateTime(2026, 9), status: BillStatus.overdue),
+          bill(
+            id: 'c',
+            dueOn: DateTime(2026, 9),
+            status: BillStatus.paid,
+            paid: 150000,
+          ),
+        ],
+      );
+
+      expect(square('Tuesday, September 1, 3 bills, overdue'), findsOneWidget);
+    });
+
+    testWidgets('and a settled day says settled', (WidgetTester tester) async {
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[
+          bill(
+            dueOn: DateTime(2026, 9, 18),
+            status: BillStatus.paid,
+            paid: 150000,
+          ),
+        ],
+      );
+
+      expect(square('Friday, September 18, 1 bill, settled'), findsOneWidget);
+    });
+
+    testWidgets('a part-paid bill is not hidden behind its date', (
+      WidgetTester tester,
+    ) async {
+      // The one state a date cannot express: a bill can be half settled and not
+      // due for weeks.
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[
+          bill(
+            dueOn: DateTime(2026, 9, 18),
+            status: BillStatus.partiallyPaid,
+            paid: 50000,
+          ),
+        ],
+      );
+
+      expect(
+        square('Friday, September 18, 1 bill, partly paid'),
+        findsOneWidget,
+      );
+    });
+  });
+
+  group('the month breakdown', () {
+    testWidgets('counts each state that is actually present', (
+      WidgetTester tester,
+    ) async {
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[
+          bill(id: 'a', dueOn: DateTime(2026, 9), status: BillStatus.overdue),
+          bill(id: 'b', dueOn: DateTime(2026, 9, 18)),
+          bill(id: 'c', dueOn: DateTime(2026, 9, 20)),
+        ],
+      );
+
+      expect(find.text('1 overdue'), findsOneWidget);
+      expect(find.text('2 upcoming'), findsOneWidget);
+    });
+
+    testWidgets('and leaves out the ones that are not', (
+      WidgetTester tester,
+    ) async {
+      // A month with nothing overdue should not carry a chip reading "0
+      // overdue"; that is a reassurance the absence already gives.
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[bill(dueOn: DateTime(2026, 9, 18))],
+      );
+
+      expect(find.text('1 upcoming'), findsOneWidget);
+      expect(find.textContaining('overdue'), findsNothing);
+      expect(find.textContaining('settled'), findsNothing);
+    });
+
+    testWidgets('counts only the month on screen', (WidgetTester tester) async {
+      await pumpCalendar(
+        tester,
+        bills: <BillWithStatus>[
+          bill(id: 'a', dueOn: DateTime(2026, 9, 18)),
+          bill(id: 'b', dueOn: DateTime(2026, 8, 30), status: BillStatus.paid),
+        ],
+      );
+
+      expect(find.text('1 upcoming'), findsOneWidget);
+      expect(find.text('1 settled'), findsNothing);
+    });
   });
 }
