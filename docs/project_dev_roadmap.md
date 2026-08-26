@@ -1998,11 +1998,111 @@ round trip on a table holding a handful of rows per user.
 Sprint 49. There is nothing on screen that uses any of this yet, which is the
 honest shape of a sprint called "Subscription Model".
 
-## Sprint 49 — Subscription UI
+## Sprint 49 — Subscription UI — done
 
-* Subscription list
-* Subscription details
-* Add/edit/delete
+Sprint 48 built the model and put nothing on screen. This is the screen.
+
+### Not a fifth tab
+
+Four destinations is what the reference design's navigation bar holds and what
+fits at 320dp. A subscription list is something people check monthly and act on
+twice a year; it has not earned a permanent slot beside the bills they look at
+daily.
+
+It replaces **Calendar** in the dashboard's quick actions instead. That row had
+two entries — "All bills" and "Calendar" — that both duplicated a tab one tap
+away, so one of them was costing a slot and buying nothing. Subscriptions has no
+other route in, which is exactly what a quick action is for.
+
+### What a row has to answer
+
+Not "what is this". The question somebody opens this screen with is **"should I
+still be paying for this"**, so a row leads with the provider, then the cost and
+the next charge, and calls out only the states that change the answer.
+
+**At most one badge**, in the order they matter: a trial about to convert, then
+stopped, then will-not-renew. A trial converts whether or not anybody notices; a
+subscription already cancelled is handled. A row carrying three chips is a row
+nobody reads.
+
+**Stopped subscriptions stay on the list**, dimmed and labelled. A cancelled
+subscription is the record of a decision, and hiding it leaves somebody
+wondering whether it ever existed — or adding it again. Deleting is how one goes
+away, and that is deliberate friction.
+
+### The drawer returns an intent
+
+`showSubscriptionDetailSheet` opens the sheet and then acts on what came back.
+Navigation and dialogs need a context that outlives the sheet, and a widget that
+pops itself and then keeps working is a widget that eventually uses a dead
+context.
+
+The cancellation link is **copied, not opened**. Opening it needs `url_launcher`
+and an Android `<queries>` entry — a dependency and a manifest change for a
+field most subscriptions will not have filled in. Worth doing the moment
+somebody uses it; not worth doing on spec.
+
+Deleting says what actually happens: PayPaw cannot cancel anything with the
+provider, and letting somebody believe it did would be the worst failure this
+screen could have. Bills it already made stay where they are.
+
+### The form: the provider leads, the name is optional
+
+A subscription is identified by **who charges for it**. "Family plan" tells
+nobody what it is a plan for, and asking for a name first makes people type
+"Netflix" into a field labelled something else. The provider becomes the name
+unless the user says otherwise, which covers the two-accounts case without
+charging everybody a field for it.
+
+The cancellation link is normalised on the way in. A stored `netflix.com` opens
+as a *relative path* in every browser, so `https://` is added when no scheme was
+typed — and a scheme that is not the web is rejected rather than being wrapped
+into a host that parses and goes nowhere.
+
+`Renews automatically` is not a way to stop a subscription — that is the pause in
+the drawer. It records that the user has already cancelled and is using out the
+time they paid for, and the switch's own subtitle says so.
+
+### Editing a schedule, and the bookmark
+
+`next_due_on` is a bookmark, not a derived value — that is what makes generation
+idempotent. Editing the rule can therefore leave it pointing at a date the new
+rule never produces, which generation either skips forever or satisfies on a day
+nobody chose.
+
+`RecurringBill.rescheduled` moves it to the first date the new rule falls due
+**on or after the current bookmark — never earlier**. Everything before it has
+been billed, and a bookmark that moved backwards would bill it again. Moving a
+cycle's start forward therefore delays the next charge; moving it back does
+nothing. A rule with nothing left to produce comes back paused with its bookmark
+untouched, which is what an end date in the past means.
+
+Editing a *paused* template does not resume it. Unlike the bill form, which
+treats a workable rule as a resume, a paused subscription is a decision the user
+made on a different screen.
+
+### One write, not two
+
+Saving an edit touches both rows, so `update` does both inside one guard. Two
+calls would report two errors for one save, and the second would be refused
+outright by the in-flight guard. The schedule goes first; if the details write
+fails the form stays open on what was typed, so retrying finishes the job. Both
+rows already exist, so unlike a create there is no half-record to compensate.
+
+### The date field moved to core
+
+`DueDateField` was the bill form's, and subscriptions needed the same control
+twice more. Everything about it except the label and the picker's heading was
+already general, so it became `AppDateField` with those as parameters — plus an
+optional clear button, because a trial end is a date you can un-set and a due
+date is not.
+
+### The bug the tests found
+
+`SubscriptionDetails.isInTrial` compared `trialEndsOn` — a date at midnight —
+against a `today` that usually carries a time. A trial ending today read as
+finished from one second past midnight, on the one day the answer matters most.
+It now goes through `daysOfTrialLeft`, which was already normalising both sides.
 
 ## Sprint 50 — Subscription Analytics
 

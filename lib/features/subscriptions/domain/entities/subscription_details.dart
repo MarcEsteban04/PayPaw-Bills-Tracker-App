@@ -66,13 +66,12 @@ class SubscriptionDetails {
   ///
   /// The last day counts as trial: a trial ending on the 20th is free *on* the
   /// 20th, which is how every provider words it and how the user will read it.
-  bool isInTrial(DateTime today) {
-    if (trialEndsOn case final DateTime ends) {
-      return !today.isAfter(ends);
-    }
-
-    return false;
-  }
+  /// Compared **date to date**, through [daysOfTrialLeft]. Comparing the two
+  /// values directly looked equivalent and was not: `trialEndsOn` is a date at
+  /// midnight and [today] usually carries a time, so a trial ending today read
+  /// as finished from one second past midnight — on the one day the answer
+  /// matters most.
+  bool isInTrial(DateTime today) => (daysOfTrialLeft(today) ?? -1) >= 0;
 
   /// Days of free period left on [today], or null if there is no trial.
   ///

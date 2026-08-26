@@ -21,6 +21,9 @@ import '../../features/onboarding/presentation/controllers/onboarding_providers.
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/onboarding/presentation/screens/welcome_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
+import '../../features/subscriptions/presentation/screens/add_subscription_screen.dart';
+import '../../features/subscriptions/presentation/screens/edit_subscription_screen.dart';
+import '../../features/subscriptions/presentation/screens/subscriptions_screen.dart';
 import '../shell/app_destination.dart';
 import '../shell/app_shell.dart';
 import 'app_page_transitions.dart';
@@ -173,6 +176,32 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>(
         pageBuilder: (_, GoRouterState state) => AppPageTransitions.forward(
           state: state,
           child: const ReminderSettingsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.subscriptions.path,
+        name: AppRoutes.subscriptions.routeName,
+        pageBuilder: (_, GoRouterState state) => AppPageTransitions.forward(
+          state: state,
+          child: const SubscriptionsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.addSubscription.path,
+        name: AppRoutes.addSubscription.routeName,
+        pageBuilder: (_, GoRouterState state) => AppPageTransitions.forward(
+          state: state,
+          child: const AddSubscriptionScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.editSubscription.path,
+        name: AppRoutes.editSubscription.routeName,
+        pageBuilder: (_, GoRouterState state) => AppPageTransitions.forward(
+          state: state,
+          child: EditSubscriptionScreen(
+            subscriptionId: state.pathParameters['id']!,
+          ),
         ),
       ),
       GoRoute(

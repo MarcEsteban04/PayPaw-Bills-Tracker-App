@@ -123,6 +123,34 @@ class RecurringBill {
     return false;
   }
 
+  /// This template under a different rule, with its bookmark moved to suit.
+  ///
+  /// [nextDueOn] is a bookmark rather than a derived value, so changing the rule
+  /// leaves it pointing at a date the new rule may never produce — which
+  /// generation would either skip forever or satisfy on a day nobody chose.
+  ///
+  /// The bookmark moves to the first date the new rule falls due **on or after
+  /// the current bookmark**, never earlier: everything before it has already
+  /// been generated, and regenerating it would bill somebody a second time for a
+  /// month they already have. Moving the rule's start *forward* therefore
+  /// delays the next occurrence, and moving it back does nothing — the safe
+  /// direction of the two.
+  ///
+  /// A rule that produces nothing from there on is finished, so the template
+  /// comes back paused with its bookmark untouched. [isActive] is otherwise left
+  /// alone: editing a paused template's schedule is not a request to resume it.
+  RecurringBill rescheduled(Recurrence rule) {
+    final DateTime? bookmark = rule.occurrenceAfter(
+      DateTime(nextDueOn.year, nextDueOn.month, nextDueOn.day - 1),
+    );
+
+    if (bookmark == null) {
+      return copyWith(recurrence: rule, isActive: false);
+    }
+
+    return copyWith(recurrence: rule, nextDueOn: bookmark);
+  }
+
   RecurringBill copyWith({
     String? id,
     String? userId,

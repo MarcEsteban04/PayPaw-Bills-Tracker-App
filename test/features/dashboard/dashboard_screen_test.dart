@@ -475,17 +475,19 @@ void main() {
 
   group('quick actions', () {
     testWidgets('only offers what actually works', (WidgetTester tester) async {
-      // Sprint 37's list also names "Add debt" and "Add subscription". Debts are
-      // Phase 11 and subscriptions are Phase 10, so neither has anywhere to go —
-      // and a row where two of five do nothing teaches the user that the row is
-      // decoration.
+      // Sprint 37's list also names "Add debt". Debts are Phase 11, so it has
+      // nowhere to go — and a row where one of five does nothing teaches the
+      // user that the row is decoration.
       await pumpDashboard(tester, const <BillWithStatus>[]);
 
       expect(find.text('Add bill'), findsWidgets);
       expect(find.text('All bills'), findsOneWidget);
-      expect(find.text('Calendar'), findsOneWidget);
+      // Subscriptions rather than the calendar, which this row used to offer:
+      // the calendar is a tab and needs no shortcut, and subscriptions has no
+      // other way in. See Sprint 49.
+      expect(find.text('Subscriptions'), findsOneWidget);
+      expect(find.text('Calendar'), findsNothing);
       expect(find.text('Add debt'), findsNothing);
-      expect(find.text('Add subscription'), findsNothing);
     });
 
     testWidgets('offers Mark paid once there is something to pay', (

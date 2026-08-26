@@ -6,6 +6,7 @@ import '../../../../core/presentation/layout/app_content_width.dart';
 import '../../../../core/presentation/widgets/app_amount_field.dart';
 import '../../../../core/presentation/widgets/app_button.dart';
 import '../../../../core/presentation/widgets/app_card.dart';
+import '../../../../core/presentation/widgets/app_date_field.dart';
 import '../../../../core/presentation/widgets/app_inline_message.dart';
 import '../../../../core/presentation/widgets/app_text_field.dart';
 import '../../../../core/theme/app_palette.dart';
@@ -16,7 +17,6 @@ import '../../../recurring/presentation/widgets/recurrence_field.dart';
 import '../../domain/entities/bill.dart';
 import '../../domain/validation/bill_validators.dart';
 import 'category_picker_field.dart';
-import 'due_date_field.dart';
 
 /// What the form holds, as one value.
 ///
@@ -220,9 +220,22 @@ class _BillFormState extends ConsumerState<BillForm> {
                   ),
                   const SizedBox(height: AppSpacing.lg),
 
-                  DueDateField(
+                  AppDateField(
+                    label: 'Due date',
                     value: _dueOn,
                     today: today,
+                    // The same bounds the validator enforces, from the same
+                    // constants. A picker that offers a date the form then
+                    // rejects is a picker that lies.
+                    firstDate: DateTime(
+                      today.year - BillValidators.maxYearsInPast,
+                    ),
+                    lastDate: DateTime(
+                      today.year + BillValidators.maxYearsInFuture,
+                      12,
+                      31,
+                    ),
+                    helpText: 'When is it due?',
                     enabled: !isBusy,
                     onChanged: (DateTime date) => setState(
                       // Normalised to midnight. A bill is due on a day, and a

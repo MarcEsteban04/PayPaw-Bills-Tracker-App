@@ -263,10 +263,14 @@ class DashboardScreen extends ConsumerWidget {
         label: 'All bills',
         onPressed: () => context.goNamed(AppRoutes.bills.routeName),
       ),
+      // Subscriptions rather than the calendar, which this row used to offer.
+      // The calendar is a tab, one tap away in the navigation bar, so a shortcut
+      // to it bought the row nothing. Subscriptions has no other way in — it is
+      // not a fifth tab, and it should not be — so this is it.
       QuickAction(
-        icon: Icons.calendar_month_rounded,
-        label: 'Calendar',
-        onPressed: () => context.goNamed(AppRoutes.calendar.routeName),
+        icon: Icons.subscriptions_outlined,
+        label: 'Subscriptions',
+        onPressed: () => context.pushNamed(AppRoutes.subscriptions.routeName),
       ),
     ];
   }

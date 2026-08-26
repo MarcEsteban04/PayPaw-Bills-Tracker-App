@@ -61,6 +61,20 @@ enum AppRoutes {
   /// the user to look.
   reminderSettings(path: '/reminders', routeName: 'reminders'),
 
+  /// What the user is subscribed to, and what it costs.
+  ///
+  /// Above the shell rather than a fifth tab. Four destinations is what the
+  /// reference design's navigation bar holds and what fits at 320dp; a
+  /// subscription list is something people check monthly, not daily.
+  subscriptions(path: '/subscriptions', routeName: 'subscriptions'),
+
+  addSubscription(path: '/subscriptions/new', routeName: 'add-subscription'),
+
+  editSubscription(
+    path: '/subscriptions/:id/edit',
+    routeName: 'edit-subscription',
+  ),
+
   // --- Developer tools ------------------------------------------------------
 
   /// Gallery of every design token. Reached from Profile; not a user
