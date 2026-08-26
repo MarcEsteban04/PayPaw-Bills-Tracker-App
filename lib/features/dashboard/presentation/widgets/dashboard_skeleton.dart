@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/presentation/widgets/app_skeleton.dart';
 import '../../../../core/theme/app_palette.dart';
+import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
 import 'dashboard_cards.dart';
 import 'dashboard_quick_actions.dart';
@@ -88,61 +89,71 @@ class _HeroSkeleton extends StatelessWidget {
 class _ActionsSkeleton extends StatelessWidget {
   const _ActionsSkeleton();
 
-  /// Four, which is what a user with something outstanding sees. One too many is
-  /// a smaller jump than one too few — the row's height is what matters and that
-  /// does not change with the count.
-  static const int _count = 4;
+  /// Two actions, which is what a user with something outstanding sees. One too
+  /// many is a smaller jump than one too few — what matters is the block's
+  /// height, and that does not change with the count.
+  static const int _actionCount = 2;
+
+  /// Three destinations, which never varies.
+  static const int _destinationCount = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    // The real block's own geometry, so nothing moves when the data lands. Both
+    // rows divide the width they are given, so this needs no widths of its own —
+    // only the heights and the gap.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _SkeletonRow(
+          count: _actionCount,
+          height: DashboardQuickActions.actionHeight,
+        ),
+        const SizedBox(height: AppSpacing.cardGap),
+        _SkeletonRow(
+          count: _destinationCount,
+          height: DashboardQuickActions.destinationHeight,
+        ),
+      ],
+    );
+  }
+}
+
+class _SkeletonRow extends StatelessWidget {
+  const _SkeletonRow({required this.count, required this.height});
+
+  final int count;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
     final AppPalette colors = context.colors;
 
-    // Scrolls sideways, exactly as the real row does. Four items on the same
-    // 72dp grid come to 336 and a 320dp phone has 328 to give them, so a plain
-    // Row overflows — which the responsive suite caught the moment the widths
-    // were made to match. Matching the geometry means matching this too.
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
-      child: Row(
-        children: <Widget>[
-          for (int i = 0; i < _count; i++) ...<Widget>[
-            if (i > 0) const SizedBox(width: AppSpacing.lg),
-            // The real row gives each shortcut [DashboardQuickActions.itemWidth],
-            // not the circle's own width. Packed tighter, every icon would slide
-            // sideways the moment the data landed.
-            SizedBox(
-              width: DashboardQuickActions.itemWidth,
-              child: Column(
-                children: <Widget>[
-                  // The real button is a white circle with a green icon in it, so
-                  // the circle is drawn for real and only the icon stands in. That
-                  // is both a truer placeholder and the way past the trap below —
-                  // this row is the one part of the skeleton sitting on the canvas
-                  // rather than on a card.
-                  Container(
-                    width: DashboardQuickActions.itemCircle,
-                    height: DashboardQuickActions.itemCircle,
-                    decoration: BoxDecoration(
-                      color: colors.surface,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: AppSkeleton(width: 22, height: 22),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  // `border`, not the default `surfaceMuted`. This label sits on
-                  // the canvas, where muted is invisible — the whole row rendered
-                  // as a gap, and the screen looked like it had loaded with a hole
-                  // in it.
-                  AppSkeleton(width: 48, height: 10, color: colors.border),
-                ],
+    return Row(
+      children: <Widget>[
+        for (int i = 0; i < count; i++) ...<Widget>[
+          if (i > 0) const SizedBox(width: AppSpacing.cardGap),
+          Expanded(
+            // The real tile is a filled surface with content inside it, so the
+            // surface is drawn for real and only the content stands in. That is
+            // both a truer placeholder and the way past the trap below — this
+            // block is the one part of the skeleton sitting on the canvas rather
+            // than on a card.
+            child: Container(
+              height: height,
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: AppRadii.card,
               ),
+              alignment: Alignment.center,
+              // `border`, not the default `surfaceMuted`, which is invisible
+              // against this surface — the whole block rendered as a gap, and the
+              // screen looked like it had loaded with a hole in it.
+              child: AppSkeleton(width: 48, height: 10, color: colors.border),
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
   }
 }

@@ -481,12 +481,12 @@ void main() {
       await pumpDashboard(tester, const <BillWithStatus>[]);
 
       expect(find.text('Add bill'), findsWidgets);
+      // All five, and all of them on screen. The old row was a sideways scroll
+      // on a 72dp grid, where a fifth shortcut existed only for somebody who
+      // happened to swipe a row that gave no sign it could be swiped.
       expect(find.text('All bills'), findsOneWidget);
-      // Subscriptions rather than the calendar, which this row used to offer:
-      // the calendar is a tab and needs no shortcut, and subscriptions has no
-      // other way in. See Sprint 49.
+      expect(find.text('Calendar'), findsOneWidget);
       expect(find.text('Subscriptions'), findsOneWidget);
-      expect(find.text('Calendar'), findsNothing);
       expect(find.text('Add debt'), findsNothing);
     });
 

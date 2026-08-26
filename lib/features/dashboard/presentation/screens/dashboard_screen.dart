@@ -147,7 +147,10 @@ class DashboardScreen extends ConsumerWidget {
       _Hero(totals: totals),
       const SizedBox(height: AppSpacing.sectionGap),
 
-      DashboardQuickActions(actions: _actions(context, ref, bills)),
+      DashboardQuickActions(
+        actions: _actions(context, ref, bills),
+        destinations: _destinations(context),
+      ),
 
       if (outlook.hasAnything) ...<Widget>[
         const SizedBox(height: AppSpacing.sectionGap),
@@ -236,7 +239,7 @@ class DashboardScreen extends ConsumerWidget {
     ];
   }
 
-  /// The actions that exist. See [DashboardQuickActions] on why the list is short.
+  /// The things that change something. See [DashboardQuickActions] on the split.
   List<QuickAction> _actions(
     BuildContext context,
     WidgetRef ref,
@@ -258,15 +261,30 @@ class DashboardScreen extends ConsumerWidget {
           label: 'Mark paid',
           onPressed: () => unawaited(_markPaid(context, ref, payable)),
         ),
+    ];
+  }
+
+  /// The things that only go somewhere.
+  ///
+  /// Two of the three are also tabs. That is not duplication for its own sake:
+  /// somebody reading the dashboard's figures is already thinking about bills,
+  /// and making them re-aim at the navigation bar to act on that thought is a
+  /// tax. What it does mean is that they are not *important*, which is why they
+  /// are drawn quietly — see [DashboardQuickActions].
+  ///
+  /// Subscriptions is the one with no tab and no other route in.
+  List<QuickAction> _destinations(BuildContext context) {
+    return <QuickAction>[
       QuickAction(
         icon: Icons.receipt_long_rounded,
         label: 'All bills',
         onPressed: () => context.goNamed(AppRoutes.bills.routeName),
       ),
-      // Subscriptions rather than the calendar, which this row used to offer.
-      // The calendar is a tab, one tap away in the navigation bar, so a shortcut
-      // to it bought the row nothing. Subscriptions has no other way in — it is
-      // not a fifth tab, and it should not be — so this is it.
+      QuickAction(
+        icon: Icons.calendar_month_rounded,
+        label: 'Calendar',
+        onPressed: () => context.goNamed(AppRoutes.calendar.routeName),
+      ),
       QuickAction(
         icon: Icons.subscriptions_outlined,
         label: 'Subscriptions',
