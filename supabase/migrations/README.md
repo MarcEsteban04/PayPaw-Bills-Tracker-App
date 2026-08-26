@@ -20,6 +20,9 @@ schema looks like this.
 | `0012_bill_status.sql` | 19 | The derived-status view, `security_invoker` |
 | `0013_storage_attachments.sql` | 20 | Private receipts bucket, owner-scoped policies |
 | `0014_bill_status_with_details.sql` | 22 | Adds the bill's display columns to the view, so a list is one query |
+| `0015_bill_status_due_today.sql` | 24 | Splits `due_today` out of `due_soon` |
+| `0016_generate_recurring_bills.sql` | 33 | Turns templates into bills, and the nightly job that does it |
+| `0017_display_name_is_chosen.sql` | Profile UI | Stops seeding `display_name` from the address, and clears the seeds |
 
 ## Verifying an apply
 

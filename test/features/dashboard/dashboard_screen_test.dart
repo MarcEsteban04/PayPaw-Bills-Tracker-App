@@ -17,6 +17,7 @@ import 'package:paypaw/features/dashboard/presentation/screens/dashboard_screen.
 import 'package:paypaw/features/dashboard/presentation/widgets/dashboard_cards.dart';
 import 'package:paypaw/features/dashboard/presentation/widgets/dashboard_header.dart';
 import 'package:paypaw/features/payments/presentation/controllers/payment_providers.dart';
+import 'package:paypaw/features/profile/domain/entities/user_profile.dart';
 import 'package:paypaw/features/recurring/presentation/controllers/recurring_bill_providers.dart';
 
 import '../bills/helpers/fake_bill_repository.dart';
@@ -585,17 +586,36 @@ void main() {
       );
     });
 
-    test('names the person by the local part of their address', () {
-      // A header is an identity, not a credential.
-      expect(DashboardHeader.displayName('marc@example.com'), 'marc');
-      expect(DashboardHeader.initial('marc@example.com'), 'M');
+    test('names the person by their own name when they have given one', () {
+      expect(
+        DashboardHeader.nameOrAddress(name: 'Marc', email: 'x@example.com'),
+        'Marc',
+      );
+      expect(UserProfile.initialFor(name: 'Marc', email: 'x@example.com'), 'M');
     });
 
-    test('and falls back rather than showing an empty line', () {
-      expect(DashboardHeader.displayName(null), 'Welcome back');
-      expect(DashboardHeader.displayName(''), 'Welcome back');
-      expect(DashboardHeader.displayName('@nothing.com'), 'Welcome back');
-      expect(DashboardHeader.initial(null), 'W');
+    test('and by the local part of their address when they have not', () {
+      // A header is an identity, not a credential — and the local part is a
+      // login rather than a name, which is why it is only the fallback.
+      expect(DashboardHeader.nameOrAddress(email: 'marc@example.com'), 'marc');
+      expect(UserProfile.initialFor(email: 'marc@example.com'), 'M');
+    });
+
+    test('a name of nothing but spaces is not a name', () {
+      expect(
+        DashboardHeader.nameOrAddress(name: '   ', email: 'marc@example.com'),
+        'marc',
+      );
+    });
+
+    test('and it falls back rather than showing an empty line', () {
+      expect(DashboardHeader.nameOrAddress(), 'Welcome back');
+      expect(DashboardHeader.nameOrAddress(email: ''), 'Welcome back');
+      expect(
+        DashboardHeader.nameOrAddress(email: '@nothing.com'),
+        'Welcome back',
+      );
+      expect(UserProfile.initialFor(), '?');
     });
   });
 

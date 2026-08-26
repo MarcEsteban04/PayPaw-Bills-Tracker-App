@@ -3,43 +3,91 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
+import '../../../../core/presentation/layout/app_content_width.dart';
 import '../../../../core/presentation/widgets/app_filter_pill.dart';
-import '../../../../core/presentation/widgets/screen_placeholder.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_mode_controller.dart';
 import '../../../auth/presentation/widgets/account_summary.dart';
+import '../widgets/profile_identity_card.dart';
+import '../widgets/time_zone_row.dart';
 
-/// Account, settings, and the feature areas used occasionally rather than daily.
+/// Who you are, and everything about PayPaw you can change.
 ///
-/// Placeholder, apart from the appearance control and the developer tools below,
-/// which are real. Appearance lives here because Sprint 10 needs somewhere to
-/// switch themes from; it moves into the real settings screen when that is built.
+/// ## It stopped being a placeholder
+///
+/// For forty-odd sprints this was a `ScreenPlaceholder` promising "account,
+/// categories, reminders, security and app settings... built in Sprints 54 and
+/// 78-80" — with the real controls bolted underneath it. Two of those things now
+/// exist, the sprint numbers pointed at debt and security work that has nothing
+/// to do with this screen, and a card explaining what a screen will one day be
+/// is furniture on a screen that already is.
+///
+/// ## The order is: who, then what you'd change, then leaving
+///
+/// Identity first, because it is the answer to "whose account is this" and it is
+/// the one thing here that was missing entirely. Then the settings, commonest
+/// first. **Sign out is last**, deliberately: it is the only disruptive control
+/// on the screen, and putting it under everything else is the cheapest way to
+/// keep a stray thumb off it.
+///
+/// Categories are not here. They are edited where they are used — on the bill
+/// form — and a second place to manage them would be a second place for the two
+/// to disagree.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const ScreenPlaceholder(
-      title: 'Profile',
-      icon: Icons.person_rounded,
-      description:
-          'Account, categories, reminders, security and app settings, plus '
-          'analytics and payment streaks.',
-      buildsIn: 'Sprints 54 and 78-80',
-      footer: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          AccountSummary(),
-          SizedBox(height: AppSpacing.sectionGap),
-          _NotificationsSection(),
-          SizedBox(height: AppSpacing.sectionGap),
-          _AppearanceSection(),
-          SizedBox(height: AppSpacing.sectionGap),
-          _DeveloperTools(),
-        ],
+    return Scaffold(
+      appBar: AppBar(title: const Text('Profile')),
+      body: SafeArea(
+        child: AppContentWidth(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screenInset,
+              AppSpacing.lg,
+              AppSpacing.screenInset,
+              AppSpacing.bottomNavClearance,
+            ),
+            children: const <Widget>[
+              ProfileIdentityCard(),
+              SizedBox(height: AppSpacing.sectionGap),
+              _NotificationsSection(),
+              SizedBox(height: AppSpacing.sectionGap),
+              _AppearanceSection(),
+              SizedBox(height: AppSpacing.sectionGap),
+              _DatesSection(),
+              SizedBox(height: AppSpacing.sectionGap),
+              _DeveloperTools(),
+              SizedBox(height: AppSpacing.sectionGap),
+              AccountSummary(),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+}
+
+/// The setting that decides what "today" means.
+///
+/// Its own section rather than a row among the others, because it is not a
+/// preference — see [TimeZoneRow]. A wrong zone here is wrong dates everywhere
+/// else, and nothing on any other screen would give the reason.
+class _DatesSection extends StatelessWidget {
+  const _DatesSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text('Dates', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: AppSpacing.md),
+        const TimeZoneRow(),
+      ],
     );
   }
 }

@@ -47,11 +47,19 @@ void main() {
   /// underneath the floating navigation bar — and a tap then lands on the bar
   /// instead of the tile. At the end of the list the bottom padding keeps the
   /// tiles clear.
-  Future<void> openProfileEnd(WidgetTester tester) async {
+  /// Opens Profile and scrolls [target] into view.
+  ///
+  /// Scrolled to rather than by a fixed amount. A magic -2000 happened to land
+  /// on the right part of the old screen and stopped meaning anything the moment
+  /// the sections were reordered.
+  Future<void> openProfileAt(WidgetTester tester, Finder target) async {
     await tester.tap(find.bySemanticsLabel(AppDestination.profile.label));
     await tester.pumpAndSettle();
 
-    await tester.drag(find.byType(ListView), const Offset(0, -2000));
+    // scrollUntilVisible, not ensureVisible: a ListView only lays out what is
+    // near the viewport, and a target further down has no element to scroll to
+    // until something drags it into range.
+    await tester.scrollUntilVisible(target, 200);
     await tester.pumpAndSettle();
   }
 
@@ -104,7 +112,7 @@ void main() {
           tester,
           stored: <String, Object>{ThemeModeController.storageKey: 'dark'},
         );
-        await openProfileEnd(tester);
+        await openProfileAt(tester, find.widgetWithText(ListTile, tile));
 
         // widgetWithText, not find.text: tapping the bare Text can land outside
         // the row's own gesture area, and "tap the row labelled X" is what this
@@ -141,7 +149,7 @@ void main() {
       // reports as light.
       expect(paletteOf(tester).surface, AppPalette.light.surface);
 
-      await openProfileEnd(tester);
+      await openProfileAt(tester, find.text('Dark'));
 
       await tester.tap(find.text('Dark'));
       await tester.pumpAndSettle();

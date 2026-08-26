@@ -1612,6 +1612,100 @@ it did not collect — a different piece of work from any of the above.
 
 ---
 
+---
+
+# 👤 Out of order — Profile UI
+
+Asked for between Sprints 45 and 47. There was no sprint for it: the placeholder
+card promised "built in Sprints 54 and 78-80", and those are debt and security
+work with nothing to do with this screen.
+
+## The gap was bigger than the screen
+
+`public.profiles` has existed since migration 0002 with `display_name`,
+`avatar_url`, `currency`, `locale` and `time_zone` — and **nothing in `lib/`
+read or wrote any of it.** The table was populated by a trigger and consumed
+only by SQL. So this is a feature that was missing its entire client half, not a
+screen that needed rearranging: entity, DTO, repository, providers and
+controller all landed with it.
+
+## What the screen says now
+
+**Identity first.** An avatar initial, the name, the address underneath. Tapping
+it edits the name — which is the only thing on this screen a person can put
+their own words into, and it had nowhere to go.
+
+Without a name it reads "Add your name" rather than quietly falling back to the
+address in the large type. An empty state that asks for something beats one that
+makes do.
+
+**Then the settings**, commonest first: reminders, appearance, dates.
+
+**Sign out is last.** It is the only disruptive control here, and putting it
+under everything else is the cheapest way to keep a stray thumb off it.
+
+Categories are not here. They are edited where they are used — on the bill form —
+and a second place to manage them would be a second place for the two to
+disagree.
+
+## The time zone is on the screen because it is not a preference
+
+`bill_status` decides "due today" against `profiles.time_zone` and
+`generate_recurring_bills` measures its horizon by it. A wrong zone is wrong
+**dates** — a bill reading as due tomorrow when it was due yesterday — and
+nothing on any other screen would give the reason.
+
+It defaults to `Asia/Manila` for every account, because migration 0002 had to
+choose something. Anybody who is not there has had silently wrong dates since
+they signed up.
+
+**No picker.** Four hundred IANA names is a worse control than the one question
+worth asking: *is this the zone you are actually in?* The phone already knows, so
+the row shows both and offers to match — one tap, and it cannot produce a zone
+that does not exist. Somebody who wants a zone their phone is not in is not
+served by this; that is a rarer problem than the default being wrong.
+
+It fired on the first device run: the emulator is GMT and the profile says
+Asia/Manila.
+
+## Migration 0017: a name is something you choose
+
+`handle_new_user` seeded `display_name` with the local part of the address —
+"a usable starting name rather than an empty screen", which was right while
+nothing could edit it.
+
+Now that something can, the seed *is* the problem. Every account arrives already
+named after its login, so nobody is ever asked, PayPaw presents a string nobody
+chose as though they did, and "has this person told us their name" is
+unanswerable because a seed and a choice are stored identically.
+
+The trigger inserts the row and leaves the name null. The backfill undoes 0002's,
+clearing `display_name` only where it is **exactly** the local part of the
+address — the seed and nothing else. A chosen name that merely resembles an
+address is left alone. Somebody whose chosen name happens to equal their own
+local part loses it and is asked again; that is the one case this gets wrong, it
+costs two taps, and the alternative is every account misrepresented forever.
+
+**Not applied.** Until it is, the screen shows the seeded name and the invitation
+never appears.
+
+## The dashboard greeting
+
+`DashboardHeader.displayName(email)` became
+`DashboardHeader.nameOrAddress(name:, email:)`. The address is still there and
+still the fallback — the difference is that it is visibly a fallback now, and
+there is a real name to prefer when there is one.
+
+## Not built
+
+**Avatar upload.** `avatar_url` has been in the schema since 0002 and there is
+nowhere to put a file until Storage lands in Sprint 57. A picker that could only
+fail is worse than an initial.
+
+**Currency.** Changing it converts nothing: every amount already stored would
+keep its number and quietly change meaning. That is a data migration wearing a
+dropdown, and it does not belong on a settings screen.
+
 # 📺 Phase 10 — Subscription Manager
 
 ## Sprint 48 — Subscription Model

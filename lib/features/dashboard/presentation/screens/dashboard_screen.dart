@@ -31,6 +31,7 @@ import '../../../notifications/presentation/controllers/notification_providers.d
 import '../../../notifications/presentation/widgets/reminder_permission_card.dart';
 import '../../../payments/presentation/widgets/pay_bill_picker_sheet.dart';
 import '../../../payments/presentation/widgets/record_payment_sheet.dart';
+import '../../../profile/presentation/controllers/profile_providers.dart';
 import '../../../recurring/domain/entities/recurring_bill.dart';
 import '../../../recurring/domain/entities/recurring_commitment.dart';
 import '../../../recurring/presentation/controllers/recurring_bill_providers.dart';
@@ -386,6 +387,7 @@ class _Scaffold extends StatelessWidget {
       children: <Widget>[
         DashboardHeader(
           email: ref.watch(currentUserProvider).value?.email,
+          name: ref.watch(displayNameProvider),
           now: DateTime.now(),
           onAvatarPressed: () => context.goNamed(AppRoutes.profile.routeName),
         ),

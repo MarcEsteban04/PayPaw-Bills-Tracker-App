@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../profile/domain/entities/user_profile.dart';
 
 /// Who is looking, and roughly when.
 ///
@@ -18,9 +19,14 @@ class DashboardHeader extends StatelessWidget {
   const DashboardHeader({
     required this.email,
     required this.now,
+    this.name,
     this.onAvatarPressed,
     super.key,
   });
+
+  /// What this person calls themselves, from their profile. Null until they
+  /// have said, which is most accounts and every new one.
+  final String? name;
 
   /// Null while the session is still resolving, which is a moment, not a state
   /// worth designing for — the greeting stands on its own until it arrives.
@@ -54,7 +60,7 @@ class DashboardHeader extends StatelessWidget {
                 // The local part of the address. Not the whole thing: a header is
                 // an identity, not a credential, and "marc@gmail.com" wrapping
                 // across two lines reads as a form field.
-                displayName(email),
+                nameOrAddress(name: name, email: email),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: textTheme.headlineSmall?.copyWith(
@@ -66,7 +72,10 @@ class DashboardHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppSpacing.md),
-        _Avatar(initial: initial(email), onPressed: onAvatarPressed),
+        _Avatar(
+          initial: UserProfile.initialFor(name: name, email: email),
+          onPressed: onAvatarPressed,
+        ),
       ],
     );
   }
@@ -82,8 +91,21 @@ class DashboardHeader extends StatelessWidget {
     _ => 'Good evening',
   };
 
-  /// The part of an address before the '@', or a fallback.
-  static String displayName(String? email) {
+  /// What to call this person in the heading.
+  ///
+  /// Their name if they have given one, and the local part of their address if
+  /// not. The address is a *fallback*, not a name — "marcdelacruzesteban" is a
+  /// login, and it was the only thing PayPaw had to greet anybody with until
+  /// there was a profile to carry the real one.
+  ///
+  /// Not the whole address either way: a header is an identity, not a
+  /// credential, and "marc@gmail.com" wrapping across two lines reads as a form
+  /// field.
+  static String nameOrAddress({String? name, String? email}) {
+    if (name != null && name.trim().isNotEmpty) {
+      return name.trim();
+    }
+
     if (email == null || email.isEmpty) {
       return 'Welcome back';
     }
@@ -91,12 +113,6 @@ class DashboardHeader extends StatelessWidget {
     final String local = email.split('@').first;
 
     return local.isEmpty ? 'Welcome back' : local;
-  }
-
-  static String initial(String? email) {
-    final String name = displayName(email);
-
-    return name.substring(0, 1).toUpperCase();
   }
 }
 

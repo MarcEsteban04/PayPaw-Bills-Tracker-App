@@ -117,8 +117,9 @@ void main() {
       // list's max extent and happened to leave the button on screen; once
       // Profile gained another section it scrolled straight past it, and the
       // tap landed on the app bar instead.
-      await tester.ensureVisible(
+      await tester.scrollUntilVisible(
         find.widgetWithText(OutlinedButton, 'Sign out'),
+        200,
       );
       await tester.pumpAndSettle();
 
@@ -148,8 +149,9 @@ void main() {
       // list's max extent and happened to leave the button on screen; once
       // Profile gained another section it scrolled straight past it, and the
       // tap landed on the app bar instead.
-      await tester.ensureVisible(
+      await tester.scrollUntilVisible(
         find.widgetWithText(OutlinedButton, 'Sign out'),
+        200,
       );
       await tester.pumpAndSettle();
 
