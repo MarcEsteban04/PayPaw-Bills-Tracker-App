@@ -1796,6 +1796,41 @@ Migrations **0017 and 0018** are both unapplied. Until 0018 is, choosing a photo
 fails with a toast and the avatar stays a letter — which is the same thing it
 does for an account that has never set one.
 
+
+### Amended again: Appearance stopped being three words in a row
+
+It was three `AppFilterPill`s sitting bare on the canvas while every other
+section was a card. Two things were wrong with that.
+
+A filter pill **narrows a list**. This picks a mode. The control was wearing the
+wrong metaphor and looked borrowed from the bills screen because it was.
+
+And a theme is the one setting in this app whose entire subject is *what things
+look like*. Describing it in three words gave up the only advantage the setting
+has over every other setting on the screen.
+
+Each option is now a small picture of the app in that theme — the canvas, two
+cards, a line of text and the accent — painted from `AppPalette.light` and
+`AppPalette.dark` **directly** rather than from the active theme, because the
+light tile has to look light while the app is dark. That is the whole point of
+showing it.
+
+System is split corner to corner, light over dark. It is the standard idiom and
+the only one of the three that needs no caption to be understood.
+
+Two details worth the words:
+
+* **The tiles are nearly square, not phone-shaped.** A tall tile at a third of a
+  card's width read as a phone drawn inside a phone: the frame became the
+  subject and the colours, which are the actual subject, got the leftovers.
+* **The miniature's cards reach nearly the full width.** The first attempt used a
+  narrow inset card, which is exactly what a device outline looks like. Two
+  wide cards on a canvas is what every screen in this app actually is.
+
+A line appears under the tiles for System and for nothing else: "Following your
+phone, which is dark right now." System is the only option whose name does not
+say what it will do.
+
 # 📺 Phase 10 — Subscription Manager
 
 ## Sprint 48 — Subscription Model

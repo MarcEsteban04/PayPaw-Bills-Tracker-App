@@ -161,7 +161,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repository.signOutCalls, 0);
-      expect(find.text('marc@example.com'), findsOneWidget);
+      // Still signed in. Asserted on the control rather than on the address:
+      // the address lives in the identity card at the top of the screen, which
+      // scrolling to the sign-out button leaves behind.
+      expect(find.widgetWithText(OutlinedButton, 'Sign out'), findsOneWidget);
     });
   });
 

@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/presentation/layout/app_content_width.dart';
-import '../../../../core/presentation/widgets/app_filter_pill.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/theme/theme_mode_controller.dart';
 import '../../../auth/presentation/widgets/account_summary.dart';
 import '../../../profile/presentation/widgets/profile_identity_card.dart';
 import '../../../profile/presentation/widgets/time_zone_row.dart';
+import '../widgets/appearance_section.dart';
 
 /// Who you are, and everything about PayPaw you can change.
 ///
@@ -58,7 +56,7 @@ class SettingsScreen extends StatelessWidget {
               SizedBox(height: AppSpacing.sectionGap),
               _NotificationsSection(),
               SizedBox(height: AppSpacing.sectionGap),
-              _AppearanceSection(),
+              AppearanceSection(),
               SizedBox(height: AppSpacing.sectionGap),
               _DatesSection(),
               SizedBox(height: AppSpacing.sectionGap),
@@ -116,46 +114,6 @@ class _NotificationsSection extends StatelessWidget {
       ],
     );
   }
-}
-
-/// Light, dark, or follow the device.
-class _AppearanceSection extends ConsumerWidget {
-  const _AppearanceSection();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final ThemeMode current = ref.watch(themeModeProvider);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text('Appearance', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: AppSpacing.sm),
-        Wrap(
-          spacing: AppSpacing.sm,
-          children: <Widget>[
-            for (final ThemeMode mode in ThemeMode.values)
-              // The filter pill already carries a selected state and the right
-              // geometry, so this reuses it rather than adding a fourth kind of
-              // toggle to the component kit.
-              AppFilterPill(
-                label: _label(mode),
-                isApplied: mode == current,
-                showCaret: false,
-                onPressed: () =>
-                    ref.read(themeModeProvider.notifier).setThemeMode(mode),
-              ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  static String _label(ThemeMode mode) => switch (mode) {
-    ThemeMode.system => 'System',
-    ThemeMode.light => 'Light',
-    ThemeMode.dark => 'Dark',
-  };
 }
 
 class _SettingsTile extends StatelessWidget {
