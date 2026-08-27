@@ -2490,14 +2490,62 @@ numbers say is square, and one owed the other way. Same reason the subscription
 section is there — a design can be judged without writing rows into somebody's
 account.
 
-## Sprint 55 — Debt Dashboard
+## Sprint 55 — Debt Dashboard — done, as a card rather than a screen
 
-Display:
+### Why it is not a screen
 
-* Total owed
-* Total receivable
-* Upcoming debt payments
-* Overdue debts
+The roadmap calls this a "Debt Dashboard". A separate one would have been a fifth
+destination showing four figures, reached from a row that already has four
+tiles — and the question it answers, *is any of this urgent today*, is the exact
+question the dashboard already exists for. **Two dashboards is one dashboard and
+a page nobody opens.**
+
+So it is a card on the main dashboard, sitting with the bill figures and above
+the actionable bill lists, tappable through to the Utang screen. That screen
+keeps its own per-direction total, which is a different job: that one is context
+for the list under it, this one is a summary you see without going looking.
+
+### The two sides are never netted
+
+"You are ₱800 down overall" is one number, it would have fitted beautifully on a
+card, and it is the one thing `DebtSummary` deliberately refuses to compute.
+
+Subtracting what you are owed from what you owe **treats a receivable as cash.**
+It is not: money lent to a cousin is not money in a wallet, half of informal
+lending comes back late or in kind or not at all, and a dashboard that folds the
+two together encourages spending against the optimistic half. Both figures stand
+side by side; the reader does whichever subtraction they actually trust. There is
+no getter that does it for them.
+
+What you owe gets the larger type when both are present — money going out is the
+half with a consequence — and money coming in takes the emphasis only when it is
+the only thing there.
+
+### Undated debts are counted, because otherwise they vanish
+
+A debt nobody agreed a date for can never be overdue and never be upcoming. A
+card built from those two states would show it in its figures and in **neither**
+line — present in the total, absent from every explanation of the total. So the
+card says "2 with no date agreed" out loud, which is the honest version of a
+number that would otherwise not add up on inspection.
+
+### Overdue names which side it is on
+
+Utang **you** owe past its date is something to go and pay. Utang owed **to** you
+past its date is somebody to go and ask. One sentence covering both would tell
+the reader neither, so there are three: yours, theirs, and both.
+
+The next-due line disappears when the soonest thing is already late. "What is
+next" for somebody already late is the thing they are already late for, and the
+overdue strip has just said it — printing both would say it twice.
+
+### Found while checking it on a real phone
+
+The first version showed both sides always, so anybody who has never lent a peso
+got a card reading **"OWED TO YOU ₱0.00 · 0 people"** across half its width. That
+is the same ₱0.00 fault the card's own doc comment warns about, one column in —
+and unlike "₱0.00 overdue" on the bills card it is not reassuring, just absence
+taking up space. Only the sides with something on them render now.
 
 ## Sprint 56 — Debt Analytics
 

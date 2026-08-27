@@ -4,6 +4,7 @@ import '../../../../core/providers/supabase_providers.dart';
 import '../../../auth/presentation/controllers/current_user_provider.dart';
 import '../../data/repositories/supabase_debt_repository.dart';
 import '../../domain/entities/debt_direction.dart';
+import '../../domain/entities/debt_summary.dart';
 import '../../domain/entities/debt_with_status.dart';
 import '../../domain/repositories/debt_repository.dart';
 
@@ -61,4 +62,15 @@ final debtsByDirectionProvider =
 /// showing minutes ago.
 final debtProvider = FutureProvider.family<DebtWithStatus?, String>(
   (Ref ref, String id) => ref.watch(debtRepositoryProvider).fetchDebt(id),
+);
+
+/// Where the user stands on utang, both directions at once.
+///
+/// Derived rather than fetched. The figures are a pure function of the list, so
+/// a provider that recomputed them from its own query would be a second source
+/// for the same fact — and the two would disagree for as long as one was stale.
+final Provider<DebtSummary> debtSummaryProvider = Provider<DebtSummary>(
+  (Ref ref) => DebtSummary.of(
+    ref.watch(debtsProvider).value ?? const <DebtWithStatus>[],
+  ),
 );

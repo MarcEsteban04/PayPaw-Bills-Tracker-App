@@ -27,6 +27,8 @@ import '../../../bills/presentation/widgets/bill_payable.dart';
 import '../../../categories/domain/entities/category.dart';
 import '../../../categories/presentation/controllers/category_providers.dart';
 import '../../../categories/presentation/widgets/category_icon.dart';
+import '../../../debts/presentation/controllers/debt_providers.dart';
+import '../../../debts/presentation/widgets/debt_summary_card.dart';
 import '../../../notifications/domain/entities/notification_permission.dart';
 import '../../../notifications/presentation/controllers/notification_providers.dart';
 import '../../../notifications/presentation/widgets/reminder_permission_card.dart';
@@ -156,6 +158,23 @@ class DashboardScreen extends ConsumerWidget {
       if (outlook.hasAnything) ...<Widget>[
         const SizedBox(height: AppSpacing.sectionGap),
         _StatRow(totals: totals, outlook: outlook, today: today),
+      ],
+
+      // Utang, with the money figures rather than at the bottom.
+      //
+      // Sprint 55 asked for a "Debt Dashboard". A separate screen showing four
+      // figures would have been a fifth destination answering the question this
+      // screen exists for — two dashboards is one dashboard and a page nobody
+      // opens — so it is a card here, above the actionable bill lists and below
+      // the bill figures it sits alongside.
+      //
+      // The condition is read here rather than left to the card, for the reason
+      // the block below gives: a card that shrinks to nothing still leaves the
+      // gap before it, and a stray section gap reads as something that failed to
+      // load.
+      if (ref.watch(debtSummaryProvider).hasAnything) ...<Widget>[
+        const SizedBox(height: AppSpacing.sectionGap),
+        const DebtSummaryCard(),
       ],
 
       // Only for someone who has bills to be reminded about, and only while

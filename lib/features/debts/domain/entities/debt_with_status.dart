@@ -70,6 +70,12 @@ class DebtWithStatus {
   /// Whether the agreed date has passed with this still open.
   bool get isOverdue => debt.isOverdue(today);
 
+  /// Whether a repayment date was ever agreed.
+  ///
+  /// Forwarded because a debt with no date can be neither overdue nor upcoming,
+  /// so anything summarising those two states has to be able to ask.
+  bool get hasDueDate => debt.hasDueDate;
+
   /// Whether some but not all of it has been repaid.
   bool get isPartiallyRepaid => repaid.minorUnits > 0 && !isFullyRepaid;
 
