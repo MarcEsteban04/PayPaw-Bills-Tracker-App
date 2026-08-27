@@ -14,6 +14,9 @@ import '../../features/bills/presentation/screens/bills_screen.dart';
 import '../../features/bills/presentation/screens/edit_bill_screen.dart';
 import '../../features/calendar/presentation/screens/calendar_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
+import '../../features/debts/presentation/screens/add_debt_screen.dart';
+import '../../features/debts/presentation/screens/debts_screen.dart';
+import '../../features/debts/presentation/screens/edit_debt_screen.dart';
 import '../../features/design_system/presentation/screens/components_screen.dart';
 import '../../features/design_system/presentation/screens/design_system_screen.dart';
 import '../../features/notifications/presentation/screens/reminder_settings_screen.dart';
@@ -202,6 +205,30 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>(
           child: EditSubscriptionScreen(
             subscriptionId: state.pathParameters['id']!,
           ),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.debts.path,
+        name: AppRoutes.debts.routeName,
+        pageBuilder: (_, GoRouterState state) => AppPageTransitions.forward(
+          state: state,
+          child: const DebtsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.addDebt.path,
+        name: AppRoutes.addDebt.routeName,
+        pageBuilder: (_, GoRouterState state) => AppPageTransitions.forward(
+          state: state,
+          child: const AddDebtScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.editDebt.path,
+        name: AppRoutes.editDebt.routeName,
+        pageBuilder: (_, GoRouterState state) => AppPageTransitions.forward(
+          state: state,
+          child: EditDebtScreen(debtId: state.pathParameters['id']!),
         ),
       ),
       GoRoute(

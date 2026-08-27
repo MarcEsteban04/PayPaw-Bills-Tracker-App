@@ -8,7 +8,9 @@ import 'package:paypaw/features/bills/domain/entities/bill.dart';
 import 'package:paypaw/features/bills/domain/entities/bill_status.dart';
 import 'package:paypaw/features/bills/domain/entities/bill_with_status.dart';
 import 'package:paypaw/features/bills/presentation/controllers/bill_repository_provider.dart';
+import 'package:paypaw/features/bills/presentation/widgets/bill_payable.dart';
 import 'package:paypaw/features/payments/domain/entities/payment_method.dart';
+import 'package:paypaw/features/payments/domain/entities/payment_target.dart';
 import 'package:paypaw/features/payments/presentation/controllers/payment_providers.dart';
 import 'package:paypaw/features/payments/presentation/widgets/record_payment_sheet.dart';
 
@@ -64,7 +66,7 @@ void main() {
               builder: (BuildContext context) => TextButton(
                 onPressed: () => showRecordPaymentSheet(
                   context: context,
-                  item: bill ?? item(),
+                  payable: billPayable(bill ?? item()),
                 ),
                 child: const Text('open'),
               ),
@@ -136,7 +138,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(payments.recorded.single.amount, const Money.php(150000));
-      expect(payments.recorded.single.billId, 'bill-1');
+      expect(
+        payments.recorded.single.target,
+        const PaymentTarget.bill('bill-1'),
+      );
     });
 
     testWidgets('carries the method when one was chosen', (

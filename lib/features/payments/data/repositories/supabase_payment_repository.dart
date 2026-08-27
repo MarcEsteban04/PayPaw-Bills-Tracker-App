@@ -40,6 +40,20 @@ class SupabasePaymentRepository implements PaymentRepository {
   }
 
   @override
+  Future<List<Payment>> fetchPaymentsForDebt(String debtId) async {
+    return _guard(() async {
+      final List<Map<String, dynamic>> rows = await _client
+          .from(PaymentDto.tableName)
+          .select(PaymentDto.selectColumns)
+          .eq(PaymentDto.columnDebtId, debtId)
+          // Most recent first, and spelled out for the reason above.
+          .order(PaymentDto.columnPaidAt, ascending: false);
+
+      return rows.map(PaymentDto.toEntity).toList();
+    });
+  }
+
+  @override
   Future<Payment> recordPayment(NewPayment draft) async {
     final String userId = _requireUserId('recordPayment');
 

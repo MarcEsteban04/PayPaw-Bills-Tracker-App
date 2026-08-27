@@ -75,6 +75,18 @@ enum AppRoutes {
     routeName: 'edit-subscription',
   ),
 
+  /// Utang. Above the shell for the same reason subscriptions are: money owed is
+  /// something people settle occasionally, not a destination they live in.
+  ///
+  /// One route for both directions. The screen takes which side to show from a
+  /// query parameter rather than there being two paths, because it is one list
+  /// of one table with the wording changed — see `DebtDirection`.
+  debts(path: '/debts', routeName: 'debts'),
+
+  addDebt(path: '/debts/new', routeName: 'add-debt'),
+
+  editDebt(path: '/debts/:id/edit', routeName: 'edit-debt'),
+
   // --- Developer tools ------------------------------------------------------
 
   /// Gallery of every design token. Reached from Profile; not a user

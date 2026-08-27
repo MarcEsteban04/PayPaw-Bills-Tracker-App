@@ -2,6 +2,7 @@ import 'package:meta/meta.dart';
 
 import '../../../../core/domain/money.dart';
 import 'payment_method.dart';
+import 'payment_target.dart';
 
 /// A payment the user has described but the database has not yet stored.
 ///
@@ -12,18 +13,16 @@ import 'payment_method.dart';
 /// No `userId`. The repository fills it from the session, so a caller cannot get
 /// it wrong and cannot set it to somebody else.
 ///
-/// ## Bills only, for now
+/// ## What it is paid against
 ///
 /// The table takes a payment against a bill *or* a debt and enforces exactly one
-/// of the two. This carries only [billId], because debts arrive in Phase 11 and a
-/// nullable pair with a check the compiler cannot see would be a worse contract
-/// than the one the database already has. When debts land, this either grows a
-/// target or gains a sibling — that decision belongs to the sprint that has both
-/// cases in front of it.
+/// of the two with a check constraint. [target] is that constraint expressed in
+/// types — see [PaymentTarget] for why it is a closed type rather than the
+/// nullable pair this class used to be heading towards.
 @immutable
 class NewPayment {
   const NewPayment({
-    required this.billId,
+    required this.target,
     required this.amount,
     required this.paidAt,
     this.method,
@@ -31,7 +30,18 @@ class NewPayment {
     this.note,
   });
 
-  final String billId;
+  /// Convenience for the common case, and for the call sites that predate debts.
+  NewPayment.forBill({
+    required String billId,
+    required this.amount,
+    required this.paidAt,
+    this.method,
+    this.reference,
+    this.note,
+  }) : target = PaymentTarget.bill(billId);
+
+  /// The bill or debt this settles some of.
+  final PaymentTarget target;
 
   /// Always positive. The column refuses zero and negatives; the validators
   /// refuse them earlier, with a sentence a person can act on.
@@ -49,14 +59,14 @@ class NewPayment {
   final String? note;
 
   NewPayment copyWith({
-    String? billId,
+    PaymentTarget? target,
     Money? amount,
     DateTime? paidAt,
     PaymentMethod? method,
     String? reference,
     String? note,
   }) => NewPayment(
-    billId: billId ?? this.billId,
+    target: target ?? this.target,
     amount: amount ?? this.amount,
     paidAt: paidAt ?? this.paidAt,
     method: method ?? this.method,
@@ -67,7 +77,7 @@ class NewPayment {
   @override
   bool operator ==(Object other) =>
       other is NewPayment &&
-      other.billId == billId &&
+      other.target == target &&
       other.amount == amount &&
       other.paidAt == paidAt &&
       other.method == method &&
@@ -76,9 +86,9 @@ class NewPayment {
 
   @override
   int get hashCode =>
-      Object.hash(billId, amount, paidAt, method, reference, note);
+      Object.hash(target, amount, paidAt, method, reference, note);
 
   @override
   String toString() =>
-      'NewPayment($amount against $billId at ${paidAt.toIso8601String()})';
+      'NewPayment($amount against $target at ${paidAt.toIso8601String()})';
 }

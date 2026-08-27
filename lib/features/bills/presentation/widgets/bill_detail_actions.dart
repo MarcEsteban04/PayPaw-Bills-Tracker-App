@@ -10,6 +10,7 @@ import '../../../payments/presentation/widgets/record_payment_sheet.dart';
 import '../../domain/entities/bill_with_status.dart';
 import '../controllers/bill_actions_controller.dart';
 import 'bill_detail_sheet.dart';
+import 'bill_payable.dart';
 
 /// Everything that can be done to a bill from its drawer, in one place.
 ///
@@ -44,7 +45,11 @@ Future<void> openBillDetail({
 
   switch (action) {
     case BillDetailAction.recordPayment:
-      await recordPaymentFor(context: context, ref: ref, item: item);
+      await recordPaymentFor(
+        context: context,
+        ref: ref,
+        payable: billPayable(item),
+      );
     case BillDetailAction.reminders:
       await showBillReminderSheet(context: context, item: item);
     case BillDetailAction.edit:

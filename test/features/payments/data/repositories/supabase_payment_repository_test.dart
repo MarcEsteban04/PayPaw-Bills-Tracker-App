@@ -150,7 +150,7 @@ void main() {
       // clear message for a 401 the UI has to guess at.
       await expectLater(
         repository.recordPayment(
-          NewPayment(
+          NewPayment.forBill(
             billId: 'bill-1',
             amount: const Money.php(50000),
             paidAt: DateTime.utc(2026, 8, 25),

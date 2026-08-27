@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/providers/supabase_providers.dart';
 import '../../../auth/presentation/controllers/current_user_provider.dart';
 import '../../data/repositories/supabase_debt_repository.dart';
-import '../../domain/entities/debt.dart';
 import '../../domain/entities/debt_direction.dart';
+import '../../domain/entities/debt_with_status.dart';
 import '../../domain/repositories/debt_repository.dart';
 
 /// The debt repository.
@@ -22,15 +22,14 @@ final Provider<DebtRepository> debtRepositoryProvider =
 /// Empty rather than an error when signed out: there is nothing to fetch, and a
 /// request made before there is an account to make it for can only fail. The
 /// same guard `subscriptionsProvider` uses, for the same reason.
-final FutureProvider<List<Debt>> debtsProvider = FutureProvider<List<Debt>>((
-  Ref ref,
-) async {
-  if (ref.watch(currentUserProvider).value == null) {
-    return const <Debt>[];
-  }
+final FutureProvider<List<DebtWithStatus>> debtsProvider =
+    FutureProvider<List<DebtWithStatus>>((Ref ref) async {
+      if (ref.watch(currentUserProvider).value == null) {
+        return const <DebtWithStatus>[];
+      }
 
-  return ref.watch(debtRepositoryProvider).fetchDebts();
-});
+      return ref.watch(debtRepositoryProvider).fetchDebts();
+    });
 
 /// One side of the ledger.
 ///
@@ -41,16 +40,18 @@ final FutureProvider<List<Debt>> debtsProvider = FutureProvider<List<Debt>>((
 ///
 /// The repository still takes a `direction`, because a future screen that only
 /// ever wants one side should not have to pull both over the wire to get it.
-final debtsByDirectionProvider = Provider.family<List<Debt>, DebtDirection>((
-  Ref ref,
-  DebtDirection which,
-) {
-  final List<Debt> all = ref.watch(debtsProvider).value ?? const <Debt>[];
+final debtsByDirectionProvider =
+    Provider.family<List<DebtWithStatus>, DebtDirection>((
+      Ref ref,
+      DebtDirection which,
+    ) {
+      final List<DebtWithStatus> all =
+          ref.watch(debtsProvider).value ?? const <DebtWithStatus>[];
 
-  return all
-      .where((Debt debt) => debt.direction == which)
-      .toList(growable: false);
-});
+      return all
+          .where((DebtWithStatus each) => each.direction == which)
+          .toList(growable: false);
+    });
 
 /// One debt, by id.
 ///
@@ -58,6 +59,6 @@ final debtsByDirectionProvider = Provider.family<List<Debt>, DebtDirection>((
 /// link has no list to look in — and reading the row directly is what makes it
 /// open on what the database currently holds rather than on what a list was
 /// showing minutes ago.
-final debtProvider = FutureProvider.family<Debt?, String>(
+final debtProvider = FutureProvider.family<DebtWithStatus?, String>(
   (Ref ref, String id) => ref.watch(debtRepositoryProvider).fetchDebt(id),
 );

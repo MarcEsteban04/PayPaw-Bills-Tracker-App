@@ -24,3 +24,14 @@ final paymentsForBillProvider = FutureProvider.family<List<Payment>, String>(
   (Ref ref, String billId) =>
       ref.watch(paymentRepositoryProvider).fetchPaymentsForBill(billId),
 );
+
+/// What has been repaid against one debt, most recent first.
+///
+/// The sibling of [paymentsForBillProvider], and separate for the same reason
+/// the repository methods are: a debt's history and a bill's are read from the
+/// same table through different columns, and one family keyed on a target would
+/// have to unwrap it to decide which.
+final paymentsForDebtProvider = FutureProvider.family<List<Payment>, String>(
+  (Ref ref, String debtId) =>
+      ref.watch(paymentRepositoryProvider).fetchPaymentsForDebt(debtId),
+);

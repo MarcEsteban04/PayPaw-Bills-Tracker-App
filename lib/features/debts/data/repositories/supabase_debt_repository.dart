@@ -4,9 +4,11 @@ import '../../../../core/data/supabase_error_mapper.dart';
 import '../../../../core/error/app_exception.dart';
 import '../../domain/entities/debt.dart';
 import '../../domain/entities/debt_direction.dart';
+import '../../domain/entities/debt_with_status.dart';
 import '../../domain/entities/new_debt.dart';
 import '../../domain/repositories/debt_repository.dart';
 import '../dtos/debt_dto.dart';
+import '../dtos/debt_with_status_dto.dart';
 
 /// [DebtRepository] over Supabase.
 ///
@@ -28,7 +30,7 @@ class SupabaseDebtRepository implements DebtRepository {
   final SupabaseClient _client;
 
   @override
-  Future<List<Debt>> fetchDebts({
+  Future<List<DebtWithStatus>> fetchDebts({
     DebtDirection? direction,
     bool includeSettled = false,
   }) async {
@@ -37,15 +39,18 @@ class SupabaseDebtRepository implements DebtRepository {
       // PostgrestFilterBuilder becomes a PostgrestTransformBuilder once `order`
       // is applied, and no filter can be added after that.
       PostgrestFilterBuilder<List<Map<String, dynamic>>> query = _client
-          .from(DebtDto.table)
-          .select(DebtDto.selectColumns);
+          .from(DebtWithStatusDto.viewName)
+          .select(DebtWithStatusDto.selectColumns);
 
       if (direction != null) {
-        query = query.eq(DebtDto.columnDirection, direction.wireValue);
+        query = query.eq(
+          DebtWithStatusDto.columnDirection,
+          direction.wireValue,
+        );
       }
 
       if (!includeSettled) {
-        query = query.isFilter(DebtDto.columnSettledAt, null);
+        query = query.isFilter(DebtWithStatusDto.columnSettledAt, null);
       }
 
       final List<Map<String, dynamic>> rows = await query
@@ -56,33 +61,37 @@ class SupabaseDebtRepository implements DebtRepository {
           // sends `nullsfirst` unless told otherwise — and a debt nobody agreed
           // a date for would then sit above every debt that has one, burying the
           // deadlines under the things with no deadline at all.
-          .order(DebtDto.columnDueOn, ascending: true, nullsFirst: false)
+          .order(
+            DebtWithStatusDto.columnDueOn,
+            ascending: true,
+            nullsFirst: false,
+          )
           // Then oldest first: between two debts with no agreed date, the one
           // that has been outstanding longest is the one worth looking at.
-          .order(DebtDto.columnIncurredOn, ascending: true)
+          .order(DebtWithStatusDto.columnIncurredOn, ascending: true)
           // Tie-break by name so two debts from the same day keep a stable order
           // between fetches. Without it the order is whatever Postgres returns,
           // which can change and reads as the list shuffling itself.
-          .order(DebtDto.columnCounterpartyName, ascending: true);
+          .order(DebtWithStatusDto.columnCounterpartyName, ascending: true);
 
-      return rows.map(DebtDto.toEntity).toList();
+      return rows.map(DebtWithStatusDto.toEntity).toList();
     });
   }
 
   @override
-  Future<Debt?> fetchDebt(String id) async {
+  Future<DebtWithStatus?> fetchDebt(String id) async {
     return _guard(() async {
       // maybeSingle, not single: a missing row is a null, not an exception.
       // Under RLS "deleted" and "belongs to someone else" are the same answer,
       // and they have to stay the same answer — reporting them differently would
       // confirm that a stranger's debt exists.
       final Map<String, dynamic>? row = await _client
-          .from(DebtDto.table)
-          .select(DebtDto.selectColumns)
-          .eq(DebtDto.columnId, id)
+          .from(DebtWithStatusDto.viewName)
+          .select(DebtWithStatusDto.selectColumns)
+          .eq(DebtWithStatusDto.columnDebtId, id)
           .maybeSingle();
 
-      return row == null ? null : DebtDto.toEntity(row);
+      return row == null ? null : DebtWithStatusDto.toEntity(row);
     });
   }
 

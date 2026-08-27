@@ -21,6 +21,7 @@ import 'package:paypaw/features/notifications/domain/entities/bill_reminder_over
 import 'package:paypaw/features/notifications/presentation/controllers/notification_providers.dart';
 import 'package:paypaw/features/payments/domain/entities/payment.dart';
 import 'package:paypaw/features/payments/domain/entities/payment_method.dart';
+import 'package:paypaw/features/payments/domain/entities/payment_target.dart';
 import 'package:paypaw/features/payments/presentation/controllers/payment_providers.dart';
 
 import '../../payments/helpers/fake_payment_repository.dart';
@@ -838,7 +839,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(payments.recorded.single.amount, const Money.php(245050));
-      expect(payments.recorded.single.billId, 'bill-1');
+      expect(
+        payments.recorded.single.target,
+        const PaymentTarget.bill('bill-1'),
+      );
     });
 
     testWidgets('and says so', (WidgetTester tester) async {

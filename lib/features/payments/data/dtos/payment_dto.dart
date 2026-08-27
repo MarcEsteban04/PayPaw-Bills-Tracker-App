@@ -3,6 +3,7 @@ import '../../../../core/domain/money.dart';
 import '../../domain/entities/new_payment.dart';
 import '../../domain/entities/payment.dart';
 import '../../domain/entities/payment_method.dart';
+import '../../domain/entities/payment_target.dart';
 
 /// Maps a `public.payments` row to [Payment].
 ///
@@ -52,8 +53,18 @@ abstract final class PaymentDto {
   }) {
     return <String, dynamic>{
       columnUserId: userId,
-      columnBillId: draft.billId,
-      columnDebtId: null,
+      // Exactly one, which is what the check constraint requires and what the
+      // target type guarantees. A switch rather than two nullable reads: adding
+      // a third kind of target would fail to compile here rather than silently
+      // insert a row with neither column set.
+      columnBillId: switch (draft.target) {
+        BillTarget(:final String id) => id,
+        DebtTarget() => null,
+      },
+      columnDebtId: switch (draft.target) {
+        DebtTarget(:final String id) => id,
+        BillTarget() => null,
+      },
       columnAmountMinor: draft.amount.minorUnits,
       columnCurrency: draft.amount.currency,
       // A timestamptz, so it goes over the wire as an instant with its offset —

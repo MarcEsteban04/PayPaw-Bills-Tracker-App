@@ -28,6 +28,18 @@ abstract interface class PaymentRepository {
   /// have to stay the same answer.
   Future<List<Payment>> fetchPaymentsForBill(String billId);
 
+  /// What has been repaid against one debt, most recent first.
+  ///
+  /// The same contract as [fetchPaymentsForBill] in every respect — including
+  /// that a debt which does not exist and one belonging to somebody else are
+  /// both an empty list, because through RLS they are the same answer.
+  ///
+  /// Its own method rather than one taking a [PaymentTarget], because the two
+  /// filter on different columns and a single method would have to switch on the
+  /// target to build its query — which is the same switch, moved somewhere it
+  /// reads as less obvious.
+  Future<List<Payment>> fetchPaymentsForDebt(String debtId);
+
   /// Records money moving against a bill, and returns the stored row.
   ///
   /// **This does not touch the bill.** Nothing here marks it paid, because

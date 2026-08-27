@@ -9,6 +9,7 @@ import 'package:paypaw/features/bills/presentation/controllers/bill_detail_provi
 import 'package:paypaw/features/bills/presentation/controllers/bill_repository_provider.dart';
 import 'package:paypaw/features/payments/domain/entities/new_payment.dart';
 import 'package:paypaw/features/payments/domain/entities/payment.dart';
+import 'package:paypaw/features/payments/domain/entities/payment_target.dart';
 import 'package:paypaw/features/payments/presentation/controllers/payment_providers.dart';
 import 'package:paypaw/features/payments/presentation/controllers/payment_write_controller.dart';
 
@@ -39,7 +40,7 @@ void main() {
     today: DateTime(2026, 8, 25),
   );
 
-  NewPayment draft({int amount = 150000}) => NewPayment(
+  NewPayment draft({int amount = 150000}) => NewPayment.forBill(
     billId: 'bill-1',
     amount: Money.php(amount),
     paidAt: DateTime(2026, 8, 25, 10),
@@ -79,7 +80,10 @@ void main() {
         harnessResult.payments.recorded.single.amount,
         const Money.php(50000),
       );
-      expect(harnessResult.payments.recorded.single.billId, 'bill-1');
+      expect(
+        harnessResult.payments.recorded.single.target,
+        const PaymentTarget.bill('bill-1'),
+      );
       expect(
         harnessResult.container.read(paymentWriteControllerProvider).recorded,
         const Money.php(50000),

@@ -2357,12 +2357,90 @@ history, and settling is the operation being reached for.
 Sprint 53. Nothing on screen uses any of this yet, which is the honest shape of a
 sprint called "Debt Model".
 
-## Sprint 53 — Money You Owe
+## Sprint 53 — Money You Owe — done
 
-* Create debt
-* Record payments
-* Track balance
-* Track installments
+### The decision Sprint 41 left for this sprint
+
+`NewPayment` carried a bare `billId` and said so in its own doc: the table takes
+a payment against a bill **or** a debt, and "when debts land, this either grows a
+target or gains a sibling — that decision belongs to the sprint that has both
+cases in front of it."
+
+Neither, in the end. A **nullable pair** would put a rule the database enforces —
+`num_nonnulls(bill_id, debt_id) = 1` — into a shape the compiler cannot check,
+letting every call site set both or neither and find out from Postgres. A
+**sibling `NewDebtPayment`** would duplicate the amount, the date, the method,
+the reference, the note and every validator over them.
+
+So the target is its own closed type. `PaymentTarget.bill` and
+`PaymentTarget.debt` are the only two there will ever be — the check constraint
+says so — and a `switch` over it is exhaustive, which is the property the
+nullable pair threw away. The payment write controller uses exactly that switch
+to decide what went stale.
+
+### One sheet, not two
+
+The record-payment sheet took a `BillWithStatus`. Everything bill-shaped about
+its six hundred lines turned out to be **five values and a target**, so it takes
+a `PayableSummary` instead and `billPayable` / `debtPayable` supply one each.
+
+Writing a second sheet would have left the difference between paying a bill and
+repaying utang as six hundred lines of identical form, with the day they drift
+already scheduled.
+
+The wording stays where the knowledge is. A bill clearing its balance is *paid*;
+a debt clearing its balance is only the arithmetic being square, so it says
+"fully repaid" and stops short of closing anything.
+
+### The balance is a view, not a column
+
+`debt_status`, mirroring `bill_status`. Nothing stores what is left on a debt —
+`payments` holds the repayments and the remainder is a subtraction — so a client
+computing it would be a second definition of "outstanding", and the day the two
+disagree is the day somebody is told they still owe money they have paid back.
+
+**It does not settle anything.** Even when the payments already sum to the
+principal, `settled_at` stays something the user sets. Utang is not arithmetic:
+the last hundred pesos gets waved off, or the rest forgiven, or the balance
+settled with a favour — and a view that flipped the flag on its own would
+overrule all three. `is_fully_repaid` says what the numbers say and `settled_at`
+says what the two people agreed, and the code treats them as questions that can
+disagree in **both** directions.
+
+Migration **0019**, and it needs running.
+
+### Instalments are payments, because that is what they are here
+
+The roadmap asked for "record payments" and "track instalments" as separate
+bullets. This schema has no instalment plan and no scheduled-chunk table: a debt
+paid in parts *is* a debt with several payments against it. So the instalment
+story is the payment count and the progress bar on the row, and reading the
+bullet any other way would have made it a duplicate of the one above it.
+
+A real instalment *plan* — agreed future chunks with their own dates — is a table
+that does not exist and a sprint nobody has asked for.
+
+### What a debt row leads with
+
+**What is left**, not what it started at. Once the first repayment lands the
+original figure is history, and the remainder is the thing being decided about;
+the principal sits underneath it as context and only when the two differ.
+
+The progress bar appears only where something has been repaid and something is
+left. On an untouched debt it would be empty and on a finished one full, which
+are two ways of saying what the figures already said.
+
+### One screen, two directions
+
+Money you owe and money owed to you are the same table, the same list and the
+same actions with different words, so `DebtsScreen` takes a direction rather than
+existing twice — the argument the migration makes about the schema, applied to
+the screen over it. That makes **Sprint 54 mostly wording**, which is the honest
+consequence of the schema decision made in Sprint 18.
+
+The switch is on the screen rather than in the navigation bar because the two
+lists are halves of one question, and each side carries its open count so the
+other tab says whether it is worth pressing.
 
 ## Sprint 54 — Money Owed to You
 

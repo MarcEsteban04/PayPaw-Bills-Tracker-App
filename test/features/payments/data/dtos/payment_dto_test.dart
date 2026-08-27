@@ -133,7 +133,7 @@ void main() {
       PaymentMethod? method,
       String? reference,
       String? note,
-    }) => NewPayment(
+    }) => NewPayment.forBill(
       billId: 'bill-1',
       amount: const Money.php(125050),
       paidAt: DateTime.utc(2026, 8, 25, 13, 30),

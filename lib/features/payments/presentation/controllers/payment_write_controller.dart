@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/domain/money.dart';
 import '../../../../core/error/app_exception.dart';
 import '../../../bills/presentation/controllers/bill_detail_provider.dart';
+import '../../../debts/presentation/controllers/debt_providers.dart';
 import '../../domain/entities/new_payment.dart';
+import '../../domain/entities/payment_target.dart';
 import 'payment_providers.dart';
 
 /// Whether a payment is being written, and what it said if it failed.
@@ -82,10 +84,21 @@ class PaymentWriteController extends Notifier<PaymentWriteState> {
     try {
       await ref.read(paymentRepositoryProvider).recordPayment(draft);
 
-      ref
-        ..invalidate(billsProvider)
-        ..invalidate(billDetailProvider(draft.billId))
-        ..invalidate(paymentsForBillProvider(draft.billId));
+      // What went stale depends on what was paid. A switch rather than a pair
+      // of null checks, so a third kind of target could not be added without
+      // this deciding what to refresh for it.
+      switch (draft.target) {
+        case BillTarget(:final String id):
+          ref
+            ..invalidate(billsProvider)
+            ..invalidate(billDetailProvider(id))
+            ..invalidate(paymentsForBillProvider(id));
+        case DebtTarget(:final String id):
+          ref
+            ..invalidate(debtsProvider)
+            ..invalidate(debtProvider(id))
+            ..invalidate(paymentsForDebtProvider(id));
+      }
 
       state = state.copyWith(isSaving: false, recorded: draft.amount);
       return true;

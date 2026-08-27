@@ -14,6 +14,7 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../bills/domain/entities/bill_with_status.dart';
 import '../../domain/entities/new_payment.dart';
+import '../../domain/entities/payable_summary.dart';
 import '../../domain/entities/payment_method.dart';
 import '../../domain/validation/payment_validators.dart';
 import '../controllers/payment_write_controller.dart';
@@ -43,11 +44,11 @@ import '../controllers/payment_write_controller.dart';
 /// Returns the amount recorded, or null if the sheet was dismissed without one.
 Future<Money?> showRecordPaymentSheet({
   required BuildContext context,
-  required BillWithStatus item,
+  required PayableSummary payable,
 }) => showAppBottomSheet<Money>(
   context: context,
   title: 'Record payment',
-  child: _RecordPayment(item: item),
+  child: _RecordPayment(payable: payable),
 );
 
 /// Opens the sheet and says what happened.
@@ -62,11 +63,11 @@ Future<Money?> showRecordPaymentSheet({
 Future<bool> recordPaymentFor({
   required BuildContext context,
   required WidgetRef ref,
-  required BillWithStatus item,
+  required PayableSummary payable,
 }) async {
   final Money? recorded = await showRecordPaymentSheet(
     context: context,
-    item: item,
+    payable: payable,
   );
 
   if (recorded == null || !context.mounted) {
@@ -77,13 +78,13 @@ Future<bool> recordPaymentFor({
   // the user was looking at. The re-read bill is authoritative and has not
   // necessarily arrived yet; waiting for it to phrase a sentence would delay the
   // confirmation behind a network call.
-  final bool settled = recorded.minorUnits >= item.outstanding.minorUnits;
+  final bool settled = recorded.minorUnits >= payable.outstanding.minorUnits;
 
   showAppToast(
     context,
     message: settled
-        ? '${item.bill.name} marked as paid'
-        : '${recorded.format()} recorded against ${item.bill.name}',
+        ? payable.settledMessage
+        : payable.partialMessage(recorded),
     tone: AppToastTone.success,
   );
 
@@ -91,9 +92,9 @@ Future<bool> recordPaymentFor({
 }
 
 class _RecordPayment extends ConsumerStatefulWidget {
-  const _RecordPayment({required this.item});
+  const _RecordPayment({required this.payable});
 
-  final BillWithStatus item;
+  final PayableSummary payable;
 
   @override
   ConsumerState<_RecordPayment> createState() => _RecordPaymentState();
@@ -117,7 +118,7 @@ class _RecordPaymentState extends ConsumerState<_RecordPayment> {
 
   /// Today, from the bill's own row rather than the device clock — the same date
   /// its status was computed against. See [BillWithStatus.today].
-  DateTime get _today => widget.item.today;
+  DateTime get _today => widget.payable.today;
 
   @override
   void initState() {
@@ -128,7 +129,7 @@ class _RecordPaymentState extends ConsumerState<_RecordPayment> {
     // has to survive being read back by `Money.tryParse` when the user does not
     // touch it.
     _amount = TextEditingController(
-      text: _plainAmount(widget.item.outstanding),
+      text: _plainAmount(widget.payable.outstanding),
     );
     _paidAt = _today;
   }
@@ -149,7 +150,7 @@ class _RecordPaymentState extends ConsumerState<_RecordPayment> {
 
     final String? overpayment = PaymentValidators.overpaymentWarning(
       _amount.text,
-      owed: widget.item.outstanding,
+      owed: widget.payable.outstanding,
     );
 
     return Form(
@@ -159,7 +160,7 @@ class _RecordPaymentState extends ConsumerState<_RecordPayment> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            _BillLine(item: widget.item),
+            _PayableLine(payable: widget.payable),
             const SizedBox(height: AppSpacing.xl),
 
             if (write.errorMessage case final String message) ...<Widget>[
@@ -289,7 +290,7 @@ class _RecordPaymentState extends ConsumerState<_RecordPayment> {
 
     final Money? amount = Money.tryParse(
       _amount.text,
-      currency: widget.item.outstanding.currency,
+      currency: widget.payable.outstanding.currency,
     );
     if (amount == null) {
       return;
@@ -299,7 +300,7 @@ class _RecordPaymentState extends ConsumerState<_RecordPayment> {
         .read(paymentWriteControllerProvider.notifier)
         .record(
           NewPayment(
-            billId: widget.item.bill.id,
+            target: widget.payable.target,
             amount: amount,
             // The date the user chose, at the moment they recorded it. A date
             // alone would put every payment at midnight and lose the order of
@@ -348,11 +349,11 @@ class _RecordPaymentState extends ConsumerState<_RecordPayment> {
       (value.minorUnits / Money.minorPerMajor).toStringAsFixed(2);
 }
 
-/// Which bill this is against, and what is left on it.
-class _BillLine extends StatelessWidget {
-  const _BillLine({required this.item});
+/// What this is against, and what is left on it.
+class _PayableLine extends StatelessWidget {
+  const _PayableLine({required this.payable});
 
-  final BillWithStatus item;
+  final PayableSummary payable;
 
   @override
   Widget build(BuildContext context) {
@@ -372,7 +373,7 @@ class _BillLine extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  item.bill.name,
+                  payable.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: textTheme.titleMedium?.copyWith(
@@ -382,7 +383,7 @@ class _BillLine extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.xxs),
                 Text(
-                  'Due ${DateFormat.MMMd().format(item.bill.dueOn)}',
+                  payable.subtitle,
                   style: textTheme.bodySmall?.copyWith(
                     color: colors.textSecondary,
                   ),
@@ -404,7 +405,7 @@ class _BillLine extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.xxs),
               Text(
-                item.outstanding.format(),
+                payable.outstanding.format(),
                 style: textTheme.titleMedium?.copyWith(
                   color: colors.textPrimary,
                   fontWeight: FontWeight.w700,

@@ -1,6 +1,7 @@
 import 'package:paypaw/core/error/app_exception.dart';
 import 'package:paypaw/features/payments/domain/entities/new_payment.dart';
 import 'package:paypaw/features/payments/domain/entities/payment.dart';
+import 'package:paypaw/features/payments/domain/entities/payment_target.dart';
 import 'package:paypaw/features/payments/domain/repositories/payment_repository.dart';
 
 /// An in-memory [PaymentRepository].
@@ -37,6 +38,18 @@ class FakePaymentRepository implements PaymentRepository {
   }
 
   @override
+  Future<List<Payment>> fetchPaymentsForDebt(String debtId) async {
+    fetchedFor = debtId;
+
+    if (failure case final AppException exception) {
+      throw exception;
+    }
+
+    return _payments.where((Payment p) => p.debtId == debtId).toList()
+      ..sort((Payment a, Payment b) => b.paidAt.compareTo(a.paidAt));
+  }
+
+  @override
   Future<Payment> recordPayment(NewPayment draft) async {
     if (failure case final AppException exception) {
       throw exception;
@@ -50,7 +63,14 @@ class FakePaymentRepository implements PaymentRepository {
     final Payment stored = Payment(
       id: 'payment-${recorded.length}',
       userId: 'user-1',
-      billId: draft.billId,
+      billId: switch (draft.target) {
+        BillTarget(:final String id) => id,
+        DebtTarget() => null,
+      },
+      debtId: switch (draft.target) {
+        DebtTarget(:final String id) => id,
+        BillTarget() => null,
+      },
       amount: draft.amount,
       paidAt: draft.paidAt,
       method: draft.method,

@@ -23,6 +23,7 @@ import '../../../bills/domain/entities/upcoming_schedule.dart';
 import '../../../bills/presentation/controllers/bill_detail_provider.dart';
 import '../../../bills/presentation/widgets/bill_detail_sheet.dart';
 import '../../../bills/presentation/widgets/bill_list_tile.dart';
+import '../../../bills/presentation/widgets/bill_payable.dart';
 import '../../../categories/domain/entities/category.dart';
 import '../../../categories/presentation/controllers/category_providers.dart';
 import '../../../categories/presentation/widgets/category_icon.dart';
@@ -290,6 +291,14 @@ class DashboardScreen extends ConsumerWidget {
         label: 'Subscriptions',
         onPressed: () => context.pushNamed(AppRoutes.subscriptions.routeName),
       ),
+      // Utang. Its own destination rather than a row on the bills list: money
+      // owed between people is not a bill, has no fixed date half the time, and
+      // is settled by agreement rather than by paying an amount due.
+      QuickAction(
+        icon: Icons.handshake_outlined,
+        label: 'Utang',
+        onPressed: () => context.pushNamed(AppRoutes.debts.routeName),
+      ),
     ];
   }
 
@@ -312,7 +321,11 @@ class DashboardScreen extends ConsumerWidget {
       return;
     }
 
-    await recordPaymentFor(context: context, ref: ref, item: chosen);
+    await recordPaymentFor(
+      context: context,
+      ref: ref,
+      payable: billPayable(chosen),
+    );
   }
 
   /// Whether reminders are blocked and something can still be done about it.
@@ -358,7 +371,11 @@ class DashboardScreen extends ConsumerWidget {
     // prompt. It also needs no confirmation and no undo — a payment recorded by
     // mistake is corrected by removing it, not by a countdown in a toast.
     if (action == BillDetailAction.recordPayment) {
-      await recordPaymentFor(context: context, ref: ref, item: item);
+      await recordPaymentFor(
+        context: context,
+        ref: ref,
+        payable: billPayable(item),
+      );
       return;
     }
 

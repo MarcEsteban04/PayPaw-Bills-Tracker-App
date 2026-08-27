@@ -1,5 +1,6 @@
 import '../entities/debt.dart';
 import '../entities/debt_direction.dart';
+import '../entities/debt_with_status.dart';
 import '../entities/new_debt.dart';
 
 /// Reads and writes utang.
@@ -29,7 +30,12 @@ abstract interface class DebtRepository {
   /// [direction] narrows to one side of the ledger; null returns both.
   /// [includeSettled] is false by default — a list of what is owed should not
   /// open on years of things that are not.
-  Future<List<Debt>> fetchDebts({
+  ///
+  /// Comes back from the debt_status view, so every row already carries what
+  /// has been repaid and what is left. Fetching the debts and their payments
+  /// separately would be two round trips, two loading states, and a join the
+  /// database is better at.
+  Future<List<DebtWithStatus>> fetchDebts({
     DebtDirection? direction,
     bool includeSettled = false,
   });
@@ -38,7 +44,7 @@ abstract interface class DebtRepository {
   ///
   /// Null rather than an exception for a missing row: through RLS "deleted" and
   /// "belongs to someone else" are the same answer and have to stay that way.
-  Future<Debt?> fetchDebt(String id);
+  Future<DebtWithStatus?> fetchDebt(String id);
 
   /// Creates one and returns the stored row.
   Future<Debt> createDebt(NewDebt draft);
