@@ -1,0 +1,57 @@
+# Launcher icons, generated from the one logo file.
+#
+# Run after changing the logo:
+#
+#     dart run flutter_launcher_icons
+#
+# Its own file rather than a block inside `pubspec.yaml`, because this is build
+# tooling rather than something the app depends on at runtime — and pubspec is
+# already carrying the asset list, the dependencies and the SDK constraints.
+flutter_launcher_icons:
+  android: true
+  ios: false
+
+  # The legacy square icon, for Android 7 and below and for anywhere a launcher
+  # asks for the raw drawable.
+  image_path: assets/images/paypaw_logo.png
+
+  # Adaptive icons, for Android 8 and up — which is every device this app
+  # supports (minSdk 24 covers 7.0, but adaptive icons degrade to the legacy one
+  # there, so nothing is lost).
+  #
+  # The background is the blue sampled from the logo's own circle, not white and
+  # not the app's lime accent. The logo already has a blue disc behind the dog:
+  # a white background would draw a second ring around it, and the accent green
+  # would put the dog's blue circle on a clashing field.
+  adaptive_icon_background: "#3183E7"
+  adaptive_icon_foreground: assets/images/paypaw_logo.png
+
+  # Padding, and it is not optional.
+  #
+  # A launcher masks an adaptive icon to whatever shape it likes — circle,
+  # squircle, teardrop — and only the inner 66% of the foreground is guaranteed
+  # to survive. This logo runs to its own edges: the ears, the tail, the bell and
+  # the calendar all sit outside the blue disc, and at zero inset every one of
+  # them is sliced off.
+  adaptive_icon_foreground_inset: 18
+
+  # No monochrome layer, deliberately.
+  #
+  # Android 13+ themed icons take the <monochrome> drawable, keep its **alpha
+  # only**, and repaint it in the wallpaper's colours. Handing it this logo makes
+  # the dog, the wallet, the calendar and the bell one solid opaque silhouette —
+  # a blob with a bell-shaped bump — because the whole illustration is opaque.
+  #
+  # (flutter_launcher_icons 0.14.4 does not convert anything: given an
+  # adaptive_icon_monochrome it copies the source file across unchanged. The
+  # generated drawable was still full colour, which is how this was caught.)
+  #
+  # Without the layer, a themed launcher simply shows the normal adaptive icon
+  # untinted, which is the correct fallback. A proper themed icon needs a
+  # designed single-colour glyph — a paw, or the peso wallet on its own — and
+  # that is a drawing, not a build setting.
+
+  # Removes the alpha channel for the Play Store listing icon, which is rejected
+  # with transparency. Not used by the APK, generated so it exists when the
+  # listing is written.
+  remove_alpha_ios: false

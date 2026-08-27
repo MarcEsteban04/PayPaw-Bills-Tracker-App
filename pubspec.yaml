@@ -75,6 +75,15 @@ dev_dependencies:
   freezed: ^4.0.0
   json_serializable: ^6.14.1
 
+  # Generates the Android launcher icons from assets/images/paypaw_logo.png.
+  # Run: dart run flutter_launcher_icons
+  #
+  # A dev dependency and a generator rather than hand-cut PNGs in five mipmap
+  # buckets: the source of truth stays the one file a designer edits, and
+  # regenerating is one command instead of five exports nobody remembers the
+  # sizes for.
+  flutter_launcher_icons: ^0.14.4
+
 flutter:
   uses-material-design: true
 
