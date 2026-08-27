@@ -2442,12 +2442,53 @@ The switch is on the screen rather than in the navigation bar because the two
 lists are halves of one question, and each side carries its open count so the
 other tab says whether it is worth pressing.
 
-## Sprint 54 — Money Owed to You
+## Sprint 54 — Money Owed to You — done, and mostly already done
 
-* Add borrower
-* Track amount
-* Partial payments
-* Remaining balance
+### Three of the four bullets were built in Sprint 53
+
+Add borrower, track amount, partial payments, remaining balance. Every one of
+them already worked, because `DebtsScreen` takes a direction rather than existing
+twice and `DebtForm` opens with a two-way picker at the top. Money owed to you
+was a tap on the switch away before this sprint started.
+
+That is not an accident and it is not slack: it is the schema decision from Sprint
+18 — one table with a `direction` column, because the fields are identical and
+two tables would mean writing every debt feature twice — paying out at the
+presentation layer three phases later.
+
+So the sprint is what the *second* direction actually exposed.
+
+### The payment sheet was describing the wrong side of the transaction
+
+`showRecordPaymentSheet` said **"Record payment"**, labelled its field **"Amount
+paid"** and headed the figure **"STILL OWED"**. All three are right for utang you
+owe and wrong for utang owed to you, where somebody is paying *you* and the
+number on screen is what arrived.
+
+Nothing about that is visible while only one direction has a screen, which is why
+it shipped. `PayableSummary` carries the three labels now, defaulted to the bill
+wording so the bill path is unchanged, and `debtPayable` picks per direction:
+
+* **I owe** — "Record a repayment", "Amount paid", "YOU STILL OWE"
+* **Owed to me** — "Record what they paid", "Amount received", "STILL OWED TO YOU"
+
+### Four screens had shipped with no widget tests
+
+Sprint 53 covered the entities, the DTO and the view mapping, and covered the UI
+with nothing. The direction switch is the *whole reason* one screen serves both
+halves of the ledger, and no test asserted that it filters at all.
+
+Fifteen now do, and two of them are about the arithmetic a list can get quietly
+wrong: the total adds up **what is left** rather than what was borrowed, and it
+leaves settled debts out. A ₱5,000 debt with ₱2,000 repaid beside an untouched
+₱1,500 is ₱4,500 — ₱6,500 is the figure nobody owes any more.
+
+### And a way to look at it without live data
+
+The components gallery carries four utang rows: untouched, part repaid, one the
+numbers say is square, and one owed the other way. Same reason the subscription
+section is there — a design can be judged without writing rows into somebody's
+account.
 
 ## Sprint 55 — Debt Dashboard
 

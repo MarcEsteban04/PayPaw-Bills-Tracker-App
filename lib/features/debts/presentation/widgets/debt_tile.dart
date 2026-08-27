@@ -139,27 +139,41 @@ class DebtTile extends StatelessWidget {
     );
   }
 
-  /// How many payments, and when it is due — the two things that change what to
-  /// do next.
+  /// When it is due, and how many payments there have been if any.
+  ///
+  /// ## What it does not say
+  ///
+  /// It used to open with "Nothing repaid yet", and on a real phone that pushed
+  /// the date off the end: `Nothing repaid yet · No date agreed` is thirty-four
+  /// characters and the column has room for about twenty-five, so the row
+  /// truncated to "Nothing repaid yet · …" — losing the only half a reader could
+  /// act on.
+  ///
+  /// It was also saying nothing. A debt with no repayments has no progress bar,
+  /// no "of ₱x" under its figure, and an outstanding amount equal to what was
+  /// borrowed; three signals already agree, and a fourth in words is what pushed
+  /// the useful one out of frame. The count appears once there *is* one.
   String _caption() {
-    final String instalments = switch (item.paymentCount) {
-      0 => 'Nothing repaid yet',
-      1 => '1 payment',
-      final int count => '$count payments',
+    final String when = switch ((item.isSettled, item.debt.dueOn)) {
+      (true, _) => 'Settled',
+      // No agreed date is a fact worth printing, not a blank. It is the
+      // difference between a debt somebody promised to repay and one they did
+      // not, and it is the case that separates utang from a bill.
+      (false, null) => 'No date agreed',
+      (false, final DateTime due) =>
+        '${item.isOverdue ? 'Was due' : 'Due'} '
+            '${DateFormat.MMMd().format(due)}',
     };
 
-    if (item.isSettled) {
-      return '$instalments · Settled';
+    if (item.paymentCount == 0) {
+      return when;
     }
 
-    // No agreed date is a fact worth printing, not a blank. It is the difference
-    // between a debt somebody promised to repay and one they did not.
-    if (item.debt.dueOn case final DateTime due) {
-      return '$instalments · ${item.isOverdue ? 'Was due' : 'Due'} '
-          '${DateFormat.MMMd().format(due)}';
-    }
+    final String instalments = item.paymentCount == 1
+        ? '1 payment'
+        : '${item.paymentCount} payments';
 
-    return '$instalments · No date agreed';
+    return '$instalments · $when';
   }
 
   _Badge? _badge(AppPalette colors) {

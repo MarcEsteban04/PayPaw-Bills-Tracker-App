@@ -19,6 +19,9 @@ import '../../../../core/presentation/widgets/app_status_chip.dart';
 import '../../../../core/presentation/widgets/app_text_field.dart';
 import '../../../../core/presentation/widgets/app_toast.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../debts/data/dtos/debt_with_status_dto.dart';
+import '../../../debts/domain/entities/debt_with_status.dart';
+import '../../../debts/presentation/widgets/debt_tile.dart';
 import '../../../recurring/domain/entities/recurrence.dart';
 import '../../../recurring/domain/entities/recurrence_frequency.dart';
 import '../../../recurring/domain/entities/recurring_bill.dart';
@@ -208,6 +211,24 @@ class _ComponentsScreenState extends State<ComponentsScreen> {
                     today: _galleryToday,
                     onTap: () {},
                   ),
+                  const SizedBox(height: AppSpacing.cardGap),
+                ],
+              ],
+            ),
+          ),
+          _Section(
+            title: 'Utang',
+            note:
+                'One row per direction. What is left leads, not what was '
+                'borrowed — once a repayment lands the original figure is '
+                'history. The bar appears only where some of it is paid and '
+                'some is not; empty or full it would say what the numbers '
+                'already said.',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                for (final DebtWithStatus each in _sampleDebts) ...<Widget>[
+                  DebtTile(item: each, onTap: () {}),
                   const SizedBox(height: AppSpacing.cardGap),
                 ],
               ],
@@ -536,3 +557,55 @@ Subscription _sampleSubscription({
     trialEndsOn: trialEndsOn,
   ),
 );
+
+/// Four debts covering the states a row can be in: untouched, part repaid, one
+/// the numbers say is square, and one owed the other way.
+final List<DebtWithStatus> _sampleDebts = <DebtWithStatus>[
+  _sampleDebt(name: 'Tita Ana', principal: 500000, dueOn: '2026-08-20'),
+  _sampleDebt(name: 'Kuya Ben', principal: 300000, repaid: 120000, payments: 2),
+  _sampleDebt(
+    name: 'Ate Cel',
+    principal: 150000,
+    repaid: 150000,
+    payments: 3,
+    fullyRepaid: true,
+  ),
+  _sampleDebt(
+    name: 'Jun',
+    principal: 80000,
+    direction: 'owed_to_me',
+    dueOn: null,
+  ),
+];
+
+DebtWithStatus _sampleDebt({
+  required String name,
+  required int principal,
+  int repaid = 0,
+  int payments = 0,
+  bool fullyRepaid = false,
+  String direction = 'i_owe',
+  Object? dueOn = '2026-09-30',
+}) => DebtWithStatusDto.toEntity(<String, dynamic>{
+  'debt_id': name,
+  'user_id': 'gallery',
+  'direction': direction,
+  'counterparty_name': name,
+  'counterparty_contact': null,
+  'principal_minor': principal,
+  'currency': 'PHP',
+  'repaid_minor': repaid,
+  'outstanding_minor': (principal - repaid).clamp(0, principal),
+  'last_paid_at': null,
+  'payment_count': payments,
+  'is_fully_repaid': fullyRepaid,
+  // The same fixed date the rest of the gallery uses, so a screenshot taken
+  // today matches one taken next month.
+  'today': '2026-08-25',
+  'incurred_on': '2026-07-15',
+  'due_on': dueOn,
+  'notes': null,
+  'settled_at': null,
+  'created_at': '2026-07-15T02:30:00Z',
+  'updated_at': '2026-07-15T02:30:00Z',
+});

@@ -19,7 +19,7 @@ import '../../domain/entities/payment_method.dart';
 import '../../domain/validation/payment_validators.dart';
 import '../controllers/payment_write_controller.dart';
 
-/// Records a payment against one bill.
+/// Records a payment against a bill or a repayment against a debt.
 ///
 /// ## Why the amount is pre-filled and the sheet is still a form
 ///
@@ -47,7 +47,7 @@ Future<Money?> showRecordPaymentSheet({
   required PayableSummary payable,
 }) => showAppBottomSheet<Money>(
   context: context,
-  title: 'Record payment',
+  title: payable.sheetTitle,
   child: _RecordPayment(payable: payable),
 );
 
@@ -174,7 +174,7 @@ class _RecordPaymentState extends ConsumerState<_RecordPayment> {
 
             AppAmountField(
               controller: _amount,
-              label: 'Amount paid',
+              label: widget.payable.amountLabel,
               enabled: !write.isSaving,
               validator: PaymentValidators.amount,
               // Rebuilds for the overpayment line and for the Save button's
@@ -263,7 +263,7 @@ class _RecordPaymentState extends ConsumerState<_RecordPayment> {
 
             const SizedBox(height: AppSpacing.xl),
             AppPrimaryButton(
-              label: 'Record payment',
+              label: widget.payable.sheetTitle,
               isBusy: write.isSaving,
               onPressed: _canSave(write) ? _submit : null,
             ),
@@ -396,7 +396,7 @@ class _PayableLine extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: <Widget>[
               Text(
-                'STILL OWED',
+                payable.outstandingLabel,
                 style: textTheme.labelSmall?.copyWith(
                   color: colors.textTertiary,
                   letterSpacing: 1,

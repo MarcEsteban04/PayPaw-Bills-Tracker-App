@@ -27,6 +27,9 @@ class PayableSummary {
     required this.outstanding,
     required this.today,
     required this.settledMessage,
+    this.sheetTitle = 'Record payment',
+    this.amountLabel = 'Amount paid',
+    this.outstandingLabel = 'STILL OWED',
   });
 
   /// The row a payment against this would point at.
@@ -46,6 +49,20 @@ class PayableSummary {
   /// uses it, so it cannot offer a "today" the rest of the screen disagrees
   /// with.
   final DateTime today;
+
+  /// The sheet's own heading, and the word on its button.
+  ///
+  /// Direction matters here and the sheet cannot know it. Money **you** owe is
+  /// paid; money owed **to you** is repaid *by somebody else*, and a sheet
+  /// reading "Amount paid" while you count what arrived is a sheet describing
+  /// the wrong side of the transaction.
+  final String sheetTitle;
+
+  /// The amount field's label. 'Amount paid' or 'Amount received'.
+  final String amountLabel;
+
+  /// What the figure beside the title is called.
+  final String outstandingLabel;
 
   /// What to say when a payment clears the whole remaining balance.
   ///

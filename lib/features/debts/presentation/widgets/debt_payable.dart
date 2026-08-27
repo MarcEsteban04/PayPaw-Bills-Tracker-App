@@ -17,6 +17,17 @@ import '../../domain/entities/debt_with_status.dart';
 /// `settled_at` is where that agreement lives. So the sheet says the numbers are
 /// met and stops short of closing anything.
 PayableSummary debtPayable(DebtWithStatus item) => PayableSummary(
+  // Direction changes who is handing over the money, and every label that
+  // mentions it. "Amount paid" is right for the utang you owe and wrong for the
+  // utang owed to you, where somebody is paying *you* and the figure on screen
+  // is what arrived.
+  sheetTitle: item.direction.isOutgoing
+      ? 'Record a repayment'
+      : 'Record what they paid',
+  amountLabel: item.direction.isOutgoing ? 'Amount paid' : 'Amount received',
+  outstandingLabel: item.direction.isOutgoing
+      ? 'YOU STILL OWE'
+      : 'STILL OWED TO YOU',
   target: PaymentTarget.debt(item.id),
   title: item.counterpartyName,
   subtitle: switch (item.debt.dueOn) {
