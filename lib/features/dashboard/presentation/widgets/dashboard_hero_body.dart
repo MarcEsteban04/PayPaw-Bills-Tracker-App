@@ -8,10 +8,10 @@ import '../../domain/entities/dashboard_mood.dart';
 ///
 /// ## Why this owns the layout rather than the card
 ///
-/// The three pieces overlap. The mascot's raised paw rests on the ring, its body
-/// passes in front of the ring's right edge, and it reaches the card's outer edge
-/// — past the padding everything else respects. A `Row` cannot express any of
-/// that, so the card is handed zero padding and this places all three.
+/// The three pieces overlap. The ring is drawn across the mascot's raised paw,
+/// and the mascot reaches the card's outer edge — past the padding everything
+/// else respects. A `Row` cannot express any of that, so the card is handed zero
+/// padding and this places all three.
 ///
 /// ## The mascot changes with the news
 ///
@@ -86,10 +86,11 @@ class DashboardHeroBody extends StatelessWidget {
   /// to the card, so the two stay together at every width.
   ///
   /// Set so the ring's *centre* — where the reading is — stays clear of the
-  /// mascot's box. The poses are not equally polite: the sitting one is narrow
-  /// where the ring is and left it perfectly readable, while the leaping and
-  /// cheering ones put a whole flank across it and swallowed the "d" of
-  /// "settled". Only the paw and the forearm should reach the dial.
+  /// mascot's box. The ring is painted over the dog, so the track survives
+  /// either way; the percentage in the hole does not. The poses are not equally
+  /// polite about it: the sitting one is narrow where the ring is, while the
+  /// leaping and cheering ones put a whole flank behind the reading and left it
+  /// black-on-orange. Only the paw and the forearm should reach the dial.
   static const double _ringOverlap = 0.72;
 
   /// The ring's diameter, as a fraction of the card's base height.
@@ -156,15 +157,6 @@ class DashboardHeroBody extends StatelessWidget {
             constraints: BoxConstraints(minHeight: base, minWidth: width),
             child: Stack(
               children: <Widget>[
-                if (ring case final Widget Function(double) dial)
-                  Positioned(
-                    right: mascotWidth * _ringOverlap,
-                    bottom: base * _ringFloor,
-                    child: dial(base * _ringSize),
-                  ),
-
-                // Above the ring, so the paw and the chest sit in front of it
-                // rather than behind — which is the whole gesture.
                 Positioned(
                   right: 0,
                   bottom: 0,
@@ -174,6 +166,19 @@ class DashboardHeroBody extends StatelessWidget {
                     height: mascotHeight,
                   ),
                 ),
+
+                // Over the mascot, not under it. Painting the dog on top was
+                // meant to read as a paw resting on the dial; what it actually
+                // read as was a dog standing in front of one, because the arm
+                // cut the ring in half and the two stopped being one object. The
+                // ring in front puts its track across the forearm, which is what
+                // holding something looks like.
+                if (ring case final Widget Function(double) dial)
+                  Positioned(
+                    right: mascotWidth * _ringOverlap,
+                    bottom: base * _ringFloor,
+                    child: dial(base * _ringSize),
+                  ),
 
                 // The one child the stack measures, so the card grows when the
                 // words do. Everything else is positioned and contributes
