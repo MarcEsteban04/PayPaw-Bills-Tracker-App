@@ -16,6 +16,7 @@ import 'package:paypaw/features/categories/presentation/controllers/category_pro
 import 'package:paypaw/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:paypaw/features/dashboard/presentation/widgets/dashboard_cards.dart';
 import 'package:paypaw/features/dashboard/presentation/widgets/dashboard_header.dart';
+import 'package:paypaw/features/dashboard/presentation/widgets/dashboard_mascot.dart';
 import 'package:paypaw/features/payments/presentation/controllers/payment_providers.dart';
 import 'package:paypaw/features/profile/domain/entities/user_profile.dart';
 import 'package:paypaw/features/recurring/presentation/controllers/recurring_bill_providers.dart';
@@ -639,6 +640,32 @@ void main() {
 
       // The header is real before the bills are, and never waits.
       expect(find.byType(DashboardHeader), findsOneWidget);
+
+      billRepository.releaseFetch();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('reserves the mascot\'s overhang, so the card cannot jump', (
+      WidgetTester tester,
+    ) async {
+      // The mascot hangs above the hero card and the space for it is *reserved*
+      // rather than overflowed — see DashboardMascot. That only holds if the
+      // skeleton reserves it too: a placeholder hero without the overhang would
+      // sit higher than the real one and drop the whole screen the moment the
+      // bills land, which is the jump a skeleton exists to prevent.
+      await pumpDashboard(tester, const <BillWithStatus>[]);
+
+      final double loaded = tester.getSize(find.byType(DashboardMascot)).height;
+
+      billRepository.blockFetch();
+      final ProviderContainer container = ProviderScope.containerOf(
+        tester.element(find.byType(DashboardScreen)),
+      );
+      container.invalidate(billsProvider);
+      await tester.pump();
+
+      expect(find.byType(DashboardMascot), findsOneWidget);
+      expect(tester.getSize(find.byType(DashboardMascot)).height, loaded);
 
       billRepository.releaseFetch();
       await tester.pumpAndSettle();

@@ -40,6 +40,7 @@ import '../../../recurring/domain/entities/recurring_commitment.dart';
 import '../../../recurring/presentation/controllers/recurring_bill_providers.dart';
 import '../widgets/dashboard_cards.dart';
 import '../widgets/dashboard_header.dart';
+import '../widgets/dashboard_mascot.dart';
 import '../widgets/dashboard_quick_actions.dart';
 import '../widgets/dashboard_skeleton.dart';
 
@@ -449,7 +450,11 @@ class _Scaffold extends StatelessWidget {
           now: DateTime.now(),
           onAvatarPressed: () => context.goNamed(AppRoutes.settings.routeName),
         ),
-        const SizedBox(height: AppSpacing.sectionGap),
+        // Tighter than a section gap, because the block below opens with the
+        // mascot and the mascot brings its own air. A full gap on top of that
+        // left the dog floating in the middle of nothing rather than leaning on
+        // the card — see [DashboardMascot], which reserves the overhang itself.
+        const SizedBox(height: AppSpacing.sm),
         // One switcher over the whole body rather than a stagger down the list.
         //
         // A staggered entrance would look considered and read as slow: every
@@ -484,35 +489,39 @@ class _Hero extends StatelessWidget {
     final AppPalette colors = context.colors;
     final TextTheme textTheme = Theme.of(context).textTheme;
 
-    return DashboardCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            // Centre is the default and is what this needs: the ring is taller
-            // than the label and figure beside it, and top-aligning left a band
-            // of empty card under the text that read as something missing.
-            children: <Widget>[
-              Expanded(child: _Figures(totals: totals)),
-              // Only once there is a denominator. A ring at 0% of nothing is a
-              // grey circle that invites the reader to work out what it means.
-              if (totals.hasProgress) ...<Widget>[
-                const SizedBox(width: AppSpacing.lg),
-                ProgressRing(
-                  fraction: totals.settledFraction,
-                  caption: 'settled',
-                ),
+    return DashboardMascot(
+      child: DashboardCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              // Centre is the default and is what this needs: the ring is taller
+              // than the label and figure beside it, and top-aligning left a band
+              // of empty card under the text that read as something missing.
+              children: <Widget>[
+                Expanded(child: _Figures(totals: totals)),
+                // Only once there is a denominator. A ring at 0% of nothing is a
+                // grey circle that invites the reader to work out what it means.
+                if (totals.hasProgress) ...<Widget>[
+                  const SizedBox(width: AppSpacing.lg),
+                  ProgressRing(
+                    fraction: totals.settledFraction,
+                    caption: 'settled',
+                  ),
+                ],
               ],
-            ],
-          ),
-          if (totals.hasProgress) ...<Widget>[
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              '${totals.settled.format()} of ${totals.billed.format()} paid off',
-              style: textTheme.bodySmall?.copyWith(color: colors.textSecondary),
             ),
+            if (totals.hasProgress) ...<Widget>[
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                '${totals.settled.format()} of ${totals.billed.format()} paid off',
+                style: textTheme.bodySmall?.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
