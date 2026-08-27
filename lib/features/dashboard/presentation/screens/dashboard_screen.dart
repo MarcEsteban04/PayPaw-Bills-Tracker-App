@@ -38,9 +38,10 @@ import '../../../profile/presentation/controllers/profile_providers.dart';
 import '../../../recurring/domain/entities/recurring_bill.dart';
 import '../../../recurring/domain/entities/recurring_commitment.dart';
 import '../../../recurring/presentation/controllers/recurring_bill_providers.dart';
+import '../../domain/entities/dashboard_mood.dart';
 import '../widgets/dashboard_cards.dart';
 import '../widgets/dashboard_header.dart';
-import '../widgets/dashboard_mascot.dart';
+import '../widgets/dashboard_hero_body.dart';
 import '../widgets/dashboard_quick_actions.dart';
 import '../widgets/dashboard_skeleton.dart';
 
@@ -148,7 +149,7 @@ class DashboardScreen extends ConsumerWidget {
     final UpcomingSchedule schedule = UpcomingSchedule.of(bills, today: today);
 
     return <Widget>[
-      _Hero(totals: totals),
+      _Hero(totals: totals, hasOverdue: overdue.isNotEmpty),
       const SizedBox(height: AppSpacing.sectionGap),
 
       DashboardQuickActions(
@@ -480,48 +481,51 @@ class _Scaffold extends StatelessWidget {
 /// number and would otherwise be indistinguishable at a glance — and this one is
 /// followed by shortcuts, which need the green to themselves.
 class _Hero extends StatelessWidget {
-  const _Hero({required this.totals});
+  const _Hero({required this.totals, required this.hasOverdue});
 
   final BillTotals totals;
+
+  /// Whether anything is past its due date, which is what the mascot reacts to
+  /// first. Passed in rather than derived: the screen already works out the
+  /// overdue list to render it, and computing it twice from different inputs is
+  /// how two halves of one card come to disagree.
+  final bool hasOverdue;
 
   @override
   Widget build(BuildContext context) {
     final AppPalette colors = context.colors;
     final TextTheme textTheme = Theme.of(context).textTheme;
 
-    return DashboardMascot(
-      child: DashboardCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              // Centre is the default and is what this needs: the ring is taller
-              // than the label and figure beside it, and top-aligning left a band
-              // of empty card under the text that read as something missing.
-              children: <Widget>[
-                Expanded(child: _Figures(totals: totals)),
-                // Only once there is a denominator. A ring at 0% of nothing is a
-                // grey circle that invites the reader to work out what it means.
-                if (totals.hasProgress) ...<Widget>[
-                  const SizedBox(width: AppSpacing.lg),
-                  ProgressRing(
-                    fraction: totals.settledFraction,
-                    caption: 'settled',
-                  ),
-                ],
-              ],
-            ),
-            if (totals.hasProgress) ...<Widget>[
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                '${totals.settled.format()} of ${totals.billed.format()} paid off',
+    return DashboardCard(
+      // Zero, so the mascot can reach the card's own edge. The interior does its
+      // own padding — see DashboardHeroBody, where the three pieces overlap in
+      // ways a padded Row cannot express.
+      padding: EdgeInsets.zero,
+      child: DashboardHeroBody(
+        mood: DashboardMood.of(totals, hasOverdue: hasOverdue),
+        figures: _Figures(totals: totals),
+        // Only once there is a denominator. A ring at 0% of nothing is a grey
+        // circle that invites the reader to work out what it means.
+        ring: totals.hasProgress
+            ? (double diameter) => ProgressRing(
+                fraction: totals.settledFraction,
+                caption: 'settled',
+                size: diameter,
+              )
+            : null,
+        // Deliberately not "x of y paid off". The y is the billed total, which
+        // the headline and the ring between them already account for, and
+        // spelling out two amounts in a line that has to clear the dial wrapped
+        // it onto a second row and pushed "paid off" underneath the ring. What
+        // this adds over the ring is the peso figure; the ring keeps the share.
+        footnote: totals.hasProgress
+            ? Text(
+                '${totals.settled.format()} paid',
                 style: textTheme.bodySmall?.copyWith(
                   color: colors.textSecondary,
                 ),
-              ),
-            ],
-          ],
-        ),
+              )
+            : null,
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -61,10 +62,55 @@ class SettingsScreen extends StatelessWidget {
               _DatesSection(),
               SizedBox(height: AppSpacing.sectionGap),
               AccountSummary(),
+              _DeveloperSection(),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The way into the two galleries, in debug builds only.
+///
+/// Both have existed since the design system went in and neither had a door:
+/// the only way to reach them was to edit the router's initial location, build,
+/// look, and remember to put it back — which is how the app once shipped to the
+/// phone opening on the component gallery instead of the dashboard.
+///
+/// Compiled out of release entirely. `kDebugMode` is a `const`, so the branch is
+/// removed by the tree shaker rather than merely skipped, and nothing here
+/// reaches a build a user installs.
+class _DeveloperSection extends StatelessWidget {
+  const _DeveloperSection();
+
+  @override
+  Widget build(BuildContext context) {
+    if (!kDebugMode) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const SizedBox(height: AppSpacing.sectionGap),
+        Text('Developer', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: AppSpacing.md),
+        const _SettingsTile(
+          icon: Icons.widgets_outlined,
+          title: 'Components',
+          subtitle:
+              'Every reusable widget, live — including all four hero moods',
+          route: AppRoutes.components,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        const _SettingsTile(
+          icon: Icons.palette_outlined,
+          title: 'Design system',
+          subtitle: 'Colour, type and spacing tokens as the app resolves them',
+          route: AppRoutes.designSystem,
+        ),
+      ],
     );
   }
 }

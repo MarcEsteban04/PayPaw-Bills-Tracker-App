@@ -19,6 +19,9 @@ import '../../../../core/presentation/widgets/app_status_chip.dart';
 import '../../../../core/presentation/widgets/app_text_field.dart';
 import '../../../../core/presentation/widgets/app_toast.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../dashboard/domain/entities/dashboard_mood.dart';
+import '../../../dashboard/presentation/widgets/dashboard_cards.dart';
+import '../../../dashboard/presentation/widgets/dashboard_hero_body.dart';
 import '../../../debts/data/dtos/debt_with_status_dto.dart';
 import '../../../debts/domain/entities/debt_with_status.dart';
 import '../../../debts/presentation/widgets/debt_tile.dart';
@@ -62,6 +65,15 @@ class _ComponentsScreenState extends State<ComponentsScreen> {
           AppSpacing.xxl,
         ),
         children: <Widget>[
+          const _Section(
+            title: 'Dashboard hero',
+            note:
+                'One card per mood. Which one the dashboard shows is '
+                'DashboardMood.of(totals), so this is the only place all four '
+                'are visible at once — the real screen can only be in one of '
+                'them, and getting it into the overdue one means owing money.',
+            child: _HeroMoods(),
+          ),
           _Section(
             title: 'Buttons',
             note: 'Tap "Save bill" to see the busy state block repeat taps.',
@@ -427,6 +439,80 @@ class _ComponentsScreenState extends State<ComponentsScreen> {
 }
 
 /// A titled block with an optional note on what to look for.
+/// The hero card in each of its four moods, stacked.
+///
+/// The figures are invented and identical across the four, so that the only
+/// thing changing down the column is the artwork and the ring — which is what
+/// there is to judge. A real screenful of data would vary the number's width
+/// too, and the poses would stop being comparable.
+class _HeroMoods extends StatelessWidget {
+  const _HeroMoods();
+
+  /// The ring's reading for each mood, so it agrees with the face above it.
+  ///
+  /// A cheering dog next to 0% would be the gallery showing a combination the
+  /// app cannot produce, which is worse than showing nothing.
+  static const Map<DashboardMood, double> _fractions = <DashboardMood, double>{
+    DashboardMood.noneSettled: 0,
+    DashboardMood.someSettled: 0.45,
+    DashboardMood.allSettled: 1,
+    DashboardMood.overdue: 0.2,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final TextTheme textTheme = Theme.of(context).textTheme;
+    const Money billed = Money.php(880000);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        for (final MapEntry<DashboardMood, double> mood in _fractions.entries)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.cardGap),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(mood.key.name, style: textTheme.labelMedium),
+                const SizedBox(height: AppSpacing.xs),
+                DashboardCard(
+                  padding: EdgeInsets.zero,
+                  child: DashboardHeroBody(
+                    mood: mood.key,
+                    figures: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text('TOTAL OUTSTANDING', style: textTheme.labelSmall),
+                        const SizedBox(height: AppSpacing.xs),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            billed.format(),
+                            style: textTheme.displaySmall,
+                          ),
+                        ),
+                      ],
+                    ),
+                    ring: (double diameter) => ProgressRing(
+                      fraction: mood.value,
+                      caption: 'settled',
+                      size: diameter,
+                    ),
+                    footnote: Text(
+                      '${Money.php((880000 * mood.value).round()).format()} paid',
+                      style: textTheme.bodySmall,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class _Section extends StatelessWidget {
   const _Section({required this.title, required this.child, this.note});
 

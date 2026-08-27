@@ -91,4 +91,8 @@ flutter:
   # so a file that is added but never referenced cannot silently grow the APK.
   assets:
     - assets/images/paypaw_logo.png
-    - assets/images/paypaw_hero_mascot.png
+    # The mascot set, as a directory rather than a file list. Which artwork
+    # shows is decided by DashboardMood and the files are named after it, so
+    # adding a variant should be a PNG dropped in and nothing else — see
+    # DashboardHeroBody.
+    - assets/images/mascots/

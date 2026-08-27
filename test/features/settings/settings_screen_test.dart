@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -229,16 +230,53 @@ void main() {
     expect(find.textContaining('categories, reminders'), findsNothing);
   });
 
-  testWidgets('and so are the developer galleries', (
-    WidgetTester tester,
-  ) async {
-    // They are dev tools. The routes still exist and are reachable by URL, but
-    // a user's settings screen should not offer them a component gallery.
-    await pumpProfile(tester);
+  group('the developer galleries', () {
+    // They were kept off this screen entirely, on the grounds that a user's
+    // settings should not offer them a component gallery. That still holds for
+    // users — but it left the galleries with no door at all, and the only way in
+    // was to edit the router's initial location and remember to put it back,
+    // which is how the app once opened on the component gallery instead of the
+    // dashboard.
+    //
+    // So they are here, behind `kDebugMode`, under a heading that says what they
+    // are. Tests run in debug, so this is the branch they can see; the release
+    // branch is asserted below by the only means a const has — reading it.
 
-    expect(find.text('Developer'), findsNothing);
-    expect(find.text('Design system'), findsNothing);
-    expect(find.text('Components'), findsNothing);
+    testWidgets('are offered in a debug build, under their own heading', (
+      WidgetTester tester,
+    ) async {
+      await pumpProfile(tester);
+      await tester.scrollUntilVisible(find.text('Components'), 200);
+
+      expect(find.text('Developer'), findsOneWidget);
+      expect(find.text('Components'), findsOneWidget);
+      expect(find.text('Design system'), findsOneWidget);
+    });
+
+    testWidgets('sit below everything a user came here for', (
+      WidgetTester tester,
+    ) async {
+      // Last on the screen, under sign out. Nobody scrolling for a setting
+      // should meet a developer tool before they find it.
+      await pumpProfile(tester);
+      await tester.scrollUntilVisible(find.text('Developer'), 200);
+
+      expect(
+        tester.getTopLeft(find.text('Developer')).dy,
+        greaterThan(
+          tester.getTopLeft(find.widgetWithText(OutlinedButton, 'Sign out')).dy,
+        ),
+      );
+    });
+
+    test('are compiled out of a release build', () {
+      // The section returns nothing at all when `kDebugMode` is false, and
+      // because it is a `const` the branch is removed by the tree shaker rather
+      // than merely skipped. A widget test cannot flip it, so the guarantee is
+      // asserted where it lives: this test fails the day somebody runs the suite
+      // in release mode and the reasoning above stops holding.
+      expect(kDebugMode, isTrue);
+    });
   });
 
   testWidgets('sign out is the last thing on the screen', (

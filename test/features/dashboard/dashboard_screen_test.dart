@@ -16,7 +16,7 @@ import 'package:paypaw/features/categories/presentation/controllers/category_pro
 import 'package:paypaw/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:paypaw/features/dashboard/presentation/widgets/dashboard_cards.dart';
 import 'package:paypaw/features/dashboard/presentation/widgets/dashboard_header.dart';
-import 'package:paypaw/features/dashboard/presentation/widgets/dashboard_mascot.dart';
+import 'package:paypaw/features/dashboard/presentation/widgets/dashboard_hero_body.dart';
 import 'package:paypaw/features/payments/presentation/controllers/payment_providers.dart';
 import 'package:paypaw/features/profile/domain/entities/user_profile.dart';
 import 'package:paypaw/features/recurring/presentation/controllers/recurring_bill_providers.dart';
@@ -649,13 +649,15 @@ void main() {
       WidgetTester tester,
     ) async {
       // The mascot hangs above the hero card and the space for it is *reserved*
-      // rather than overflowed — see DashboardMascot. That only holds if the
+      // rather than overflowed — see DashboardHeroBody. That only holds if the
       // skeleton reserves it too: a placeholder hero without the overhang would
       // sit higher than the real one and drop the whole screen the moment the
       // bills land, which is the jump a skeleton exists to prevent.
       await pumpDashboard(tester, const <BillWithStatus>[]);
 
-      final double loaded = tester.getSize(find.byType(DashboardMascot)).height;
+      final double loaded = tester
+          .getSize(find.byType(DashboardHeroBody))
+          .height;
 
       billRepository.blockFetch();
       final ProviderContainer container = ProviderScope.containerOf(
@@ -664,8 +666,8 @@ void main() {
       container.invalidate(billsProvider);
       await tester.pump();
 
-      expect(find.byType(DashboardMascot), findsOneWidget);
-      expect(tester.getSize(find.byType(DashboardMascot)).height, loaded);
+      expect(find.byType(DashboardHeroBody), findsOneWidget);
+      expect(tester.getSize(find.byType(DashboardHeroBody)).height, loaded);
 
       billRepository.releaseFetch();
       await tester.pumpAndSettle();

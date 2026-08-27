@@ -300,6 +300,14 @@ class ProgressRing extends StatelessWidget {
 
   final double size;
 
+  /// How much of the diameter the reading in the middle may use.
+  ///
+  /// The stroke eats the outside and a circle narrows towards its ends, so the
+  /// widest line that clears the track is well short of the full width. Measured
+  /// against the longest caption in the app rather than derived: this is the
+  /// point at which "settled" stops touching the ring.
+  static const double _holeRatio = 0.62;
+
   @override
   Widget build(BuildContext context) {
     final AppPalette colors = context.colors;
@@ -337,21 +345,34 @@ class ProgressRing extends StatelessWidget {
                   fill: colors.primary,
                 ),
                 child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Text(
-                        '${(value * 100).round()}%',
-                        style: textTheme.titleMedium?.copyWith(
-                          color: colors.textPrimary,
-                          fontWeight: FontWeight.w700,
-                        ),
+                  // Scaled to the hole rather than allowed to grow it. The ring
+                  // is a fixed-diameter gauge — the mascot's paw is placed
+                  // against its edge, and a dial that got taller with the text
+                  // scale would slide out from under the paw and, at 2x, out of
+                  // the card. So the reading shrinks to fit the ring instead of
+                  // the ring stretching to fit the reading.
+                  child: SizedBox(
+                    width: size * _holeRatio,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Text(
+                            '${(value * 100).round()}%',
+                            style: textTheme.titleMedium?.copyWith(
+                              color: colors.textPrimary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          // Rebuilt on every frame above, but this does not
+                          // change — handed through as the builder's `child` so
+                          // the caption is laid out once rather than sixty
+                          // times a second.
+                          ?child,
+                        ],
                       ),
-                      // Rebuilt on every frame above, but this does not change —
-                      // handed through as the builder's `child` so the caption is
-                      // laid out once rather than sixty times a second.
-                      ?child,
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -397,9 +418,15 @@ class _RingPainter extends CustomPainter {
 
     canvas.drawArc(
       arc,
-      // From the top, clockwise, the way every progress dial does.
+      // From the top — but anticlockwise, against the convention, because of
+      // where this particular ring sits. The mascot covers its right-hand side,
+      // so a clockwise sweep spends its first third behind the dog's ear: at 20%
+      // settled the dial read as empty, which is the one reading it must never
+      // give by accident. Anticlockwise, progress starts in the half that is
+      // always visible and is only hidden once it is nearly complete — and by
+      // then the figure in the middle is saying so anyway.
       -math.pi / 2,
-      math.pi * 2 * fraction,
+      -math.pi * 2 * fraction,
       false,
       Paint()
         ..color = fill

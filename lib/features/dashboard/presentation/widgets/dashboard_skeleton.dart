@@ -4,8 +4,9 @@ import '../../../../core/presentation/widgets/app_skeleton.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../domain/entities/dashboard_mood.dart';
 import 'dashboard_cards.dart';
-import 'dashboard_mascot.dart';
+import 'dashboard_hero_body.dart';
 import 'dashboard_quick_actions.dart';
 
 /// What the dashboard looks like before its bills arrive.
@@ -58,37 +59,26 @@ class _HeroSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // The mascot, during loading too.
+    // Shaped like the real hero, mascot and all.
     //
-    // It is decoration rather than data — it stands in for nothing, so there is
-    // nothing to fake — and it has to be here anyway: it reserves the overhang
-    // above the card, and a skeleton without it would place the card higher than
-    // the real one and jump the whole screen down when the bills land. Which is
-    // the jump a skeleton exists to prevent.
-    return const DashboardMascot(
-      child: DashboardCard(
-        child: Column(
+    // The mascot is decoration rather than data — it stands in for nothing, so
+    // there is nothing to fake — but the hero's height is derived from its width
+    // and the mascot is what makes it that tall. A placeholder card of some other
+    // height would drop the whole screen when the bills land, which is the jump
+    // a skeleton exists to prevent.
+    return DashboardCard(
+      padding: EdgeInsets.zero,
+      child: DashboardHeroBody(
+        mood: DashboardMood.noneSettled,
+        ring: (double diameter) => AppSkeleton.circle(diameter: diameter),
+        footnote: const AppSkeleton(width: 160, height: 12),
+        figures: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      // "TOTAL OUTSTANDING", then the figure at display size.
-                      AppSkeleton(width: 132, height: 12),
-                      SizedBox(height: AppSpacing.md),
-                      AppSkeleton(width: 180, height: 34),
-                    ],
-                  ),
-                ),
-                SizedBox(width: AppSpacing.lg),
-                AppSkeleton.circle(diameter: 96),
-              ],
-            ),
-            SizedBox(height: AppSpacing.lg),
-            AppSkeleton(width: 200, height: 12),
+            // "TOTAL OUTSTANDING", then the figure at display size.
+            AppSkeleton(width: 132, height: 12),
+            SizedBox(height: AppSpacing.md),
+            AppSkeleton(width: 140, height: 34),
           ],
         ),
       ),
